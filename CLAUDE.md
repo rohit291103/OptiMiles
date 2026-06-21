@@ -99,6 +99,8 @@ Singapore Airlines business-class optimization using Indian credit cards.
 
 * HDFC Infinia
 * HDFC Diners Black
+* HDFC Regalia Gold
+* HSBC TravelOne
 * Axis Atlas
 * Axis Magnus
 * Amex Platinum Travel

@@ -1,23 +1,47 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { CreditCard } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 
-const CARDS = [
-  { name: "HDFC Infinia", tier: "Premium Travel", active: true },
-  { name: "HDFC Diners Club Black", tier: "Premium Travel", active: true },
-  { name: "Axis Magnus", tier: "Premium Travel", active: true },
-  { name: "Axis Atlas", tier: "Premium Travel", active: true },
-  { name: "Amex Platinum Travel", tier: "Premium Travel", active: true },
-  { name: "SBI Cashback", tier: "Mid-Tier Reward", active: true },
-  { name: "Amex MRCC", tier: "Premium Travel", active: false },
-  { name: "ICICI Emeralde", tier: "Premium Travel", active: false },
-  { name: "HDFC Regalia Gold", tier: "Mid-Tier Reward", active: false },
-  { name: "IDFC First Wealth", tier: "Mid-Tier Reward", active: false },
-  { name: "Air India SBI Signature", tier: "Airline / Travel", active: false },
-  { name: "Vistara SBI Prime", tier: "Airline / Travel", active: false },
+type Card = {
+  name: string;
+  tier: string;
+  active: boolean;
+  /** Path under /public, e.g. "/cards/infinia.png". Cards without a photo
+   * fall back to the icon + gradient treatment. */
+  image?: string;
+};
+
+// An illustrative example wallet — not the full supported set. Breadth lives in
+// the "Supported ecosystems" section; this is just "the cards you already carry."
+const CARDS: Card[] = [
+  {
+    name: "HDFC Infinia",
+    tier: "Premium Travel",
+    active: true,
+    image: "/cards/infinia.png",
+  },
+  {
+    name: "HDFC Diners Club Black",
+    tier: "Premium Travel",
+    active: true,
+    image: "/cards/diners-black.png",
+  },
+  {
+    name: "HDFC Regalia Gold",
+    tier: "Premium Travel",
+    active: true,
+    image: "/cards/regalia-gold.png",
+  },
+  {
+    name: "HSBC TravelOne",
+    tier: "Premium Travel",
+    active: true,
+    image: "/cards/hsbc-travelone.jpg",
+  },
 ];
 
 /**
@@ -130,10 +154,29 @@ export function SupportedCards() {
                 : "scale-100 border-hairline opacity-80"
             }`}
           >
-            <div className="absolute -right-8 -top-8 size-28 rounded-full bg-gold/10 blur-2xl" />
+            {card.image ? (
+              <>
+                <Image
+                  src={card.image}
+                  alt={card.name}
+                  fill
+                  sizes="(max-width: 640px) 16rem, 18rem"
+                  draggable={false}
+                  className="object-cover"
+                />
+                {/* Darkening scrim so the label stays legible over the art */}
+                <div className="absolute inset-0 bg-linear-to-t from-background/90 via-background/30 to-background/10" />
+              </>
+            ) : (
+              <div className="absolute -right-8 -top-8 size-28 rounded-full bg-gold/10 blur-2xl" />
+            )}
             <div className="relative flex h-full flex-col justify-between">
               <div className="flex items-start justify-between">
-                <CreditCard className="size-7 text-gold" />
+                {card.image ? (
+                  <span />
+                ) : (
+                  <CreditCard className="size-7 text-gold" />
+                )}
                 {card.active ? (
                   <Badge className="bg-gold text-gold-foreground hover:bg-gold/90">
                     Active
@@ -141,7 +184,7 @@ export function SupportedCards() {
                 ) : (
                   <Badge
                     variant="outline"
-                    className="border-hairline text-muted-foreground/70"
+                    className="border-hairline bg-background/60 text-muted-foreground/80 backdrop-blur-sm"
                   >
                     Coming soon
                   </Badge>

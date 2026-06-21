@@ -158,8 +158,7 @@ The cards should satisfy:
 * Amex Platinum Travel
 * Amex MRCC
 * Amex Gold Charge
-* SBI Aurum
-* ICICI Emeralde
+* HSBC TravelOne
 
 ---
 

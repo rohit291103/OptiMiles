@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Plane, BedDouble, Sparkles, Armchair } from "lucide-react";
 
 import { Reveal } from "@/components/ui/reveal";
@@ -8,7 +9,10 @@ type Outcome = {
   caption: string;
   reward: string;
   timeline: string;
-  /** Tailwind gradient classes used as a stand-in for destination photography. */
+  /** Path under /public, e.g. "/outcomes/business-class.jpg". Outcomes without a
+   * photo fall back to the gradient + starfield treatment. */
+  image?: string;
+  /** Tailwind gradient classes — the fallback / scrim base when no photo is set. */
   gradient: string;
 };
 
@@ -19,6 +23,7 @@ const OUTCOMES: Outcome[] = [
     caption: "Lie-flat to Asia or the Gulf",
     reward: "~92,000 miles",
     timeline: "≈ 11 months",
+    image: "/outcomes/business-class.jpeg",
     gradient: "from-amber-500/25 via-card to-background",
   },
   {
@@ -27,6 +32,7 @@ const OUTCOMES: Outcome[] = [
     caption: "A landmark suite, on points",
     reward: "~120,000 points",
     timeline: "≈ 9 months",
+    image: "/outcomes/hotel-suite.jpeg",
     gradient: "from-rose-500/20 via-card to-background",
   },
   {
@@ -35,6 +41,7 @@ const OUTCOMES: Outcome[] = [
     caption: "Five nights, fully covered",
     reward: "~85,000 points",
     timeline: "≈ 8 months",
+    image: "/outcomes/resort.jpeg",
     gradient: "from-sky-500/20 via-card to-background",
   },
   {
@@ -43,6 +50,7 @@ const OUTCOMES: Outcome[] = [
     caption: "Skip the terminal, every trip",
     reward: "Milestone perk",
     timeline: "≈ 4 months",
+    image: "/outcomes/lounge.jpeg",
     gradient: "from-emerald-500/20 via-card to-background",
   },
 ];
@@ -61,7 +69,22 @@ export function DreamOutcomes() {
             className={`relative h-40 bg-linear-to-br ${o.gradient}`}
             aria-hidden
           >
-            <div className="absolute inset-0 bg-starfield opacity-40" />
+            {o.image ? (
+              <>
+                <Image
+                  src={o.image}
+                  alt=""
+                  fill
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                  className="object-cover"
+                />
+                {/* Darken toward the bottom so the card edge blends into the body
+                    and the floating icon stays legible over any photo. */}
+                <div className="absolute inset-0 bg-linear-to-t from-card via-card/30 to-background/20" />
+              </>
+            ) : (
+              <div className="absolute inset-0 bg-starfield opacity-40" />
+            )}
             <span className="absolute left-4 top-4 inline-flex size-10 items-center justify-center rounded-xl bg-background/50 text-gold ring-1 ring-gold/25 backdrop-blur-sm">
               <o.icon className="size-5" />
             </span>

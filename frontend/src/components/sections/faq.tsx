@@ -10,7 +10,7 @@ import {
 const FAQS = [
   {
     q: "What cards are supported?",
-    a: "OptiMiles is live for HDFC Infinia, HDFC Diners Club Black, Axis Magnus, Axis Atlas, Amex Platinum Travel, and SBI Cashback today. More cards are on the roadmap and rolling out incrementally.",
+    a: "OptiMiles is live for HDFC Infinia, HDFC Diners Club Black, HDFC Regalia Gold, and HSBC TravelOne today. More cards are on the roadmap and rolling out incrementally.",
   },
   {
     q: "Can I use the cards I already have?",

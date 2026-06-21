@@ -10,7 +10,6 @@ const ENTRIES: Entry[] = [
   { icon: CreditCard, label: "HDFC" },
   { icon: CreditCard, label: "Axis" },
   { icon: CreditCard, label: "American Express" },
-  { icon: CreditCard, label: "SBI" },
   { icon: Plane, label: "Airline transfer partners" },
   { icon: Building2, label: "Hotel transfer partners" },
 ];
