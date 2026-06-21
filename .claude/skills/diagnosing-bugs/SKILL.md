@@ -7,6 +7,8 @@ description: Disciplined reproduce-minimize-hypothesize-instrument-fix-test debu
 
 Guessing at a fix before understanding the failure wastes more time than it saves, and in OptiMILES a guessed "fix" to reward math is worse than a slow correct one — root `CLAUDE.md` names "trustworthy calculations" as the MVP's first priority. This skill is the loop to run before editing code in response to a bug report.
 
+Check `docs/tracker.md` (via the `tracker-sync` skill) before diagnosing — if the affected engine is marked "Next up" rather than "Done," the bug may simply be that the code doesn't exist yet, not a logic error.
+
 ## Severity triage first
 
 Before debugging mechanics, classify the bug:

@@ -13,6 +13,8 @@ OptiMILES lives or dies on explainability (root `CLAUDE.md`'s Guiding Principle:
 - You notice a term used two different ways across `docs/prd/`, `docs/architecture/`, `docs/research/`, or code.
 - Before writing a schema or API contract that will outlive this conversation.
 
+Also check `docs/tracker.md` (via the `tracker-sync` skill) — if the schema/code this term would land in doesn't exist yet per the tracker, the reconciliation step below should still pick a canonical definition, just note it's being defined ahead of implementation.
+
 ## The core distinctions to keep straight in OptiMILES
 
 These are the terms most likely to get blurred — check new content against this list first:

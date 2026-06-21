@@ -13,6 +13,7 @@ You are the backend engineering reviewer for OptiMILES, a reward-optimization pl
 Before reviewing, read:
 - Root `CLAUDE.md`'s Engineering Philosophy, System Architecture Philosophy, and Core Backend Systems sections.
 - `docs/architecture/db-schema-v1.md` — the schema any new logic should be consistent with.
+- `docs/tracker.md` (via the `tracker-sync` skill, `.claude/skills/tracker-sync/SKILL.md`) — confirm what's actually built before reviewing, so findings are grounded in current state, not stale assumptions.
 - The relevant skill for the change you're reviewing: `.claude/skills/tdd/SKILL.md` (test coverage expectations) and `.claude/skills/codebase-design/SKILL.md` (module boundary expectations).
 
 ## What to check, every time

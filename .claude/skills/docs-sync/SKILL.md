@@ -21,6 +21,10 @@ Per root `CLAUDE.md`'s "Documentation Structure" section, `/docs` must contain:
   /prompts      — saved AI task prompts using the template below
 ```
 
+## Exception: `docs/tracker.md`
+
+`docs/tracker.md` lives directly under `/docs`, outside the six subfolders below — that's intentional, not a misfile. It's a disposable, continuously-overwritten status board (current Done/In progress/Next up per area), maintained by the `tracker-sync` skill, distinct from the permanent decision log this skill maintains. Don't flag it in an audit, and don't apply the "don't overwrite history" rule to it — that rule is for `/decisions` and `/research`, not the tracker.
+
 ## Before doing any task in this repo
 
 Read the relevant `/docs` subfolder(s) before writing code or making a recommendation — this project's CLAUDE.md explicitly calls this out as current-phase priority ("documentation discipline"). Don't re-derive scope, schema, or card lists from memory when they're already written down in `docs/prd/mvp_scope_1.md` or `docs/architecture/db-schema-v1.md`.

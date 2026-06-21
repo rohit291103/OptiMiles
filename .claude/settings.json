@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python3 -)"
+      "Bash(python3 -)",
+      "Edit(/.claude/skills/codebase-design/**)",
+      "Edit(/.claude/skills/handoff/**)"
     ]
   }
 }

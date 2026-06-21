@@ -7,6 +7,8 @@ description: Vocabulary and checklist for designing deep, maintainable backend m
 
 Root `CLAUDE.md`'s System Architecture Philosophy is explicit about what to avoid: premature microservices, unnecessary abstractions, overengineered agent systems, distributed architecture too early, excessive framework complexity. This skill is the checklist to run before adding structure, not after — overengineering is far cheaper to prevent than to unwind.
 
+Before scaffolding anything, read `docs/tracker.md` (via the `tracker-sync` skill) to confirm what already exists — don't design a module boundary for an engine that's already further along (or less far along) than assumed.
+
 ## The five backend systems are the module boundary
 
 CLAUDE.md already defines the module decomposition — don't invent a different one:

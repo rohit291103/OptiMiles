@@ -9,14 +9,15 @@ Root `CLAUDE.md`'s Documentation Rules are explicit: "Chats are temporary. Docum
 
 ## Workflow
 
-1. Identify the destination: which collaborator (ChatGPT, Claude, Gemini, a human teammate) and which `/docs` subfolder their output should ultimately land in, per CLAUDE.md's AI Collaboration Model.
-2. Fill out `docs/prompts/template.md`'s shape — don't invent a different structure:
+1. Read `docs/tracker.md` (via the `tracker-sync` skill) first — the handoff's PROJECT CONTEXT should reflect actual current state, not what the conversation assumed at its start.
+2. Identify the destination: which collaborator (ChatGPT, Claude, Gemini, a human teammate) and which `/docs` subfolder their output should ultimately land in, per CLAUDE.md's AI Collaboration Model.
+3. Fill out `docs/prompts/template.md`'s shape — don't invent a different structure:
    - **ROLE** — the destination collaborator's role per the AI Collaboration Model (e.g. Gemini = Research Analyst).
    - **PROJECT CONTEXT** — only what's needed to pick up the thread; don't re-paste the whole CLAUDE.md, reference it.
    - **OBJECTIVE** — the specific next action, not the whole project goal.
    - **REQUIREMENTS / CONSTRAINTS** — anything decided in this conversation that the next collaborator must not re-litigate (already-settled scope, already-rejected approaches, and why).
    - **OUTPUT REQUIREMENTS / SAVE OUTPUT AS / NOTION LOCATION / NOTION STRUCTURE** — where their output should land.
-3. Save the filled template as `docs/prompts/<date>-<short-slug>.md` so it's retrievable later, and surface it to the user to copy into the other tool — this skill doesn't call external AI APIs itself.
+4. Save the filled template as `docs/prompts/<date>-<short-slug>.md` so it's retrievable later, and surface it to the user to copy into the other tool — this skill doesn't call external AI APIs itself.
 
 ## What belongs in the handoff vs. what doesn't
 

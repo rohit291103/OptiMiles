@@ -9,7 +9,7 @@ Root `CLAUDE.md` assigns PRD-writing to "ChatGPT (Product Manager)" in its AI Co
 
 ## Before drafting
 
-Read `docs/prd/mvp_scope_1.md` first — it's the existing PRD and the template to match in tone and structure. Also check root `CLAUDE.md`'s MVP Philosophy, Initial MVP Scope, and Explicit MVP Exclusions sections — a new PRD must not silently expand scope past what those sections allow without flagging it.
+Read `docs/prd/mvp_scope_1.md` first — it's the existing PRD and the template to match in tone and structure. Also check root `CLAUDE.md`'s MVP Philosophy, Initial MVP Scope, and Explicit MVP Exclusions sections — a new PRD must not silently expand scope past what those sections allow without flagging it. Also read `docs/tracker.md` (via the `tracker-sync` skill) so the "Dependencies" section names things that actually exist today, not aspirational state.
 
 ## PRD shape (match `mvp_scope_1.md`)
 

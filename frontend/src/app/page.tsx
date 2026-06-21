@@ -31,7 +31,7 @@ const STEPS = [
     icon: Route,
     title: "Reward Knowledge Engine",
     description:
-      "Every card, transfer ratio, milestone, and cap — normalized and versioned. Nothing is guessed; nothing is hallucinated.",
+      "Every card, transfer ratio, milestone, and cap normalized and versioned. Nothing is guessed; nothing is hallucinated.",
   },
   {
     index: "02",
@@ -45,7 +45,7 @@ const STEPS = [
     icon: LineChart,
     title: "Simulation Engine",
     description:
-      "Project your accumulation timeline against a single goal — a route, a cabin, a date — and watch the path resolve.",
+      "Project your accumulation timeline against a single goal a route, a cabin, a date and watch the path resolve.",
   },
 ];
 
@@ -70,7 +70,7 @@ export default function Home() {
             </h1>
             <p className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
               OptiMiles is a reward optimization engine for Indian travel credit
-              cards — built to route your spend, value your points, and chart an
+              cards built to route your spend, value your points, and chart an
               explainable path to your next redemption. No chatbot. No guesswork.
             </p>
             <div className="mt-10 flex flex-wrap items-center gap-3">

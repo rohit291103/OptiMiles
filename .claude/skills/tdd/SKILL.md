@@ -7,6 +7,8 @@ description: Red-green-refactor test-first workflow, mandatory for anything in t
 
 Root `CLAUDE.md` calls deterministic reward logic the MVP's foundation and explicitly forbids LLMs from being "the source of truth" for reward values — which means the structured code that *is* the source of truth has to be verifiably correct. Tests are how "verifiably" stops being a word and becomes a fact.
 
+Check `docs/tracker.md` (via the `tracker-sync` skill) before starting — confirm the engine you're testing is the one actually in scope for this session, not one still marked "Next up."
+
 ## Where this is mandatory vs. optional
 
 - **Mandatory, test-first:** any code in the Reward Knowledge Engine (card rules, transfer ratios, milestones, caps, exclusions), Reward Valuation Engine (value/efficiency scoring), Optimization Engine (spend allocation, strategy generation), Simulation Engine (accumulation projection, redemption readiness). These are the "deterministic logic" CLAUDE.md says the system must rely on primarily — they get the strictest discipline.

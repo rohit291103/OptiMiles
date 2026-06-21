@@ -9,7 +9,7 @@ A PRD describes what to build; this skill decides the order and slicing of how t
 
 ## Before slicing
 
-Read the source PRD/decision doc in full. If it references a schema, also read `docs/architecture/db-schema-v1.md` so slices don't get ordered ahead of their dependencies (e.g. don't slice "spend routing UI" before "card reward-rule schema" exists).
+Read the source PRD/decision doc in full. If it references a schema, also read `docs/architecture/db-schema-v1.md` so slices don't get ordered ahead of their dependencies (e.g. don't slice "spend routing UI" before "card reward-rule schema" exists). Also read `docs/tracker.md` (via the `tracker-sync` skill) — order slices relative to what's actually "Done" today, not what the source doc assumed at the time it was written.
 
 ## What makes a good slice
 
