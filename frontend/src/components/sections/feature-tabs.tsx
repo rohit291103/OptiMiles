@@ -17,7 +17,7 @@ const FEATURES = [
     icon: Route,
     title: "Route every rupee to the right card",
     description:
-      "OptiMiles decides which card to swipe for each spend category — and stops earning on a card the moment its cap is hit, redirecting to the next-best option automatically.",
+      "OptiMiles decides which card to swipe for each spend category and stops earning on a card the moment its cap is hit, redirecting to the next-best option automatically.",
     points: [
       "Category-aware allocation across all your cards",
       "Cap, milestone and exclusion aware",

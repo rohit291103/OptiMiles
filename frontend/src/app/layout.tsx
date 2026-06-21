@@ -22,7 +22,7 @@ const fraunces = Fraunces({
 export const metadata: Metadata = {
   title: "OptiMiles — Strategic Reward Intelligence",
   description:
-    "OptiMiles is a reward optimization engine for Indian travel credit cards — built to turn everyday spend into business-class travel, deliberately and explainably.",
+    "OptiMiles is a reward optimization engine for Indian travel credit cards built to turn everyday spend into business-class travel, deliberately and explainably.",
 };
 
 export default function RootLayout({
