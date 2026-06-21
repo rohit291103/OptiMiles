@@ -29,7 +29,7 @@ export function SupportedCards() {
       {CARDS.map((card) => (
         <article
           key={card.name}
-          className="group relative h-44 overflow-hidden rounded-2xl border border-hairline bg-gradient-to-br from-card to-background p-5 ring-1 ring-foreground/5 transition-colors hover:border-gold/40"
+          className="group relative h-44 overflow-hidden rounded-2xl border border-hairline bg-linear-to-br from-card to-background p-5 ring-1 ring-foreground/5 transition-colors hover:border-gold/40"
         >
           <div className="absolute -right-8 -top-8 size-28 rounded-full bg-gold/10 blur-2xl transition-opacity group-hover:opacity-100 sm:opacity-60" />
           <div className="relative flex h-full flex-col justify-between">
