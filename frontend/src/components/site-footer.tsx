@@ -1,0 +1,76 @@
+import Link from "next/link"
+
+import { Brand } from "@/components/brand"
+
+const FOOTER_GROUPS = [
+  {
+    title: "Product",
+    links: [
+      { href: "/#how", label: "How it works" },
+      { href: "/#features", label: "Features" },
+      { href: "/#simulate", label: "Simulator" },
+      { href: "/#cards", label: "Supported cards" },
+    ],
+  },
+  {
+    title: "Company",
+    links: [
+      { href: "/#faq", label: "FAQ" },
+      { href: "/signup", label: "Get started" },
+      { href: "/login", label: "Log in" },
+    ],
+  },
+  {
+    title: "Legal",
+    links: [
+      { href: "#", label: "Privacy" },
+      { href: "#", label: "Terms" },
+      { href: "#", label: "Disclosures" },
+    ],
+  },
+]
+
+export function SiteFooter() {
+  return (
+    <footer className="border-t border-hairline">
+      <div className="mx-auto max-w-6xl px-6 py-14">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
+          <div className="max-w-xs">
+            <Brand />
+            <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+              An explainable reward optimization engine for Indian travel credit
+              cards. Built for the deliberate traveler — no chatbot, no guesswork.
+            </p>
+          </div>
+
+          {FOOTER_GROUPS.map((group) => (
+            <div key={group.title}>
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">
+                {group.title}
+              </p>
+              <ul className="mt-4 space-y-3 text-sm">
+                {group.links.map((link) => (
+                  <li key={link.label}>
+                    <Link
+                      href={link.href}
+                      className="text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-hairline pt-8 text-sm text-muted-foreground sm:flex-row">
+          <span>© {new Date().getFullYear()} OptiMiles. All rights reserved.</span>
+          <span className="text-xs text-muted-foreground/70">
+            Reward intelligence for Indian travellers.
+          </span>
+        </div>
+      </div>
+    </footer>
+  )
+}
