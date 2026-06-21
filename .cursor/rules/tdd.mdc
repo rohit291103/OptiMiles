@@ -1,0 +1,11 @@
+---
+description: Test-first workflow for backend calculation logic — mandatory for the Reward Knowledge, Valuation, Optimization, and Simulation Engines.
+globs: ["backend/**"]
+alwaysApply: false
+---
+
+# tdd
+
+Full workflow: `.claude/skills/tdd/SKILL.md`.
+
+Red-green-refactor, test-first, for anything in the five backend engines. Use concrete golden-value test cases traceable to a real source (published card T&C or `docs/research/`) — not invented numbers. Add boundary tests for every milestone/cap. Never mock the reward calculation itself to make a test pass. Lighter touch (contract-level tests, not exact-wording tests) for the AI Reasoning Layer and frontend.

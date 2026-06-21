@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(run)",
+      "Skill(run:*)",
+      "Bash(find ~/.claude -iname \"SKILL.md\" 2>/dev/null | head -10; echo \"---agents---\"; find ~/.claude -path \"*/agents/*.md\" 2>/dev/null | head -10)",
+      "Read(//Users/store/.claude/**)",
+      "Bash(cat /tmp/optimiles-dev.log | head -20; echo \"---pwd check---\"; pwd)",
+      "Read(//private/tmp/**)",
+      "Bash(node -e \"const l=require\\('lucide-react'\\); ['Plane','CreditCard','ArrowRight','Sparkles','Target','LineChart','ShieldCheck','Zap','TrendingUp','Check','ChevronLeft','ChevronRight','Quote','Menu','Star','Wallet','Route','Lock','Mail'].forEach\\(n=>console.log\\(n, typeof l[n]\\)\\)\")"
+    ]
+  }
+}

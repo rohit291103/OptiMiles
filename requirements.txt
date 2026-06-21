@@ -1,0 +1,2 @@
+# No Python packages installed in .venv
+# Activate the virtual environment and install packages before regenerating.

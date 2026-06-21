@@ -1,0 +1,16 @@
+---
+description: Backend review checklist mirroring the Claude Code backend-reviewer agent — Cursor has no subagent delegation, so apply this inline when reviewing or writing backend code. Invoke manually with @backend-review-checklist, or apply when asked to review backend/optimization/simulation logic.
+globs:
+alwaysApply: false
+---
+
+# backend-review-checklist
+
+Full version: `.claude/agents/backend-reviewer.md`.
+
+Check, in order of severity:
+1. **Non-negotiable:** no path where an LLM call's output flows directly into a reward/points/value number shown to a user without deterministic calculation in between. Flag this regardless of confidence elsewhere.
+2. New code lives in the right one of the five backend engines (Reward Knowledge / Valuation / Optimization / Simulation / AI Reasoning Layer) — no calculation logic inside the AI Reasoning Layer's code path.
+3. No premature microservice/queue/agent-framework for something a plain function could do (see `codebase-design.mdc`).
+4. Calculation code (the four deterministic engines) has tests with concrete golden values and boundary cases (see `tdd.mdc`) — flag missing coverage.
+5. New schema fields/rules are consistent with `docs/architecture/db-schema-v1.md`, not silently diverging from it.

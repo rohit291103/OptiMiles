@@ -1,0 +1,16 @@
+---
+description: Apply when introducing a new reward/finance domain term (transfer ratio, accrual, redemption, milestone, reward cap, valuation, efficiency, spend routing) or when the same term is used two different ways across docs or code — keeps OptiMILES vocabulary consistent.
+globs:
+alwaysApply: false
+---
+
+# domain-modeling
+
+Full workflow: `.claude/skills/domain-modeling/SKILL.md`.
+
+Quick reference — don't blur these:
+- **Transfer ratio** (bank's fixed exchange rate) ≠ **valuation** (effective real-world value achieved).
+- **Accrual** (earned from spend/bonus) ≠ **transfer** (moved between programs) ≠ **redemption** (converted into the actual reward).
+- **Milestone** (spend threshold that unlocks a bonus) ≠ **reward cap** (ceiling on payout).
+
+Canonical definition order when in conflict: `docs/architecture/db-schema-v1.md` → `docs/prd/mvp_scope_1.md` → root `CLAUDE.md`. Flag conflicts to the user rather than silently rewriting historical docs.

@@ -1,0 +1,11 @@
+---
+description: Break a PRD or decision doc into independently-buildable vertical-slice work items. Invoke manually with @to-issues after a PRD/decision exists.
+globs:
+alwaysApply: false
+---
+
+# to-issues
+
+Full workflow: `.claude/skills/to-issues/SKILL.md`.
+
+Slice by outcome, not by layer (not "build all schemas" — instead "show transfer ratio on card detail"). Order by dependency. No issue tracker/GitHub remote is wired up yet, so output a checklist doc saved alongside the source PRD/decision, not real issues — confirm with the user before creating actual GitHub issues if a remote exists by the time this runs.

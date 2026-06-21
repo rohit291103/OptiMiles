@@ -1,0 +1,11 @@
+---
+description: Module-design checklist for new backend code — keeps the five-engine boundary intact and blocks premature abstractions/microservices.
+globs: ["backend/**"]
+alwaysApply: false
+---
+
+# codebase-design
+
+Full workflow: `.claude/skills/codebase-design/SKILL.md`.
+
+New backend logic slots into one of the five engines already defined in `CLAUDE.md` — Reward Knowledge, Reward Valuation, Optimization, Simulation, AI Reasoning Layer — not a new module invented ad hoc. Before adding a class/interface/service boundary: does it hide real complexity (not just rename one call), is there a second concrete caller today (not "for later"), and could it just be a plain function in the existing engine's module instead? No new microservices, message queues, or agent-orchestration frameworks for things deterministic code already handles — Phase 0 explicitly excludes scaling infrastructure and advanced agents.

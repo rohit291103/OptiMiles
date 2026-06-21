@@ -1,0 +1,17 @@
+---
+description: OptiMILES project constitution — always-on context for every Cursor session in this repo.
+globs:
+alwaysApply: true
+---
+
+# OptiMILES — always-on context
+
+Full constitution: root `CLAUDE.md` (read it for complete detail). The load-bearing rules that apply to every change in this repo:
+
+- **What it is:** an AI-powered reward optimization platform for Indian credit cards / airline miles. NOT a chatbot, card comparison site, or banking super app. MVP goal: Singapore Airlines business-class via Indian cards, KrisFlyer transfer ecosystem.
+- **The one hard rule:** structured, deterministic logic is the source of truth for reward calculations. LLMs assist with orchestration, summarization, explanation, and narration — **never** with directly calculating reward values, transfer ratios, or redemption values. If a change routes an LLM's output into a number shown to the user as a reward/points value, stop and route it through deterministic logic instead.
+- **MVP-active cards only:** HDFC Infinia, HDFC Diners Black, Axis Atlas, Axis Magnus, Amex Platinum Travel, SBI Cashback. Other cards exist in the roadmap (`docs/prd/mvp_scope_1.md`) but must be marked "Coming soon," not "Active," anywhere they're shown.
+- **Current phase:** Phase 0 — Product Definition & Architecture. Do not introduce scaling infrastructure, multi-service architecture, or agent orchestration frameworks for things deterministic code can already do.
+- **Docs are permanent, chats are not.** Decisions belong in `docs/decisions/`, schema in `docs/architecture/`, scope in `docs/prd/`, design in `docs/ux/`, external research in `docs/research/`, reusable AI prompts in `docs/prompts/`. Read the relevant subfolder before proposing scope, schema, or card lists from memory.
+
+This repo also has Claude Code skills under `.claude/skills/*/SKILL.md` with the full workflows referenced by the other rules in this `.cursor/rules/` folder — open them when a rule below points to one.

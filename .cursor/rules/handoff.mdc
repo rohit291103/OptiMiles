@@ -1,0 +1,11 @@
+---
+description: Compress current work into a structured handoff note for ChatGPT/Gemini/a teammate, using docs/prompts/template.md. Invoke manually with @handoff when switching tools or people mid-task.
+globs:
+alwaysApply: false
+---
+
+# handoff
+
+Full workflow: `.claude/skills/handoff/SKILL.md`.
+
+Fill `docs/prompts/template.md`'s ROLE/PROJECT CONTEXT/OBJECTIVE/REQUIREMENTS/CONSTRAINTS/OUTPUT REQUIREMENTS/SAVE OUTPUT AS shape — ROLE comes from CLAUDE.md's AI Collaboration Model (ChatGPT = PM/Architect, Gemini = Research Analyst, Claude = Senior Engineer). Include decisions already made and why; exclude anything already permanently recorded in `/docs` (link instead of repeating). Save the filled template as `docs/prompts/<date>-<slug>.md`.
