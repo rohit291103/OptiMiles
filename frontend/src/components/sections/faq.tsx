@@ -9,24 +9,32 @@ import {
 
 const FAQS = [
   {
-    q: "Is OptiMiles a chatbot?",
-    a: "No. OptiMiles is a deterministic reward optimization engine. Calculations come from a normalized reward schema and explicit logic — AI is only used to narrate and explain strategies, never to invent numbers or transfer ratios.",
+    q: "What cards are supported?",
+    a: "OptiMiles is live for HDFC Infinia, HDFC Diners Club Black, Axis Magnus, Axis Atlas, Amex Platinum Travel, and SBI Cashback today. More cards are on the roadmap and rolling out incrementally.",
   },
   {
-    q: "Which credit cards are supported today?",
-    a: "The MVP is live for HDFC Infinia, HDFC Diners Club Black, Axis Magnus, Axis Atlas, Amex Platinum Travel, and SBI Cashback. More cards are on the roadmap and rolling out incrementally.",
+    q: "Can I use the cards I already have?",
+    a: "Yes — that's the whole point. OptiMiles maximizes the cards already in your wallet before it ever suggests applying for a new one.",
   },
   {
-    q: "Do you track my spending automatically?",
+    q: "Do I need to apply for new cards?",
+    a: "No. OptiMiles first finds the best strategy with your existing cards. A new card is only ever suggested when it meaningfully shortens your path to a goal, with the reasoning shown.",
+  },
+  {
+    q: "Do you connect to my bank accounts?",
     a: "No. OptiMiles does not parse SMS, scan statements, or auto-track transactions. You tell it your goal and spending profile, and it generates an explainable strategy. Your data stays yours.",
   },
   {
-    q: "How accurate are the reward valuations?",
-    a: "Points are valued by realistic redemption and transfer-partner value, not the bank's face value. Every valuation is versioned and auditable, so you can see exactly how a number was derived.",
+    q: "Is this a chatbot?",
+    a: "No. OptiMiles is a deterministic reward optimization engine. Calculations come from a normalized reward schema and explicit logic — AI is only used to narrate and explain strategies, never to invent numbers or transfer ratios.",
   },
   {
-    q: "Is it free to get started?",
-    a: "You can create an account and run the simulator for free. Premium optimization features are part of the roadmap as the platform matures.",
+    q: "How do reward projections work?",
+    a: "We model your spending against each card's earn rates, caps, exclusions, and milestones, then project your accumulation month by month toward a single goal. Every projection traces back to versioned, auditable rules.",
+  },
+  {
+    q: "How accurate are the calculations?",
+    a: "Points are valued by realistic redemption and transfer-partner value, not the bank's face value — and every value is versioned and auditable, so you can see exactly how a number was derived.",
   },
 ];
 

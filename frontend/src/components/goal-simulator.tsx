@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { CountUp } from "@/components/ui/count-up";
 
 const DESTINATIONS = [
   { label: "Singapore", months: 7, businessMiles: 35000 },
@@ -21,21 +22,43 @@ const CABINS = [
   { label: "First", factor: 1.6 },
 ];
 
+const CARD_OPTIONS = [
+  "HDFC Infinia",
+  "HDFC Diners Club Black",
+  "Axis Atlas",
+  "Axis Magnus",
+  "Amex Platinum Travel",
+];
+
+const AIRLINE_PREFS = ["No preference", "Star Alliance", "Oneworld", "SkyTeam"];
+
 type Result = {
   destination: string;
   cabin: string;
   months: number;
   milesNeeded: number;
-  bestCard: string;
   monthlyMiles: number;
   progress: number;
+  strategy: string;
+  achievable: boolean;
 };
 
 export function GoalSimulator() {
   const [destination, setDestination] = useState(DESTINATIONS[0].label);
   const [cabin, setCabin] = useState("Business");
-  const [monthlySpend, setMonthlySpend] = useState("180000");
+  const [monthlySpend, setMonthlySpend] = useState("100000");
+  const [cards, setCards] = useState<string[]>(["HDFC Infinia", "Axis Atlas"]);
+  const [timeline, setTimeline] = useState("12");
+  const [airline, setAirline] = useState(AIRLINE_PREFS[0]);
   const [result, setResult] = useState<Result | null>(null);
+
+  function toggleCard(name: string) {
+    setCards((prev) =>
+      prev.includes(name)
+        ? prev.filter((c) => c !== name)
+        : [...prev, name]
+    );
+  }
 
   function handleCalculate() {
     const target =
@@ -44,19 +67,28 @@ export function GoalSimulator() {
     const milesNeeded = Math.round(target.businessMiles * cabinDef.factor);
     // Illustrative earn rate: ~1.25 reward points per ₹ on the best route.
     const monthlyMiles = Math.round((Number(monthlySpend) || 0) * 1.25);
-    const accrued = monthlyMiles * target.months;
+    const horizon = Math.max(Number(timeline) || target.months, 1);
+    const accrued = monthlyMiles * horizon;
     const progress = Math.min(
       100,
       Math.round((accrued / Math.max(milesNeeded, 1)) * 100)
     );
+    const strategy =
+      cards.length >= 2
+        ? `${cards[0]} + ${cards[1]} → frequent-flyer transfer (1:1)`
+        : cards.length === 1
+          ? `${cards[0]} → frequent-flyer transfer (1:1)`
+          : "Add a card to see a routing strategy";
+
     setResult({
       destination: target.label,
       cabin,
-      months: target.months,
+      months: horizon,
       milesNeeded,
-      bestCard: "HDFC Infinia → frequent-flyer transfer (1:1)",
       monthlyMiles,
       progress,
+      strategy,
+      achievable: progress >= 100,
     });
   }
 
@@ -64,17 +96,17 @@ export function GoalSimulator() {
     <div className="overflow-hidden rounded-3xl border border-hairline bg-card/60 backdrop-blur-sm">
       <div className="border-b border-hairline px-6 py-5 sm:px-8">
         <p className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-gold">
-          <Sparkles className="size-3.5" /> Try the engine
+          <Sparkles className="size-3.5" /> Goal simulator
         </p>
         <h3 className="mt-2 font-heading text-xl text-foreground sm:text-2xl">
           I want to fly{" "}
-          <span className="italic text-gold">{cabin.toLowerCase()} class</span> to{" "}
-          <span className="italic text-gold">{destination}</span>
+          <span className="italic text-gold">{cabin.toLowerCase()} class</span>{" "}
+          to <span className="italic text-gold">{destination}</span>
         </h3>
       </div>
 
       <div className="p-6 sm:p-8">
-        <div className="grid gap-4 sm:grid-cols-2 sm:items-end">
+        <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="destination" className="text-muted-foreground">
               Destination
@@ -105,6 +137,38 @@ export function GoalSimulator() {
               className="h-10 bg-input/30"
             />
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="timeline" className="text-muted-foreground">
+              Timeline (months)
+            </Label>
+            <Input
+              id="timeline"
+              type="number"
+              min={1}
+              value={timeline}
+              onChange={(e) => setTimeline(e.target.value)}
+              className="h-10 bg-input/30"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="airline" className="text-muted-foreground">
+              Preferred airline
+            </Label>
+            <select
+              id="airline"
+              value={airline}
+              onChange={(e) => setAirline(e.target.value)}
+              className="flex h-10 w-full rounded-lg border border-input bg-input/30 px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              {AIRLINE_PREFS.map((a) => (
+                <option key={a} value={a} className="bg-card">
+                  {a}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div className="mt-4 space-y-2">
@@ -127,12 +191,36 @@ export function GoalSimulator() {
           </div>
         </div>
 
+        <div className="mt-4 space-y-2">
+          <Label className="text-muted-foreground">Current cards</Label>
+          <div className="flex flex-wrap gap-2">
+            {CARD_OPTIONS.map((name) => {
+              const selected = cards.includes(name);
+              return (
+                <button
+                  key={name}
+                  type="button"
+                  onClick={() => toggleCard(name)}
+                  aria-pressed={selected}
+                  className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors ${
+                    selected
+                      ? "border-gold/40 bg-gold/15 text-gold"
+                      : "border-hairline text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <Button
           onClick={handleCalculate}
           size="lg"
           className="mt-6 w-full bg-gold text-gold-foreground hover:bg-gold/90 sm:w-auto"
         >
-          Calculate my strategy <ArrowRight />
+          Build my reward strategy <ArrowRight />
         </Button>
 
         {result && (
@@ -141,14 +229,17 @@ export function GoalSimulator() {
               <Stat
                 icon={<Plane className="size-4" />}
                 label="Miles required"
-                value={result.milesNeeded.toLocaleString("en-IN")}
+                value={<CountUp value={result.milesNeeded} />}
               />
               <Stat
                 icon={<TrendingUp className="size-4" />}
                 label="Earned / month"
-                value={`~${result.monthlyMiles.toLocaleString("en-IN")}`}
+                value={<CountUp value={result.monthlyMiles} prefix="~" />}
               />
-              <Stat label="Time to goal" value={`${result.months} months`} />
+              <Stat
+                label="Time to goal"
+                value={`${result.months} months`}
+              />
             </div>
 
             <div>
@@ -168,9 +259,9 @@ export function GoalSimulator() {
 
             <div className="flex flex-wrap items-center gap-2 rounded-xl border border-hairline bg-background/40 p-4">
               <Badge className="bg-gold text-gold-foreground hover:bg-gold/90">
-                Recommended route
+                {result.achievable ? "Achievable" : "Recommended route"}
               </Badge>
-              <span className="text-sm text-foreground">{result.bestCard}</span>
+              <span className="text-sm text-foreground">{result.strategy}</span>
             </div>
 
             <p className="text-xs text-muted-foreground/70">
@@ -190,7 +281,7 @@ function Stat({
   icon,
 }: {
   label: string;
-  value: string;
+  value: React.ReactNode;
   icon?: React.ReactNode;
 }) {
   return (

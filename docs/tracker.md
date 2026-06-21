@@ -6,11 +6,11 @@ Maintained by the `tracker-sync` skill (`.claude/skills/tracker-sync/SKILL.md`).
 
 ---
 
-**Last updated:** 2026-06-21 — Frontend rebrand (OptiMiles casing + removal of all Singapore Airlines/KrisFlyer/MVP copy), homepage rebuild, login/signup pages.
+**Last updated:** 2026-06-21 — Landing page outcome-first redesign (CSS-only animation, generic-brand copy, new sections + animation primitives, rebuilt simulator/cards/FAQ).
 
 ## Snapshot
 
-Phase 0 (Product Definition & Architecture, per root `CLAUDE.md`). Backend has no code yet — schema and engine work hasn't started. Frontend has gone from a single shallow placeholder page to a fuller marketing site (hero, how-it-works, feature tabs, supported-cards carousel, simulator, testimonials, FAQ) plus front-end-only login/signup pages, all on the existing dark/gold design system. Docs and Claude Code project infra (skills, subagents) are actively being built out alongside the product itself.
+Phase 0 (Product Definition & Architecture, per root `CLAUDE.md`). Backend has no code yet — schema and engine work hasn't started. Frontend is now a full outcome-first marketing site (hero → dream outcomes → how-it-works → trust pillars → simulator → strategy output → cards → ecosystem → built-for → capabilities → mission → FAQ → CTA) on the existing dark/gold design system, plus front-end-only login/signup pages. All motion is CSS/IntersectionObserver — still zero animation/carousel dependencies. Docs and Claude Code project infra (skills, subagents) are actively being built out alongside the product itself.
 
 ---
 
@@ -31,24 +31,25 @@ Phase 0 (Product Definition & Architecture, per root `CLAUDE.md`). Backend has n
 ## Frontend
 
 ### Done
-- Full rebrand: `OptiMILES` → `OptiMiles` everywhere; all literal "Singapore Airlines", "KrisFlyer", and "MVP" copy removed from UI, including the footer (verified via repo-wide grep — zero matches outside this doc).
-- Dark theme native-control fix: `color-scheme: dark` + themed scrollbar so browser-native scrollbar/select/inputs don't render in light mode against the dark UI.
-- Homepage (`src/app/page.tsx`) rebuilt with real sections: hero + stats bar, "how it works" (3 engines), feature tabs, supported-cards carousel (18-card roadmap, Active vs. Coming soon), goal simulator, testimonials carousel, FAQ accordion, final CTA, footer.
-- New dependency-free UI primitives: `Tabs`, `Accordion`, `Carousel` (CSS scroll-snap, no embla/swiper) in `src/components/ui/`.
-- New shared components: `SiteNav` (sticky, mobile menu), `SiteFooter`, `Brand`.
-- New section components under `src/components/sections/`: `FeatureTabs`, `SupportedCards`, `Testimonials`, `Faq`.
-- Goal simulator rewritten: cabin-class selector (Economy/Business/First), progress bar, generic "frequent-flyer transfer" wording instead of naming KrisFlyer.
-- Auth flow built: `/login` and `/signup` routes, split-screen `AuthShell`, shared `AuthForm` (Google/Apple buttons, password show/hide, signup terms checkbox, loading state).
-- `npm run build` and `npx eslint src` both pass clean.
+- **Outcome-first homepage redesign** (`src/app/page.tsx`): restructured to lead with outcomes, not engines. New flow: hero (drifting gradient + starfield) → Dream Outcomes → How It Works (4-step timeline) → Why Trust (4 pillars) → Goal Simulator → Example Strategy Output → Cards You Carry → Ecosystem marquee → Built For → Capabilities (engines, demoted) → Why OptiMiles Exists → FAQ → Final CTA. Goal-oriented CTA copy throughout. Decision logged: `2026-06-21-landing-page-outcome-redesign.md`.
+- New section components under `src/components/sections/`: `DreamOutcomes`, `HowItWorks`, `TrustPillars`, `StrategyOutput`, `EcosystemMarquee`, `BuiltFor` (plus the pre-existing `FeatureTabs`, `SupportedCards`, `Faq`).
+- New reusable animation primitives `src/components/ui/`: `Reveal` (scroll-reveal via IntersectionObserver) and `CountUp` (rAF count-up). Both respect `prefers-reduced-motion`. **Still no animation library** — CSS/IO only.
+- Simulator rebuilt: added timeline, preferred-airline, multi-select current-cards inputs; count-up animated results.
+- Supported-cards carousel rebuilt: 4s autoplay, pause-on-hover, drag/touch, active-card scaling — self-contained, still no embla/swiper.
+- FAQ expanded to the brief's 7 questions (kept generic).
+- `globals.css`: new `bg-hero-field`, `bg-starfield`, `.reveal` utilities + drift keyframes, all gated behind `prefers-reduced-motion`.
+- Earlier same-day work (still current): full `OptiMILES`→`OptiMiles` rebrand, all named-partner copy stripped, dark native-control fix (`color-scheme: dark`), in-repo `Tabs`/`Accordion`/`Carousel` primitives, `SiteNav`/`SiteFooter`/`Brand`, `/login`+`/signup` with shared `AuthForm`.
+- `npm run build` and `npx eslint src` both pass clean; live dev-server render returned HTTP 200 with all sections present.
 
 ### In progress
 - Auth forms are **front-end only** — submit handler is a `setTimeout` stub, not wired to a real backend auth route.
-- Live dev-server/browser verification of the new homepage, mobile nav, carousels, accordion, and auth pages has not been done yet (only build + lint were run). Per root `CLAUDE.md`, this is required before calling the UI work fully verified.
+- Redesign is build/lint/HTTP-200 verified but **not yet eyeballed in a browser** — a human visual scroll-through of the animations and gradient placeholders is still pending (required per root `CLAUDE.md` before calling UI work fully verified).
+- `testimonials.tsx` and `STATS` were dropped from the homepage (not in the new brief) — `testimonials.tsx` remains in-repo unused rather than deleted.
 
 ### Next up
-- Start `npm run dev` and visually check the golden paths above (desktop + mobile) in a real browser.
+- Visual browser pass of the redesigned homepage (desktop + mobile): animations, marquee, autoplay carousel, simulator count-up, mobile nav.
+- Swap gradient placeholders in `DreamOutcomes`/`SupportedCards` for real PNGs once the user supplies them to `/public`.
 - Wire `AuthForm` to a real backend endpoint once one exists.
-- File a `docs/decisions/` entry for this rebrand + homepage rebuild session (not yet logged).
 
 ---
 
@@ -57,18 +58,18 @@ Phase 0 (Product Definition & Architecture, per root `CLAUDE.md`). Backend has n
 ### Done
 - `/docs` structure established: `prd`, `architecture`, `research`, `ux`, `decisions`, `prompts`.
 - `docs/prd/mvp_scope_1.md`, `docs/architecture/{ai-tooling-setup-v1,db-schema-v1}.md`, `docs/research/singapore_airlines_krisflyer_indian_credit_card_research_v1.md`, `docs/ux/landing-page-v1.md`, `docs/prompts/template.md`.
-- Decision log entries: `2026-06-21-frontend-mvp-cleanup.md`, `2026-06-21-multi-tool-agent-skill-expansion.md`.
+- Decision log entries: `2026-06-21-frontend-mvp-cleanup.md`, `2026-06-21-multi-tool-agent-skill-expansion.md`, `2026-06-21-landing-page-outcome-redesign.md`.
 - Claude Code skills: `codebase-design`, `diagnosing-bugs`, `docs-sync`, `domain-modeling`, `handoff`, `tdd`, `to-issues`, `to-prd`, `tracker-sync` (this one).
 - Subagents: `backend-reviewer`, `frontend-reviewer`, `feature-discussion`, `prd-writer`.
 
 ### In progress
-- No decision log yet for the frontend rebrand/homepage/auth session described above.
+- Nothing active. (The earlier frontend rebrand/homepage/auth session is now covered by `2026-06-21-frontend-mvp-cleanup.md`; the redesign by `2026-06-21-landing-page-outcome-redesign.md`.)
 
 ### Next up
-- Log that decision once filed.
+- Nothing pending on the docs side.
 
 ---
 
 ## Last session notes
 
-Rebranded the entire frontend from "OptiMILES" to "OptiMiles" and stripped every "Singapore Airlines / KrisFlyer / MVP" UI reference (hero, footer, simulator copy, metadata). Rebuilt the homepage from a single shallow page into a full marketing page with hero+stats, how-it-works, a 4-tab feature showcase, a supported-cards carousel, the (enhanced) goal simulator, a testimonials carousel, an FAQ accordion, and a real footer — using only carousel/tabs/accordion primitives built in-repo (no new npm deps). Added `/login` and `/signup` pages with a shared front-end-only `AuthForm`. Verified with `next build` + `eslint`, both clean. **Not yet done:** a real browser/dev-server check of the new pages, and wiring auth to a backend.
+Redesigned the homepage to be **outcome-first** instead of engine-first, preserving the dark/gold luxury aesthetic. Confirmed two scope calls with the user up front: keep brand names generic (honoring the earlier cleanup decision) and stay dependency-free (CSS/IntersectionObserver animation, no Framer Motion; gradient placeholders instead of real photography). Added six new section components (DreamOutcomes, HowItWorks, TrustPillars, StrategyOutput, EcosystemMarquee, BuiltFor) and two reusable animation primitives (Reveal, CountUp), rebuilt the simulator (more inputs + count-up), the supported-cards carousel (autoplay/drag/scaling), and the FAQ (7 questions). New `globals.css` utilities for the hero gradient field, starfield, and scroll-reveal, all gated on `prefers-reduced-motion`. Verified with `next build` + `eslint` (clean) and a live HTTP-200 render. Logged the decision as `2026-06-21-landing-page-outcome-redesign.md`. **Still pending:** a human visual browser pass of the animations, and real photography to replace the gradient placeholders.

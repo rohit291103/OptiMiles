@@ -1,53 +1,22 @@
 import Link from "next/link";
-import {
-  ArrowRight,
-  Sparkles,
-  ShieldCheck,
-  Route,
-  LineChart,
-  TrendingUp,
-} from "lucide-react";
+import { ArrowRight, Sparkles, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Reveal } from "@/components/ui/reveal";
 import { GoalSimulator } from "@/components/goal-simulator";
 import { SiteNav } from "@/components/site-nav";
 import { SiteFooter } from "@/components/site-footer";
-import { FeatureTabs } from "@/components/sections/feature-tabs";
+import { HeroFlow } from "@/components/sections/hero-flow";
+import { DreamOutcomes } from "@/components/sections/dream-outcomes";
+import { HowItWorks } from "@/components/sections/how-it-works";
+import { TrustPillars } from "@/components/sections/trust-pillars";
+import { StrategyOutput } from "@/components/sections/strategy-output";
 import { SupportedCards } from "@/components/sections/supported-cards";
-import { Testimonials } from "@/components/sections/testimonials";
+import { EcosystemMarquee } from "@/components/sections/ecosystem-marquee";
+import { BuiltFor } from "@/components/sections/built-for";
+import { FeatureTabs } from "@/components/sections/feature-tabs";
 import { Faq } from "@/components/sections/faq";
-
-const STATS = [
-  { value: "6", label: "Cards live in MVP" },
-  { value: "1:1", label: "Best transfer ratios" },
-  { value: "100%", label: "Explainable outputs" },
-  { value: "0", label: "Guessed numbers" },
-];
-
-const STEPS = [
-  {
-    index: "01",
-    icon: Route,
-    title: "Reward Knowledge Engine",
-    description:
-      "Every card, transfer ratio, milestone, and cap normalized and versioned. Nothing is guessed; nothing is hallucinated.",
-  },
-  {
-    index: "02",
-    icon: TrendingUp,
-    title: "Optimization Engine",
-    description:
-      "Your spend is routed across cards to maximize miles earned per rupee, against real-world caps and exclusions.",
-  },
-  {
-    index: "03",
-    icon: LineChart,
-    title: "Simulation Engine",
-    description:
-      "Project your accumulation timeline against a single goal a route, a cabin, a date and watch the path resolve.",
-  },
-];
 
 export default function Home() {
   return (
@@ -57,112 +26,138 @@ export default function Home() {
       <main>
         {/* Hero */}
         <section className="relative overflow-hidden">
-          <div className="pointer-events-none absolute inset-0 bg-aurora" />
-          <div className="relative mx-auto max-w-6xl px-6 pt-20 pb-20 sm:pt-28">
-            <div className="inline-flex items-center gap-2 rounded-full border border-hairline bg-card/50 px-4 py-1.5 text-xs text-muted-foreground backdrop-blur-sm">
-              <Sparkles className="size-3.5 text-gold" />
-              Reward intelligence for Indian travel cards
-            </div>
-            <h1 className="text-balance mt-6 max-w-3xl font-heading text-4xl leading-[1.1] text-foreground sm:text-6xl">
-              Turn everyday spend into{" "}
-              <span className="italic text-gold">business class</span>,
-              deliberately.
-            </h1>
-            <p className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-              OptiMiles is a reward optimization engine for Indian travel credit
-              cards built to route your spend, value your points, and chart an
-              explainable path to your next redemption. No chatbot. No guesswork.
-            </p>
-            <div className="mt-10 flex flex-wrap items-center gap-3">
-              <Button
-                asChild
-                size="lg"
-                className="bg-gold text-gold-foreground hover:bg-gold/90"
+          <div className="pointer-events-none absolute inset-0 bg-hero-field" />
+          <div className="pointer-events-none absolute inset-0 bg-starfield opacity-50" />
+          <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-6 pt-20 pb-24 sm:pt-28 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10">
+            <div>
+              <Reveal className="inline-flex items-center gap-2 rounded-full border border-hairline bg-card/50 px-4 py-1.5 text-xs text-muted-foreground backdrop-blur-sm">
+                <Sparkles className="size-3.5 text-gold" />
+                Reward intelligence for Indian travel cards
+              </Reveal>
+              <Reveal
+                as="h1"
+                delay={80}
+                className="text-balance mt-6 max-w-2xl font-heading text-4xl leading-[1.1] text-foreground sm:text-6xl"
               >
-                <Link href="/signup">
-                  Plan my redemption <ArrowRight />
-                </Link>
-              </Button>
-              <Button
-                asChild
-                size="lg"
-                variant="ghost"
-                className="text-foreground hover:bg-secondary"
+                Turn everyday spending into{" "}
+                <span className="italic text-gold">
+                  extraordinary travel experiences.
+                </span>
+              </Reveal>
+              <Reveal
+                as="p"
+                delay={160}
+                className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg"
               >
-                <Link href="#how">See how it works</Link>
-              </Button>
+                Tell us where you want to go. We&apos;ll build the optimal reward
+                strategy, transfer path, and accumulation plan to get you there —
+                explainably, with no guesswork.
+              </Reveal>
+              <Reveal
+                delay={240}
+                className="mt-10 flex flex-wrap items-center gap-3"
+              >
+                <Button
+                  asChild
+                  size="lg"
+                  className="bg-gold text-gold-foreground hover:bg-gold/90"
+                >
+                  <Link href="/signup">
+                    Build my reward strategy <ArrowRight />
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  size="lg"
+                  variant="ghost"
+                  className="text-foreground hover:bg-secondary"
+                >
+                  <Link href="#how">See how it works</Link>
+                </Button>
+              </Reveal>
             </div>
 
-            {/* Stats */}
-            <dl className="mt-16 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-hairline bg-hairline sm:grid-cols-4">
-              {STATS.map((stat) => (
-                <div key={stat.label} className="bg-background/60 px-5 py-6 backdrop-blur-sm">
-                  <dt className="font-heading text-3xl text-gold">{stat.value}</dt>
-                  <dd className="mt-1 text-xs uppercase tracking-[0.12em] text-muted-foreground">
-                    {stat.label}
-                  </dd>
-                </div>
-              ))}
-            </dl>
+            <HeroFlow />
+          </div>
+        </section>
+
+        {/* Dream outcomes */}
+        <section className="mx-auto max-w-6xl px-6 pb-20">
+          <SectionHeading
+            eyebrow="Where do you want to go?"
+            title="Real outcomes,"
+            accent="not just points."
+            description="OptiMiles optimizes for goals achieved — the trip, the suite, the lounge — not points earned for their own sake."
+          />
+          <div className="mt-12">
+            <DreamOutcomes />
           </div>
         </section>
 
         {/* How it works */}
-        <section id="how" className="mx-auto max-w-6xl scroll-mt-24 px-6 py-20">
+        <section id="how" className="scroll-mt-24 border-y border-hairline bg-card/20 py-20">
+          <div className="mx-auto max-w-6xl px-6">
+            <SectionHeading
+              eyebrow="How it works"
+              title="Four steps from spend"
+              accent="to redemption."
+              description="Goal first, then strategy. You stay in control the whole way."
+            />
+            <div className="mt-14">
+              <HowItWorks />
+            </div>
+          </div>
+        </section>
+
+        {/* Why trust OptiMiles */}
+        <section className="mx-auto max-w-6xl px-6 py-20">
           <SectionHeading
-            eyebrow="How it works"
+            eyebrow="Why trust OptiMiles"
             title="Structured systems first."
             accent="AI orchestration second."
             description="Every recommendation traces back to deterministic logic — not a language model improvising transfer ratios."
           />
-          <div className="mt-14 grid gap-6 md:grid-cols-3">
-            {STEPS.map((step) => (
-              <div
-                key={step.index}
-                className="group relative rounded-2xl border border-hairline bg-card/40 p-7 backdrop-blur-sm transition-colors hover:border-gold/40"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="inline-flex size-11 items-center justify-center rounded-xl bg-gold/15 text-gold ring-1 ring-gold/25">
-                    <step.icon className="size-5" />
-                  </span>
-                  <span className="font-heading text-sm text-muted-foreground/60">
-                    {step.index}
-                  </span>
-                </div>
-                <h3 className="mt-5 font-heading text-xl text-foreground">
-                  {step.title}
-                </h3>
-                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                  {step.description}
-                </p>
-              </div>
-            ))}
+          <div className="mt-12">
+            <TrustPillars />
           </div>
         </section>
 
-        <Separator className="bg-hairline" />
+        {/* Goal simulator */}
+        <section id="simulate" className="scroll-mt-24 border-y border-hairline bg-card/20 py-20">
+          <div className="mx-auto max-w-6xl px-6">
+            <SectionHeading
+              eyebrow="Try it now"
+              title="Set a goal."
+              accent="See the path."
+              description="Pick a destination, a cabin, and the cards you carry — and watch your timeline resolve."
+            />
+            <div className="mt-12">
+              <GoalSimulator />
+            </div>
+          </div>
+        </section>
 
-        {/* Features (tabs) */}
-        <section id="features" className="mx-auto max-w-6xl scroll-mt-24 px-6 py-20">
+        {/* Example strategy output */}
+        <section className="mx-auto max-w-6xl px-6 py-20">
           <SectionHeading
-            eyebrow="Capabilities"
-            title="One engine,"
-            accent="four sharp tools."
-            description="From spend routing to redemption-readiness — explore what OptiMiles does under the hood."
+            eyebrow="What you actually get"
+            title="A strategy you can"
+            accent="act on."
+            description="Not a score or a vague tip — a concrete plan: which card for which spend, the transfer path, and a dated timeline."
           />
           <div className="mt-12">
-            <FeatureTabs />
+            <StrategyOutput />
           </div>
         </section>
 
-        {/* Supported cards (carousel) */}
+        {/* Supported cards */}
         <section id="cards" className="scroll-mt-24 border-y border-hairline bg-card/20 py-20">
           <div className="mx-auto max-w-6xl px-6">
             <SectionHeading
-              eyebrow="Built for"
+              eyebrow="Your existing wallet"
               title="The cards you already"
               accent="carry."
-              description="Active cards are live in the optimizer today. Others are on the MVP roadmap."
+              description="OptiMiles maximizes the cards you already own before it ever recommends a new one."
             />
             <div className="mt-12">
               <SupportedCards />
@@ -170,46 +165,75 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Simulator */}
-        <section id="simulate" className="mx-auto max-w-6xl scroll-mt-24 px-6 py-20">
+        {/* Supported reward ecosystems */}
+        <section className="mx-auto max-w-6xl px-6 py-20">
           <SectionHeading
-            eyebrow="Live demo"
-            title="Set a goal."
-            accent="See the path."
-            description="A taste of the simulation engine — pick a destination and cabin, and watch your timeline resolve."
+            eyebrow="Supported ecosystems"
+            title="Airlines, hotels,"
+            accent="and your banks."
+            description="Reward currencies and transfer partners across the programs that matter for Indian travel cards."
           />
           <div className="mt-12">
-            <GoalSimulator />
+            <EcosystemMarquee />
           </div>
+        </section>
+
+        {/* Built for */}
+        <section className="mx-auto max-w-6xl px-6 py-20">
+          <SectionHeading
+            eyebrow="Built for"
+            title="However you think"
+            accent="about rewards."
+          />
+          <div className="mt-12">
+            <BuiltFor />
+          </div>
+        </section>
+
+        {/* Capabilities (feature tabs) */}
+        <section id="features" className="scroll-mt-24 border-y border-hairline bg-card/20 py-20">
+          <div className="mx-auto max-w-6xl px-6">
+            <SectionHeading
+              eyebrow="Under the hood"
+              title="One engine,"
+              accent="four sharp tools."
+              description="Outcomes come first — but if you want to look closer, here's what's doing the work."
+            />
+            <div className="mt-12">
+              <FeatureTabs />
+            </div>
+          </div>
+        </section>
+
+        {/* Why OptiMiles exists */}
+        <section className="mx-auto max-w-3xl px-6 py-24 text-center">
+          <Reveal>
+            <p className="text-xs uppercase tracking-[0.22em] text-gold">
+              Why OptiMiles exists
+            </p>
+            <p className="mt-6 font-heading text-2xl leading-snug text-foreground sm:text-3xl">
+              Most people either choose the wrong cards for their travel goals —
+              or never fully use the cards they already have.
+            </p>
+            <p className="mt-5 text-base leading-relaxed text-muted-foreground">
+              OptiMiles helps you maximize every rupee spent, understand every
+              transfer partner, and build a clear path toward your next
+              redemption.
+            </p>
+          </Reveal>
         </section>
 
         <Separator className="bg-hairline" />
 
-        {/* Testimonials */}
-        <section className="mx-auto max-w-6xl px-6 py-20">
-          <SectionHeading
-            eyebrow="Loved by deliberate travellers"
-            title="Strategy you can"
-            accent="actually trust."
-          />
-          <div className="mt-12">
-            <Testimonials />
-          </div>
-        </section>
-
         {/* FAQ */}
         <section id="faq" className="mx-auto max-w-3xl scroll-mt-24 px-6 py-20">
-          <SectionHeading
-            eyebrow="FAQ"
-            title="Questions,"
-            accent="answered."
-          />
+          <SectionHeading eyebrow="FAQ" title="Questions," accent="answered." />
           <div className="mt-10">
             <Faq />
           </div>
         </section>
 
-        {/* CTA */}
+        {/* Final CTA */}
         <section className="mx-auto max-w-6xl px-6 pb-24">
           <div className="relative overflow-hidden rounded-3xl border border-hairline bg-card/40 px-8 py-16 text-center backdrop-blur-sm sm:px-16">
             <div className="pointer-events-none absolute inset-0 bg-aurora" />
@@ -220,7 +244,7 @@ export default function Home() {
               </h2>
               <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
                 Create a free account and let OptiMiles chart the most efficient
-                path from your spend to the cabin you want.
+                path from your spending to your travel goal.
               </p>
               <div className="mt-8 flex flex-wrap justify-center gap-3">
                 <Button
@@ -229,7 +253,7 @@ export default function Home() {
                   className="bg-gold text-gold-foreground hover:bg-gold/90"
                 >
                   <Link href="/signup">
-                    Get started free <ArrowRight />
+                    Build my reward strategy <ArrowRight />
                   </Link>
                 </Button>
                 <Button
@@ -238,7 +262,7 @@ export default function Home() {
                   variant="outline"
                   className="border-hairline"
                 >
-                  <Link href="/login">Log in</Link>
+                  <Link href="#simulate">Explore the simulator</Link>
                 </Button>
               </div>
             </div>
@@ -263,15 +287,14 @@ function SectionHeading({
   description?: string;
 }) {
   return (
-    <div className="max-w-2xl">
+    <Reveal className="max-w-2xl">
       <p className="text-xs uppercase tracking-[0.22em] text-gold">{eyebrow}</p>
       <h2 className="mt-4 font-heading text-3xl text-foreground sm:text-4xl">
-        {title}{" "}
-        {accent && <span className="italic text-gold">{accent}</span>}
+        {title} {accent && <span className="italic text-gold">{accent}</span>}
       </h2>
       {description && (
         <p className="mt-4 text-muted-foreground">{description}</p>
       )}
-    </div>
+    </Reveal>
   );
 }

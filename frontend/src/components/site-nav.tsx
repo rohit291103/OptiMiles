@@ -9,9 +9,9 @@ import { Brand } from "@/components/brand"
 
 const LINKS = [
   { href: "/#how", label: "How it works" },
+  { href: "/#simulate", label: "Simulator" },
   { href: "/#cards", label: "Cards" },
   { href: "/#features", label: "Features" },
-  { href: "/#simulate", label: "Simulator" },
   { href: "/#faq", label: "FAQ" },
 ]
 
