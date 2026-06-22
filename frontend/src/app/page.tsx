@@ -212,13 +212,14 @@ export default function Home() {
               Why OptiMiles exists
             </p>
             <p className="mt-6 font-heading text-2xl leading-snug text-foreground sm:text-3xl">
-              Most people either choose the wrong cards for their travel goals —
-              or never fully use the cards they already have.
+              The seat you want already exists in the cards you already carry.
             </p>
             <p className="mt-5 text-base leading-relaxed text-muted-foreground">
-              OptiMiles helps you maximize every rupee spent, understand every
-              transfer partner, and build a clear path toward your next
-              redemption.
+              Most people leave business class on the table — not because they
+              have the wrong cards, but because no one ever routed their spend
+              toward a real goal. OptiMiles closes that gap: every rupee
+              mapped, every transfer partner understood, every redemption a
+              clear, provable path away.
             </p>
           </Reveal>
         </section>
