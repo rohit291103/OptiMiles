@@ -14,7 +14,7 @@ const FAQS = [
   },
   {
     q: "Can I use the cards I already have?",
-    a: "Yes — that's the whole point. OptiMiles maximizes the cards already in your wallet before it ever suggests applying for a new one.",
+    a: "Yes that's the whole point. OptiMiles maximizes the cards already in your wallet before it ever suggests applying for a new one.",
   },
   {
     q: "Do I need to apply for new cards?",
@@ -34,7 +34,7 @@ const FAQS = [
   },
   {
     q: "How accurate are the calculations?",
-    a: "Points are valued by realistic redemption and transfer-partner value, not the bank's face value — and every value is versioned and auditable, so you can see exactly how a number was derived.",
+    a: "Points are valued by realistic redemption and transfer-partner value, not the bank's face value and every value is versioned and auditable, so you can see exactly how a number was derived.",
   },
 ];
 

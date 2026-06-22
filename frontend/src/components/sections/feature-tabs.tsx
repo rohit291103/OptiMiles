@@ -56,7 +56,7 @@ const FEATURES = [
     icon: ShieldCheck,
     title: "Deterministic logic, not a hallucinating bot",
     description:
-      "Every recommendation traces back to a normalized reward schema and explicit calculation. The AI narrates the strategy — it never invents the numbers.",
+      "Every recommendation traces back to a normalized reward schema and explicit calculation. The AI narrates the strategy it never invents the numbers.",
     points: [
       "Versioned, auditable reward rules",
       "No guessed transfer ratios",

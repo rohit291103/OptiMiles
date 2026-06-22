@@ -7,7 +7,7 @@ import { Carousel } from "@/components/ui/carousel";
 const TESTIMONIALS = [
   {
     quote:
-      "I'd been hoarding points across four cards with no plan. OptiMiles routed my spend and I had business-class to Singapore in seven months — fully explained, every step.",
+      "I'd been hoarding points across four cards with no plan. OptiMiles routed my spend and I had business-class to Singapore in seven months fully explained, every step.",
     name: "Aditya R.",
     role: "Product Manager, Bengaluru",
   },

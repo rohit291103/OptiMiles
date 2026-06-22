@@ -7,7 +7,7 @@ const PILLARS = [
     icon: Database,
     title: "Structured reward intelligence",
     description:
-      "Every transfer ratio, reward rule, cap, and milestone is modeled and versioned — nothing is guessed, nothing is hallucinated.",
+      "Every transfer ratio, reward rule, cap, and milestone is modeled and versioned ,nothing is guessed, nothing is hallucinated.",
   },
   {
     icon: TrendingUp,
@@ -19,7 +19,7 @@ const PILLARS = [
     icon: LineChart,
     title: "Reward simulation",
     description:
-      "Project your accumulation against a single goal and see exactly when it becomes achievable — month by month.",
+      "Project your accumulation against a single goal and see exactly when it becomes achievable month by month.",
   },
   {
     icon: ShieldCheck,

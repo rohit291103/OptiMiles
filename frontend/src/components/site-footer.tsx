@@ -1,6 +1,12 @@
 import Link from "next/link"
+import { Globe, Mail } from "lucide-react"
 
 import { Brand } from "@/components/brand"
+
+const SOCIAL_LINKS = [
+  { href: "mailto:hello@optimiles.app", label: "Email", icon: Mail },
+  { href: "https://optimiles.app", label: "Website", icon: Globe },
+]
 
 const FOOTER_GROUPS = [
   {
@@ -35,12 +41,24 @@ export function SiteFooter() {
     <footer className="border-t border-hairline">
       <div className="mx-auto max-w-6xl px-6 py-14">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
-          <div className="max-w-xs">
+          <div className="max-w-sm">
             <Brand />
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
               An explainable reward optimization engine for Indian travel credit
-              cards. Built for the deliberate traveler — no chatbot, no guesswork.
+              cards. Built for the deliberate traveler-no chatbot, no guesswork.
             </p>
+            <div className="mt-6 flex items-center gap-2.5">
+              {SOCIAL_LINKS.map((social) => (
+                <Link
+                  key={social.label}
+                  href={social.href}
+                  aria-label={social.label}
+                  className="grid size-9 place-items-center rounded-lg bg-gold/10 text-muted-foreground ring-1 ring-hairline transition-colors hover:bg-gold/15 hover:text-gold hover:ring-gold/30"
+                >
+                  <social.icon className="size-4" strokeWidth={1.75} />
+                </Link>
+              ))}
+            </div>
           </div>
 
           {FOOTER_GROUPS.map((group) => (
@@ -64,10 +82,13 @@ export function SiteFooter() {
           ))}
         </div>
 
-        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-hairline pt-8 text-sm text-muted-foreground sm:flex-row">
-          <span>© {new Date().getFullYear()} OptiMiles. All rights reserved.</span>
-          <span className="text-xs text-muted-foreground/70">
-            Reward intelligence for Indian travellers.
+        <div className="mt-12 flex flex-col-reverse items-center justify-between gap-4 border-t border-hairline pt-6 sm:flex-row">
+          <span className="text-sm text-muted-foreground/80">
+            © {new Date().getFullYear()} OptiMiles. All rights reserved.
+          </span>
+          <span className="inline-flex items-center gap-2 text-xs text-muted-foreground/70">
+            <span className="size-1.5 rounded-full bg-gold" />
+            Reward intelligence for Indian travellers
           </span>
         </div>
       </div>
