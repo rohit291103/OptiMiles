@@ -1,7 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { motion, useReducedMotion, useScroll, useTransform } from "motion/react";
+import {
+  motion,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+} from "motion/react";
 import { ArrowRight, CreditCard } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -11,28 +16,33 @@ import { HeroFlow } from "@/components/sections/hero-flow";
 const EASE = [0.16, 1, 0.3, 1] as const;
 
 /**
- * Cinematic, near-full-height hero. The copy block reveals as a kinetic
- * word-cascade; the whole stage drifts + fades slightly on scroll so leaving
- * the hero feels like a camera move rather than a hard cut.
+ * Edge-to-edge cinematic hero. The headline spans the full width at fluid
+ * display scale; the strategy-flow card floats to the right edge. The whole
+ * stage is pinned-and-released: as you scroll the tall track, the content
+ * scales down and fades while the next section rises underneath — an Apple-style
+ * "camera pull-back" rather than a hard cut.
  */
 export function Hero() {
   const reduced = useReducedMotion();
   const { scrollYProgress } = useScroll();
-  const y = useTransform(scrollYProgress, [0, 0.18], [0, -60]);
-  const opacity = useTransform(scrollYProgress, [0, 0.16], [1, 0]);
+  // Pin-release choreography over the first ~viewport of scroll.
+  const scale = useTransform(scrollYProgress, [0, 0.14], [1, 0.94]);
+  const y = useTransform(scrollYProgress, [0, 0.14], [0, -80]);
+  const opacity = useTransform(scrollYProgress, [0, 0.13], [1, 0]);
+  const blur = useTransform(scrollYProgress, [0, 0.13], [0, 6]);
+  const filter = useTransform(blur, (b) => `blur(${b}px)`);
 
   return (
-    <section className="relative flex min-h-[92vh] items-center overflow-hidden">
+    <section className="relative flex min-h-[100svh] items-center overflow-hidden">
       <div className="pointer-events-none absolute inset-0 bg-hero-field" />
       <div className="pointer-events-none absolute inset-0 bg-starfield opacity-50" />
-      {/* Bottom fade so the hero melts into the next section */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-linear-to-t from-background to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-linear-to-t from-background to-transparent" />
 
       <motion.div
-        style={reduced ? undefined : { y, opacity }}
-        className="relative mx-auto grid w-full max-w-6xl items-center gap-12 px-6 py-20 lg:grid-cols-[1.1fr_0.9fr] lg:gap-8"
+        style={reduced ? undefined : { scale, y, opacity, filter }}
+        className="relative grid w-full grid-cols-1 items-center gap-12 px-5 py-24 sm:px-8 lg:grid-cols-[1.15fr_0.85fr] lg:gap-10 lg:px-12 xl:px-16 2xl:px-24"
       >
-        <div>
+        <div className="max-w-[46rem]">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -43,7 +53,7 @@ export function Hero() {
             Google Maps for Indian credit card rewards
           </motion.div>
 
-          <h1 className="mt-7 font-heading text-5xl leading-[0.95] tracking-tight text-foreground sm:text-7xl">
+          <h1 className="mt-8 font-heading font-light leading-[0.92] tracking-tight text-foreground text-[clamp(3rem,8.5vw,8rem)]">
             <WordReveal text="Your cards." delay={0.15} />
             <br />
             <WordReveal text="Your goal." delay={0.3} />
@@ -59,7 +69,7 @@ export function Hero() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: EASE, delay: 0.8 }}
-            className="mt-7 max-w-md text-base leading-relaxed text-muted-foreground sm:text-lg"
+            className="mt-8 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg"
           >
             Tell OptiMiles where you want to fly. It maps the cards already in
             your wallet into a clear, explainable route to get you there, which
@@ -87,7 +97,7 @@ export function Hero() {
               variant="ghost"
               className="text-foreground hover:bg-secondary"
             >
-              <Link href="#how">See how it works</Link>
+              <Link href="#simulate">Try the simulator</Link>
             </Button>
           </motion.div>
 
@@ -95,7 +105,7 @@ export function Hero() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: EASE, delay: 1.1 }}
-            className="mt-14 grid max-w-md grid-cols-3 gap-6 border-t border-hairline pt-6"
+            className="mt-14 grid max-w-lg grid-cols-3 gap-6 border-t border-hairline pt-6"
           >
             <HeroStat value="8" label="Cards supported" />
             <HeroStat value="0" label="SMS or statements read" />
@@ -107,27 +117,34 @@ export function Hero() {
           initial={{ opacity: 0, y: 30, rotate: 2 }}
           animate={{ opacity: 1, y: 0, rotate: 1 }}
           transition={{ duration: 1, ease: EASE, delay: 0.5 }}
+          className="lg:justify-self-end lg:pr-2"
         >
           <HeroFlow />
         </motion.div>
       </motion.div>
 
-      {/* Scroll cue */}
+      {/* Scroll cue — points straight at the live simulator below */}
       {!reduced && (
-        <motion.div
+        <motion.a
+          href="#simulate"
+          aria-label="Scroll to the simulator"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.6, duration: 1 }}
-          className="pointer-events-none absolute bottom-8 left-1/2 hidden -translate-x-1/2 lg:block"
+          style={{ opacity }}
+          className="group absolute bottom-8 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-2 lg:flex"
         >
-          <motion.div
+          <span className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground transition-colors group-hover:text-foreground">
+            Try it now
+          </span>
+          <motion.span
             animate={{ y: [0, 8, 0] }}
             transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
             className="flex h-9 w-5 items-start justify-center rounded-full border border-hairline p-1"
           >
             <span className="size-1.5 rounded-full bg-gold" />
-          </motion.div>
-        </motion.div>
+          </motion.span>
+        </motion.a>
       )}
     </section>
   );

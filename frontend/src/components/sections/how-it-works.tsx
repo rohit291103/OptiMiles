@@ -57,7 +57,10 @@ export function HowItWorks() {
   const railScaleY = useTransform(scrollYProgress, [0, 1], [0, 1]);
 
   return (
-    <div ref={containerRef} className="mx-auto max-w-6xl px-6 py-28">
+    <div
+      ref={containerRef}
+      className="w-full px-5 py-32 sm:px-8 lg:px-12 xl:px-16 2xl:px-24"
+    >
       <div className="grid gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:gap-16">
         {/* Pinned left column */}
         <div className="lg:sticky lg:top-28 lg:h-fit lg:self-start">

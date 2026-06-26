@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Brand } from "@/components/brand"
 
 const LINKS = [
-  { href: "/#how", label: "How it works" },
   { href: "/#simulate", label: "Simulator" },
+  { href: "/#how", label: "How it works" },
   { href: "/#cards", label: "Supported cards" },
   { href: "/#features", label: "Features" },
   { href: "/#faq", label: "FAQ" },
@@ -35,7 +35,7 @@ export function SiteNav() {
       }`}
     >
       <nav
-        className={`mx-auto flex max-w-6xl items-center justify-between px-6 transition-all duration-300 ${
+        className={`flex w-full items-center justify-between px-5 transition-all duration-300 sm:px-8 lg:px-12 xl:px-16 2xl:px-24 ${
           scrolled ? "py-3" : "py-5"
         }`}
       >

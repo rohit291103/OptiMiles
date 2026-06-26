@@ -39,8 +39,8 @@ const FOOTER_GROUPS = [
 export function SiteFooter() {
   return (
     <footer className="border-t border-hairline">
-      <div className="mx-auto max-w-6xl px-6 py-14">
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
+      <div className="w-full px-5 py-14 sm:px-8 lg:px-12 xl:px-16 2xl:px-24">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr]">
           <div className="max-w-sm">
             <Brand />
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">

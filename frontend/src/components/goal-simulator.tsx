@@ -94,11 +94,11 @@ export function GoalSimulator() {
 
   return (
     <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-card/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-sm">
-      <div className="border-b border-hairline px-6 py-5 sm:px-8">
-        <p className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-gold">
-          <Sparkles className="size-3.5" /> Card strategy simulator
-        </p>
-        <h3 className="mt-2 font-heading text-xl text-foreground sm:text-2xl">
+      <div className="flex items-center gap-3 border-b border-hairline px-6 py-5 sm:px-8">
+        <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-gold/30 bg-gold/10 text-gold">
+          <Sparkles className="size-4" />
+        </span>
+        <h3 className="font-heading text-xl text-foreground sm:text-2xl">
           I want to fly{" "}
           <span className="italic text-gold">{cabin.toLowerCase()} class</span>{" "}
           to <span className="italic text-gold">{destination}</span>

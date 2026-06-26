@@ -180,7 +180,9 @@
     background-size: 160% 160%;
     animation: hero-drift 28s ease-in-out infinite alternate;
   }
-  /* Faint starfield. Two layered dot patterns drifting at different speeds. */
+  /* Faint, *static* starfield texture — layered dot patterns for depth.
+     Intentionally not animated: the old diagonal drift read as distracting
+     dots crawling around the edges. */
   .bg-starfield {
     background-image:
       radial-gradient(1px 1px at 20% 30%, oklch(0.96 0.012 80 / 40%) 50%, transparent),
@@ -189,7 +191,6 @@
       radial-gradient(1.5px 1.5px at 88% 22%, oklch(0.74 0.1 75 / 45%) 50%, transparent),
       radial-gradient(1px 1px at 12% 72%, oklch(0.74 0.1 75 / 30%) 50%, transparent);
     background-size: 320px 320px, 280px 280px, 360px 360px, 420px 420px, 300px 300px;
-    animation: starfield-drift 120s linear infinite;
   }
   .animate-accordion-down {
     animation: accordion-down 0.25s ease-out;
@@ -222,8 +223,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bg-hero-field,
-  .bg-starfield {
+  .bg-hero-field {
     animation: none;
   }
   .hero-flow-line {
@@ -262,10 +262,3 @@
   to { transform: scaleY(1); }
 }
 
-@keyframes starfield-drift {
-  from { background-position: 0 0, 0 0, 0 0, 0 0, 0 0; }
-  to {
-    background-position:
-      320px 320px, -280px 280px, 360px -360px, -420px 420px, 300px -300px;
-  }
-}

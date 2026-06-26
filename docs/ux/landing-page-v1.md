@@ -1,6 +1,15 @@
-# UX — Landing Page v1 (Design System Baseline)
+# UX — Landing Page (Design System Baseline)
 
 **Status:** Current implementation (`frontend/src/app/page.tsx`)
+
+**v2 (2026-06-26):** Product-first restructure — the live Goal Simulator was promoted from mid-page to **section 1** (directly under the hero, before any explanation), following the Replit "put the usable product at the top" pattern.
+
+**v3 (2026-06-26, same session):** Went fully **edge-to-edge** and **cinematic**, per direct user direction ("use the full width, no box… not a very simple scroll, redesign like the Apple website").
+- **No centered box.** The page has no `max-w` content cage. `Inner` (in `components/sections/section-shell.tsx`) is the *only* horizontal gutter — a small fluid pad (`px-5 … 2xl:px-24`) so content uses essentially the whole screen. Nav and footer follow the same gutter. Long-form paragraphs opt back to a readable line-length with `max-w-prose`/`Measure`, not by re-centering the section.
+- **Scroll choreography (Apple-style, but no scroll-hijacking).** The hero is a pin-and-release stage that scales/blurs/fades on scroll (`useScroll`/`useTransform`) — appropriate because it's passive. The simulator deliberately is **not** pinned: an early attempt to make it a ~260vh pinned scroll scene hijacked the wheel and clipped the expanding results (felt "stuck"), so `simulator-scene.tsx` is now a normal, freely-scrollable block with a one-time scale/fade *entrance* (`whileInView`, `once`) and sticky intro copy on wide screens. All scroll effects collapse to a calm static layout under `prefers-reduced-motion`.
+- **Removed decorative `PageFrame`.** The old fixed side-rail frame (vertical rails with gold dots travelling down them) was built for the centered-column layout; in the edge-to-edge design its rails sat inside the content and the dots read as distracting "droplets." Component deleted. The `bg-starfield` texture was also made static (drift animation removed) for the same reason.
+
+Built on branch `redesign/full-bleed-simulator-hero`.
 
 ---
 
@@ -17,14 +26,23 @@
 
 This should feel "intelligent, premium, strategic, trustworthy" per CLAUDE.md's Product Design Philosophy — not a generic SaaS dashboard.
 
-## Page Structure (v1)
+## Page Structure (v2)
 
-1. **Header** — sticky, blurred, logo + anchor nav (Engine / Cards / Simulate) + CTA.
-2. **Hero** — single goal statement ("Turn everyday spend into business class, deliberately"), no feature list.
-3. **Goal Simulator** (`#simulate`) — the one interactive element; lets a visitor try the core loop before signing up.
-4. **Supported cards** (`#cards`) — full roadmap roster grouped by tier, with **Active** (gold) vs **Coming soon** (muted) badges so the MVP scope is honest, not oversold.
-5. **Engine philosophy** (`#engine`) — explains the three backend engines (Reward Knowledge, Optimization, Simulation) to reinforce "structured systems first, AI second."
-6. **Footer** — minimal, brand + scope line.
+1. **Header** — sticky, blurred, logo + anchor nav (Simulator first, then How it works / Supported cards / Features / FAQ) + CTA. Edge-to-edge gutter (no centered measure).
+2. **Hero** (`min-h-[100svh]`, edge-to-edge) — fluid display headline (`clamp(3rem,8.5vw,8rem)`) spanning the width + `HeroFlow` floated to the right edge. Pin-and-release: scales/blurs/fades on scroll. Scroll cue + secondary CTA point at `#simulate` ("Try it now").
+3. **Goal Simulator** (`#simulate`) — directly below the hero (`simulator-scene.tsx`). Edge-to-edge split: sticky "Pick your cards. / See the path." copy beside the live simulator, which scale/fades in once on entry. Freely scrollable (not pinned) so the interactive form behaves normally. Lets a visitor run the core loop before signing up.
+4. **Dream outcomes** — trips, not points.
+5. **How it works** (`#how`) — sticky-scroll step list.
+6. **Trust pillars** — "structured card logic first, AI second."
+7. **Strategy output** — concrete example of what the user gets.
+8. **Supported cards** (`#cards`) — roadmap roster by tier, **Active** (gold) vs **Coming soon** (muted) badges so MVP scope stays honest.
+9. **Ecosystem marquee** — airlines / hotels / banks.
+10. **Built for** — audience framing.
+11. **Feature tabs** (`#features`) — the four engine tools "under the hood."
+12. **Why OptiMiles exists** — manifesto block.
+13. **FAQ** (`#faq`) → **Final CTA** → **Footer**.
+
+Alternating sections use the `banded` flag on `Bleed` (tinted `bg-card/20` + hairline border) for vertical rhythm.
 
 ## Known constraints
 
