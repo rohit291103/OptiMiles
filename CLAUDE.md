@@ -470,6 +470,9 @@ This repo has dedicated skills (`.claude/skills/`) and subagents (`.claude/agent
 * "Hand this off to ChatGPT/Gemini" / "summarize this for the team" / switching tools mid-task → skill `handoff`.
 * Brand/identity/logo/visual-system asset generation → skill `brandkit`.
 * `/code-review`, `/simplify`, `/security-review`, `/review` — use as named when the user invokes them or asks for that kind of review.
+* User says "grill me" or wants a plan/design stress-tested before building → skill `grill-me` (runs the `grilling` engine: relentless one-question-at-a-time interview with recommended answers, used until the design tree is resolved). Other skills (`codebase-design`, `feature-discussion`, `domain-modeling`, `improve-codebase-architecture`) should invoke `grilling` directly when they need to walk a decision tree with the user instead of re-implementing their own Q&A loop.
+* A git merge/rebase stops with conflicts → skill `resolving-merge-conflicts`. Always resolve; never `--abort` or force-push without asking.
+* Asked to review or improve backend architecture (not routine feature work, not Phase 0 scaffolding) → skill `improve-codebase-architecture` — scans `backend/` for shallow-module/leaky-seam friction, produces a visual HTML report, then hands the chosen candidate to `grilling`.
 
 ## Notes
 
