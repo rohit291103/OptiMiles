@@ -44,8 +44,9 @@ export function SiteFooter() {
           <div className="max-w-sm">
             <Brand />
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-              An explainable reward optimization engine for Indian travel credit
-              cards. Built for the deliberate traveler-no chatbot, no guesswork.
+              Credit card strategy for Indian travel rewards: which card to
+              swipe, when to transfer, and what it gets you. No chatbot, no
+              guesswork.
             </p>
             <div className="mt-6 flex items-center gap-2.5">
               {SOCIAL_LINKS.map((social) => (
@@ -88,7 +89,7 @@ export function SiteFooter() {
           </span>
           <span className="inline-flex items-center gap-2 text-xs text-muted-foreground/70">
             <span className="size-1.5 rounded-full bg-gold" />
-            Reward intelligence for Indian travellers
+            Credit card strategy for Indian travellers
           </span>
         </div>
       </div>

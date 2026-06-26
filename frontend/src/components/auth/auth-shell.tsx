@@ -6,7 +6,7 @@ import { Brand } from "@/components/brand";
 const HIGHLIGHTS = [
   "Cap- and milestone-aware spend routing",
   "Honest, redemption-grade point valuations",
-  "Explainable strategy — every number sourced",
+  "Explainable strategy, every number sourced",
 ];
 
 export function AuthShell({
@@ -64,7 +64,7 @@ export function AuthShell({
             <Quote className="size-6 text-gold/60" />
             <blockquote className="mt-3 text-sm leading-relaxed text-foreground/90">
               “OptiMiles routed my spend and had me in business class in seven
-              months — fully explained, every step.”
+              months, fully explained, every step.”
             </blockquote>
             <figcaption className="mt-3 text-xs text-muted-foreground">
               Aditya R. · Product Manager, Bengaluru

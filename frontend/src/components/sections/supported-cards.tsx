@@ -15,7 +15,7 @@ type Card = {
   image?: string;
 };
 
-// An illustrative example wallet — not the full supported set. Breadth lives in
+// An illustrative example wallet, not the full supported set. Breadth lives in
 // the "Supported ecosystems" section; this is just "the cards you already carry."
 const CARDS: Card[] = [
   {
@@ -148,10 +148,10 @@ export function SupportedCards() {
         {CARDS.map((card, i) => (
           <article
             key={card.name}
-            className={`group relative h-44 w-64 shrink-0 overflow-hidden rounded-2xl border bg-linear-to-br from-card to-background p-5 ring-1 ring-foreground/5 transition-all duration-500 sm:w-72 ${
+            className={`group relative h-48 w-64 shrink-0 overflow-hidden rounded-[1.75rem] border bg-linear-to-br from-card to-background p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition-all duration-500 sm:w-72 ${
               i === activeIndex
-                ? "scale-[1.03] border-gold/40"
-                : "scale-100 border-hairline opacity-80"
+                ? "scale-[1.04] border-gold/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_20px_40px_-20px_rgba(0,0,0,0.5)]"
+                : "scale-100 border-white/10 opacity-80"
             }`}
           >
             {card.image ? (

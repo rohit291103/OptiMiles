@@ -26,7 +26,7 @@ const FAQS = [
   },
   {
     q: "Is this a chatbot?",
-    a: "No. OptiMiles is a deterministic reward optimization engine. Calculations come from a normalized reward schema and explicit logic — AI is only used to narrate and explain strategies, never to invent numbers or transfer ratios.",
+    a: "No. OptiMiles is a deterministic reward optimization engine. Calculations come from a normalized reward schema and explicit logic. AI is only used to narrate and explain strategies, never to invent numbers or transfer ratios.",
   },
   {
     q: "How do reward projections work?",

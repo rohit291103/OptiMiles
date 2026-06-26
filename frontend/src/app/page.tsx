@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Sparkles, ShieldCheck } from "lucide-react";
+import { ArrowRight, CreditCard, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -28,30 +28,31 @@ export default function Home() {
         <section className="relative overflow-hidden">
           <div className="pointer-events-none absolute inset-0 bg-hero-field" />
           <div className="pointer-events-none absolute inset-0 bg-starfield opacity-50" />
-          <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-6 pt-20 pb-24 sm:pt-28 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10">
+          <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-6 pt-24 pb-24 sm:pt-32 lg:grid-cols-[1.1fr_0.9fr] lg:gap-8">
             <div>
               <Reveal className="inline-flex items-center gap-2 rounded-full border border-hairline bg-card/50 px-4 py-1.5 text-xs text-muted-foreground backdrop-blur-sm">
-                <Sparkles className="size-3.5 text-gold" />
-                Reward intelligence for Indian travel cards
+                <CreditCard className="size-3.5 text-gold" />
+                Credit card strategy, not a rewards blog
               </Reveal>
               <Reveal
                 as="h1"
                 delay={80}
-                className="text-balance mt-6 max-w-2xl font-heading text-4xl leading-[1.1] text-foreground sm:text-6xl"
+                className="text-balance mt-7 max-w-xl font-heading text-5xl leading-[0.98] tracking-tight text-foreground sm:text-7xl"
               >
-                Turn everyday spending into{" "}
-                <span className="italic text-gold">
-                  extraordinary travel experiences.
-                </span>
+                Which card
+                <br />
+                to swipe.
+                <br />
+                <span className="italic text-gold">Every time.</span>
               </Reveal>
               <Reveal
                 as="p"
                 delay={160}
-                className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg"
+                className="mt-7 max-w-md text-base leading-relaxed text-muted-foreground sm:text-lg"
               >
-                Tell us where you want to go. We&apos;ll build the optimal reward
-                strategy, transfer path, and accumulation plan to get you there —
-                explainably, with no guesswork.
+                OptiMiles tells you which credit card to use for every
+                purchase, so the miles and points you&apos;re already earning
+                add up to a real trip, not a forgotten statement credit.
               </Reveal>
               <Reveal
                 delay={240}
@@ -63,7 +64,7 @@ export default function Home() {
                   className="bg-gold text-gold-foreground hover:bg-gold/90"
                 >
                   <Link href="/signup">
-                    Build my reward strategy <ArrowRight />
+                    Build my card strategy <ArrowRight />
                   </Link>
                 </Button>
                 <Button
@@ -75,6 +76,15 @@ export default function Home() {
                   <Link href="#how">See how it works</Link>
                 </Button>
               </Reveal>
+
+              <Reveal
+                delay={320}
+                className="mt-14 grid max-w-md grid-cols-3 gap-6 border-t border-hairline pt-6"
+              >
+                <HeroStat value="8" label="Cards supported" />
+                <HeroStat value="0" label="SMS or statements read" />
+                <HeroStat value="100%" label="Explainable routing" />
+              </Reveal>
             </div>
 
             <HeroFlow />
@@ -84,10 +94,10 @@ export default function Home() {
         {/* Dream outcomes */}
         <section className="mx-auto max-w-6xl px-6 pb-20">
           <SectionHeading
-            eyebrow="Where do you want to go?"
-            title="Real outcomes,"
+            eyebrow="Where your card spend goes"
+            title="Real trips,"
             accent="not just points."
-            description="OptiMiles optimizes for goals achieved — the trip, the suite, the lounge — not points earned for their own sake."
+            description="OptiMiles optimizes your credit card spend for goals achieved: the trip, the suite, the lounge, not points earned for their own sake."
           />
           <div className="mt-12">
             <DreamOutcomes />
@@ -99,9 +109,9 @@ export default function Home() {
           <div className="mx-auto max-w-6xl px-6">
             <SectionHeading
               eyebrow="How it works"
-              title="Four steps from spend"
+              title="Four steps from credit card spend"
               accent="to redemption."
-              description="Goal first, then strategy. You stay in control the whole way."
+              description="Goal first, then a card-by-card strategy. You stay in control the whole way."
             />
             <div className="mt-14">
               <HowItWorks />
@@ -113,9 +123,9 @@ export default function Home() {
         <section className="mx-auto max-w-6xl px-6 py-20">
           <SectionHeading
             eyebrow="Why trust OptiMiles"
-            title="Structured systems first."
+            title="Structured card logic first."
             accent="AI orchestration second."
-            description="Every recommendation traces back to deterministic logic — not a language model improvising transfer ratios."
+            description="Every card recommendation traces back to deterministic logic, not a language model improvising transfer ratios."
           />
           <div className="mt-12">
             <TrustPillars />
@@ -127,9 +137,9 @@ export default function Home() {
           <div className="mx-auto max-w-6xl px-6">
             <SectionHeading
               eyebrow="Try it now"
-              title="Set a goal."
+              title="Pick your cards."
               accent="See the path."
-              description="Pick a destination, a cabin, and the cards you carry — and watch your timeline resolve."
+              description="Pick a destination, a cabin, and the credit cards you carry, and watch your timeline resolve."
             />
             <div className="mt-12">
               <GoalSimulator />
@@ -141,9 +151,9 @@ export default function Home() {
         <section className="mx-auto max-w-6xl px-6 py-20">
           <SectionHeading
             eyebrow="What you actually get"
-            title="A strategy you can"
+            title="A card strategy you can"
             accent="act on."
-            description="Not a score or a vague tip — a concrete plan: which card for which spend, the transfer path, and a dated timeline."
+            description="Not a score or a vague tip. A concrete plan: which credit card for which spend, the transfer path, and a dated timeline."
           />
           <div className="mt-12">
             <StrategyOutput />
@@ -155,9 +165,9 @@ export default function Home() {
           <div className="mx-auto max-w-6xl px-6">
             <SectionHeading
               eyebrow="Your existing wallet"
-              title="The cards you already"
+              title="The credit cards you already"
               accent="carry."
-              description="OptiMiles maximizes the cards you already own before it ever recommends a new one."
+              description="OptiMiles maximizes the credit cards you already own before it ever recommends a new one."
             />
             <div className="mt-12">
               <SupportedCards />
@@ -197,7 +207,7 @@ export default function Home() {
               eyebrow="Under the hood"
               title="One engine,"
               accent="four sharp tools."
-              description="Outcomes come first — but if you want to look closer, here's what's doing the work."
+              description="Outcomes come first, but if you want to look closer, here's what's doing the work."
             />
             <div className="mt-12">
               <FeatureTabs />
@@ -212,14 +222,14 @@ export default function Home() {
               Why OptiMiles exists
             </p>
             <p className="mt-6 font-heading text-2xl leading-snug text-foreground sm:text-3xl">
-              The seat you want already exists in the cards you already carry.
+              The seat you want already exists in the credit cards you already carry.
             </p>
             <p className="mt-5 text-base leading-relaxed text-muted-foreground">
-              Most people leave business class on the table — not because they
-              have the wrong cards, but because no one ever routed their spend
-              toward a real goal. OptiMiles closes that gap: every rupee
-              mapped, every transfer partner understood, every redemption a
-              clear, provable path away.
+              Most people leave business class on the table, not because they
+              have the wrong cards, but because no one ever told them which
+              card to swipe for which purchase. OptiMiles closes that gap:
+              every rupee mapped to a card, every transfer partner understood,
+              every redemption a clear, provable path away.
             </p>
           </Reveal>
         </section>
@@ -241,11 +251,11 @@ export default function Home() {
             <div className="relative">
               <ShieldCheck className="mx-auto size-10 text-gold" />
               <h2 className="mx-auto mt-6 max-w-2xl font-heading text-3xl text-foreground sm:text-4xl">
-                Your next redemption is a strategy away.
+                Your next redemption is a card strategy away.
               </h2>
               <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
                 Create a free account and let OptiMiles chart the most efficient
-                path from your spending to your travel goal.
+                path from your credit card spending to your travel goal.
               </p>
               <div className="mt-8 flex flex-wrap justify-center gap-3">
                 <Button
@@ -254,7 +264,7 @@ export default function Home() {
                   className="bg-gold text-gold-foreground hover:bg-gold/90"
                 >
                   <Link href="/signup">
-                    Build my reward strategy <ArrowRight />
+                    Build my card strategy <ArrowRight />
                   </Link>
                 </Button>
                 <Button
@@ -272,6 +282,19 @@ export default function Home() {
       </main>
 
       <SiteFooter />
+    </div>
+  );
+}
+
+function HeroStat({ value, label }: { value: string; label: string }) {
+  return (
+    <div>
+      <p className="font-heading text-2xl text-foreground sm:text-3xl">
+        {value}
+      </p>
+      <p className="mt-1 text-xs leading-snug text-muted-foreground/80">
+        {label}
+      </p>
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { Plane, Building2, CreditCard } from "lucide-react";
 
 type Entry = { icon: React.ElementType; label: string };
 
-// Kept generic per the project's brand-cleanup decision — categories of partners,
+// Kept generic per the project's brand-cleanup decision: categories of partners,
 // not named airlines/hotels we can't yet guarantee in the optimizer.
 const ENTRIES: Entry[] = [
   { icon: Plane, label: "Frequent-flyer programs" },

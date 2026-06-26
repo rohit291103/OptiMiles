@@ -16,7 +16,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
-    // Front-end only for now — wire to the backend auth route when ready.
+    // Front-end only for now, wire to the backend auth route when ready.
     setTimeout(() => setSubmitting(false), 1200);
   }
 

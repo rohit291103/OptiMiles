@@ -12,7 +12,7 @@ type Outcome = {
   /** Path under /public, e.g. "/outcomes/business-class.jpg". Outcomes without a
    * photo fall back to the gradient + starfield treatment. */
   image?: string;
-  /** Tailwind gradient classes — the fallback / scrim base when no photo is set. */
+  /** Tailwind gradient classes: the fallback / scrim base when no photo is set. */
   gradient: string;
 };
 
@@ -57,16 +57,20 @@ const OUTCOMES: Outcome[] = [
 
 export function DreamOutcomes() {
   return (
-    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 lg:grid-rows-2">
       {OUTCOMES.map((o, i) => (
         <Reveal
           as="article"
           key={o.title}
           delay={i * 90}
-          className="group relative overflow-hidden rounded-2xl border border-hairline bg-card/40 transition-colors hover:border-gold/40"
+          className={`group relative flex flex-col overflow-hidden rounded-2xl border border-hairline bg-card/40 transition-colors hover:border-gold/40 ${
+            i === 0 ? "sm:col-span-2 lg:col-span-2 lg:row-span-2" : ""
+          }`}
         >
           <div
-            className={`relative h-40 bg-linear-to-br ${o.gradient}`}
+            className={`relative shrink-0 bg-linear-to-br ${o.gradient} ${
+              i === 0 ? "h-56 lg:h-80" : "h-40"
+            }`}
             aria-hidden
           >
             {o.image ? (
@@ -75,7 +79,11 @@ export function DreamOutcomes() {
                   src={o.image}
                   alt=""
                   fill
-                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                  sizes={
+                    i === 0
+                      ? "(max-width: 1024px) 100vw, 50vw"
+                      : "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                  }
                   className="object-cover"
                 />
                 {/* Darken toward the bottom so the card edge blends into the body
@@ -85,19 +93,33 @@ export function DreamOutcomes() {
             ) : (
               <div className="absolute inset-0 bg-starfield opacity-40" />
             )}
-            <span className="absolute left-4 top-4 inline-flex size-10 items-center justify-center rounded-xl bg-background/50 text-gold ring-1 ring-gold/25 backdrop-blur-sm">
-              <o.icon className="size-5" />
+            <span
+              className={`absolute left-4 top-4 inline-flex items-center justify-center rounded-xl bg-background/50 text-gold ring-1 ring-gold/25 backdrop-blur-sm ${
+                i === 0 ? "size-12" : "size-10"
+              }`}
+            >
+              <o.icon className={i === 0 ? "size-6" : "size-5"} />
             </span>
           </div>
-          <div className="p-5">
-            <h3 className="font-heading text-lg text-foreground">{o.title}</h3>
-            <p className="mt-1 text-sm text-muted-foreground">{o.caption}</p>
+          <div className={`flex flex-1 flex-col justify-between ${i === 0 ? "p-7" : "p-5"}`}>
+            <div>
+              <h3
+                className={`font-heading text-foreground ${
+                  i === 0 ? "text-2xl sm:text-3xl" : "text-lg"
+                }`}
+              >
+                {o.title}
+              </h3>
+              <p className={`mt-1 text-muted-foreground ${i === 0 ? "text-base" : "text-sm"}`}>
+                {o.caption}
+              </p>
+            </div>
             <dl className="mt-4 flex items-center justify-between border-t border-hairline pt-4 text-xs">
               <div>
                 <dt className="uppercase tracking-[0.12em] text-muted-foreground/70">
                   Reward
                 </dt>
-                <dd className="mt-1 font-heading text-sm text-gold">
+                <dd className={`mt-1 font-heading text-gold ${i === 0 ? "text-base" : "text-sm"}`}>
                   {o.reward}
                 </dd>
               </div>
@@ -105,7 +127,7 @@ export function DreamOutcomes() {
                 <dt className="uppercase tracking-[0.12em] text-muted-foreground/70">
                   Timeline
                 </dt>
-                <dd className="mt-1 font-heading text-sm text-foreground">
+                <dd className={`mt-1 font-heading text-foreground ${i === 0 ? "text-base" : "text-sm"}`}>
                   {o.timeline}
                 </dd>
               </div>

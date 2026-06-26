@@ -15,9 +15,9 @@ const FEATURES = [
     value: "route",
     tab: "Spend routing",
     icon: Route,
-    title: "Route every rupee to the right card",
+    title: "Route every rupee to the right credit card",
     description:
-      "OptiMiles decides which card to swipe for each spend category and stops earning on a card the moment its cap is hit, redirecting to the next-best option automatically.",
+      "OptiMiles decides which credit card to swipe for each spend category and stops earning on a card the moment its cap is hit, redirecting to the next-best card automatically.",
     points: [
       "Category-aware allocation across all your cards",
       "Cap, milestone and exclusion aware",
@@ -79,7 +79,7 @@ export function FeatureTabs() {
 
       {FEATURES.map((f) => (
         <TabsContent key={f.value} value={f.value}>
-          <div className="grid items-center gap-10 rounded-3xl border border-hairline bg-card/40 p-8 backdrop-blur-sm lg:grid-cols-2 lg:p-12">
+          <div className="grid items-center gap-10 rounded-[2rem] border border-hairline bg-card/40 p-8 backdrop-blur-sm lg:grid-cols-[1.1fr_1fr] lg:p-12">
             <div>
               <span className="inline-flex size-12 items-center justify-center rounded-xl bg-gold/15 text-gold ring-1 ring-gold/25">
                 <f.icon className="size-6" />
@@ -102,13 +102,13 @@ export function FeatureTabs() {
               </ul>
             </div>
 
-            <div className="relative hidden h-full min-h-72 overflow-hidden rounded-2xl border border-hairline bg-background/40 lg:block">
+            <div className="relative hidden h-full min-h-72 overflow-hidden rounded-3xl border border-white/10 bg-background/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] lg:block">
               <div className="absolute inset-0 bg-aurora" />
               <div className="relative flex h-full flex-col justify-center gap-4 p-8">
                 {f.points.map((p, i) => (
                   <div
                     key={p}
-                    className="flex items-center gap-3 rounded-xl border border-hairline bg-card/70 px-4 py-3 text-sm text-foreground shadow-sm"
+                    className="flex items-center gap-3 rounded-xl border border-white/10 bg-card/70 px-4 py-3 text-sm text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
                     style={{ marginLeft: `${i * 1.5}rem` }}
                   >
                     <f.icon className="size-4 text-gold" />

@@ -20,9 +20,9 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "OptiMiles — Strategic Reward Intelligence",
+  title: "OptiMiles: Credit Card Strategy for Indian Travel Rewards",
   description:
-    "OptiMiles is a reward optimization engine for Indian travel credit cards built to turn everyday spend into business-class travel, deliberately and explainably.",
+    "OptiMiles tells you which Indian credit card to use for every purchase, so your miles and points add up to a real trip: business-class flights, hotel suites, lounge access, deliberately and explainably.",
 };
 
 export default function RootLayout({

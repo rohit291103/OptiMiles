@@ -93,10 +93,10 @@ export function GoalSimulator() {
   }
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-hairline bg-card/60 backdrop-blur-sm">
+    <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-card/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-sm">
       <div className="border-b border-hairline px-6 py-5 sm:px-8">
         <p className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-gold">
-          <Sparkles className="size-3.5" /> Goal simulator
+          <Sparkles className="size-3.5" /> Card strategy simulator
         </p>
         <h3 className="mt-2 font-heading text-xl text-foreground sm:text-2xl">
           I want to fly{" "}
@@ -192,7 +192,7 @@ export function GoalSimulator() {
         </div>
 
         <div className="mt-4 space-y-2">
-          <Label className="text-muted-foreground">Current cards</Label>
+          <Label className="text-muted-foreground">Your credit cards</Label>
           <div className="flex flex-wrap gap-2">
             {CARD_OPTIONS.map((name) => {
               const selected = cards.includes(name);
@@ -220,7 +220,7 @@ export function GoalSimulator() {
           size="lg"
           className="mt-6 w-full bg-gold text-gold-foreground hover:bg-gold/90 sm:w-auto"
         >
-          Build my reward strategy <ArrowRight />
+          Build my card strategy <ArrowRight />
         </Button>
 
         {result && (

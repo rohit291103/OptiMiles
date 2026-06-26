@@ -12,30 +12,30 @@ type Node = {
 };
 
 const NODES: Node[] = [
-  { icon: Plane, label: "Your goal", detail: "Long-haul business class" },
   { icon: CreditCard, label: "Your cards", detail: "HDFC Infinia · Axis Atlas" },
-  { icon: ArrowLeftRight, label: "Transfer path", detail: "Frequent-flyer · 1:1" },
+  { icon: Plane, label: "Your goal", detail: "Long-haul business class" },
+  { icon: ArrowLeftRight, label: "Card-to-card routing", detail: "Spend mapped, card by card" },
   { icon: Star, label: "Redemption", detail: "Ready in 11 months" },
 ];
 
 /**
- * Hero-side visual: the goal → cards → transfer → redemption journey, with a
- * gold connector that draws itself in. Dependency-free — staggered Reveal for
+ * Hero-side visual: the cards → goal → routing → redemption journey, with a
+ * gold connector that draws itself in. Dependency-free, staggered Reveal for
  * the nodes, a CSS line-draw for the connector, both honoring reduced-motion.
  */
 export function HeroFlow() {
   return (
-    <div className="relative">
+    <div className="relative lg:-translate-y-4 lg:rotate-1">
       {/* Soft gold glow behind the flow card */}
       <div className="pointer-events-none absolute -inset-6 bg-aurora opacity-80" />
 
       <Reveal
         delay={320}
-        className="relative rounded-3xl border border-hairline bg-card/40 p-7 backdrop-blur-md sm:p-8"
+        className="relative rounded-[2rem] border border-white/10 bg-card/50 p-7 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_30px_60px_-30px_rgba(0,0,0,0.6)] backdrop-blur-md sm:p-8"
       >
         <div className="flex items-center justify-between">
           <p className="text-xs uppercase tracking-[0.2em] text-gold">
-            Your path
+            Your card strategy
           </p>
           <span className="rounded-full border border-hairline bg-background/50 px-2.5 py-1 text-[11px] text-muted-foreground">
             Explainable
@@ -43,7 +43,7 @@ export function HeroFlow() {
         </div>
 
         <ol className="relative mt-6">
-          {/* The drawing connector — sits behind the node icons */}
+          {/* The drawing connector, sits behind the node icons */}
           <span
             aria-hidden
             className="hero-flow-line absolute left-[1.375rem] top-6 w-px bg-gradient-to-b from-gold/70 via-gold/40 to-gold/10"
