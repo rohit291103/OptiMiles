@@ -1,6 +1,6 @@
 import { Target, Wallet, Gauge } from "lucide-react";
 
-import { Reveal } from "@/components/ui/reveal";
+import { Stagger, StaggerItem } from "@/components/ui/motion";
 
 const PERSONAS = [
   {
@@ -28,11 +28,10 @@ const PERSONAS = [
 
 export function BuiltFor() {
   return (
-    <div className="grid gap-px overflow-hidden rounded-2xl border border-hairline bg-hairline md:grid-cols-[1.15fr_1fr_1fr]">
+    <Stagger className="grid gap-px overflow-hidden rounded-2xl border border-hairline bg-hairline md:grid-cols-[1.15fr_1fr_1fr]">
       {PERSONAS.map((p, i) => (
-        <Reveal
+        <StaggerItem
           key={p.title}
-          delay={i * 100}
           className={`relative bg-card/40 p-7 backdrop-blur-sm transition-colors hover:bg-card/70 sm:p-8 ${
             i === 0 ? "md:py-10" : ""
           }`}
@@ -49,8 +48,8 @@ export function BuiltFor() {
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
             {p.description}
           </p>
-        </Reveal>
+        </StaggerItem>
       ))}
-    </div>
+    </Stagger>
   );
 }

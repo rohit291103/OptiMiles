@@ -1,7 +1,7 @@
 import { CreditCard, ArrowRight, Check } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Reveal } from "@/components/ui/reveal";
+import { FadeUp } from "@/components/ui/motion";
 import { CountUp } from "@/components/ui/count-up";
 
 const ALLOCATION = [
@@ -13,7 +13,7 @@ const ALLOCATION = [
 
 export function StrategyOutput() {
   return (
-    <Reveal className="overflow-hidden rounded-[2rem] border border-white/10 bg-card/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-sm">
+    <FadeUp className="overflow-hidden rounded-[2rem] border border-white/10 bg-card/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-sm">
       <div className="grid lg:grid-cols-[1.1fr_1fr]">
         {/* Left: the brief */}
         <div className="border-b border-hairline p-8 lg:border-b-0 lg:border-r lg:p-10">
@@ -119,6 +119,6 @@ export function StrategyOutput() {
           </div>
         </div>
       </div>
-    </Reveal>
+    </FadeUp>
   );
 }

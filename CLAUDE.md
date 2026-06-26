@@ -446,6 +446,39 @@ NOT:
 
 ---
 
+# Skills & Agents — When To Use Them
+
+This repo has dedicated skills (`.claude/skills/`) and subagents (`.claude/agents/`) for recurring work. They are not optional extras — treat the "use when" triggers below as part of the workflow, not suggestions to consider only if convenient. Default to invoking the matching skill/agent before doing the task manually.
+
+## Proactive triggers (act on these without being asked)
+
+* **Before implementing any backend calculation, schema rule, or optimization logic** (Reward Knowledge, Valuation, Optimization, or Simulation Engine) → skill `tdd`.
+* **After any change under `backend/`**, or when asked to review reward/optimization/simulation logic → agent `backend-reviewer` (read-only).
+* **After any change under `frontend/src`**, or when something looks "off"/"messy" or has scrolling/layout issues → agent `frontend-reviewer` (read-only).
+* **When scaffolding a new backend module, engine, or significant abstraction** → skill `codebase-design`.
+* **When investigating a reported bug, unexpected calculation result, or test failure** — before jumping to a fix → skill `diagnosing-bugs`.
+* **At the start of any new chat/task** → skill `tracker-sync` to load `docs/tracker.md` current state.
+* **At the end of any session that touched `backend/`, `frontend/`, or `docs/`** → skill `tracker-sync` to refresh the tracker.
+* **Whenever something gets built, changed, or decided** — a new feature, schema, architecture choice, scope change, or any "relevant" discussion outcome — file it before ending the session, even if the user doesn't ask. This is the mechanical enforcement of "Chats are temporary. Documentation is permanent." (see Documentation Rules above) → skill `docs-sync`. Don't wait for "document this" — that phrase is a trigger, not a prerequisite.
+
+## Triggered by user phrasing or task shape
+
+* Rough feature idea / "what if we..." / wants to think before spec'ing (not reviewing existing code) → agent `feature-discussion`.
+* "Write this up as a PRD" / "spec this out" on an already-shaped idea → agent `prd-writer` (or skill `to-prd` from a conversation/decision directly).
+* "Break this down" / "make a task list" / "turn this into issues" from a PRD or decision doc → skill `to-issues`.
+* New domain term, inconsistent terminology across `/docs` or code, or modeling a new reward/card/transfer concept → skill `domain-modeling`.
+* "Hand this off to ChatGPT/Gemini" / "summarize this for the team" / switching tools mid-task → skill `handoff`.
+* Brand/identity/logo/visual-system asset generation → skill `brandkit`.
+* `/code-review`, `/simplify`, `/security-review`, `/review` — use as named when the user invokes them or asks for that kind of review.
+
+## Notes
+
+* `backend-reviewer` and `frontend-reviewer` are read-only — they report findings, they don't edit code. Apply fixes yourself after reading their report.
+* Don't spawn an agent or skill redundantly with manual work already in progress — if a proactive trigger applies, invoke it instead of replicating its checklist by hand.
+* This list should stay in sync with `.claude/skills/*/SKILL.md` and `.claude/agents/*.md` — if a skill/agent is added, removed, or its triggers change, update this section too.
+
+---
+
 # Guiding Principle
 
 OptiMILES should become:

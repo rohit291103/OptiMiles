@@ -1,9 +1,11 @@
 "use client";
 
+import { motion, useReducedMotion } from "motion/react";
 import { Plane, CreditCard, ArrowLeftRight, Star } from "lucide-react";
 
-import { Reveal } from "@/components/ui/reveal";
 import { CountUp } from "@/components/ui/count-up";
+
+const EASE = [0.16, 1, 0.3, 1] as const;
 
 type Node = {
   icon: typeof Plane;
@@ -14,25 +16,28 @@ type Node = {
 const NODES: Node[] = [
   { icon: CreditCard, label: "Your cards", detail: "HDFC Infinia · Axis Atlas" },
   { icon: Plane, label: "Your goal", detail: "Long-haul business class" },
-  { icon: ArrowLeftRight, label: "Card-to-card routing", detail: "Spend mapped, card by card" },
+  {
+    icon: ArrowLeftRight,
+    label: "Card-to-card routing",
+    detail: "Spend mapped, card by card",
+  },
   { icon: Star, label: "Redemption", detail: "Ready in 11 months" },
 ];
 
 /**
- * Hero-side visual: the cards → goal → routing → redemption journey, with a
- * gold connector that draws itself in. Dependency-free, staggered Reveal for
- * the nodes, a CSS line-draw for the connector, both honoring reduced-motion.
+ * Hero-side visual: the cards → goal → routing → redemption journey. The nodes
+ * cascade in and a gold connector draws itself down between them. The outer
+ * entrance/rotation is owned by <Hero>; this just orchestrates the inner motion.
  */
 export function HeroFlow() {
+  const reduced = useReducedMotion();
+
   return (
-    <div className="relative lg:-translate-y-4 lg:rotate-1">
+    <div className="relative">
       {/* Soft gold glow behind the flow card */}
       <div className="pointer-events-none absolute -inset-6 bg-aurora opacity-80" />
 
-      <Reveal
-        delay={320}
-        className="relative rounded-[2rem] border border-white/10 bg-card/50 p-7 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_30px_60px_-30px_rgba(0,0,0,0.6)] backdrop-blur-md sm:p-8"
-      >
+      <div className="relative rounded-[2rem] border border-white/10 bg-card/50 p-7 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_30px_60px_-30px_rgba(0,0,0,0.6)] backdrop-blur-md sm:p-8">
         <div className="flex items-center justify-between">
           <p className="text-xs uppercase tracking-[0.2em] text-gold">
             Your card strategy
@@ -42,21 +47,38 @@ export function HeroFlow() {
           </span>
         </div>
 
-        <ol className="relative mt-6">
+        <motion.ol
+          className="relative mt-6"
+          initial={reduced ? undefined : "hidden"}
+          animate={reduced ? undefined : "show"}
+          variants={{
+            hidden: {},
+            show: { transition: { staggerChildren: 0.16, delayChildren: 1 } },
+          }}
+        >
           {/* The drawing connector, sits behind the node icons */}
-          <span
+          <motion.span
             aria-hidden
-            className="hero-flow-line absolute left-[1.375rem] top-6 w-px bg-gradient-to-b from-gold/70 via-gold/40 to-gold/10"
+            className="absolute left-5.5 top-6 bottom-11 w-px origin-top bg-linear-to-b from-gold/70 via-gold/40 to-gold/10"
+            initial={reduced ? undefined : { scaleY: 0 }}
+            animate={reduced ? undefined : { scaleY: 1 }}
+            transition={{ duration: 1.4, ease: EASE, delay: 1.1 }}
           />
 
           {NODES.map((node, i) => {
             const Icon = node.icon;
             const isLast = i === NODES.length - 1;
             return (
-              <Reveal
-                as="li"
+              <motion.li
                 key={node.label}
-                delay={460 + i * 140}
+                variants={{
+                  hidden: { opacity: 0, x: 12 },
+                  show: {
+                    opacity: 1,
+                    x: 0,
+                    transition: { duration: 0.6, ease: EASE },
+                  },
+                }}
                 className={`relative flex items-center gap-4 ${isLast ? "" : "pb-6"}`}
               >
                 <span
@@ -76,14 +98,16 @@ export function HeroFlow() {
                     {node.detail}
                   </p>
                 </div>
-              </Reveal>
+              </motion.li>
             );
           })}
-        </ol>
+        </motion.ol>
 
         {/* Projected payoff */}
-        <Reveal
-          delay={460 + NODES.length * 140}
+        <motion.div
+          initial={reduced ? undefined : { opacity: 0, y: 12 }}
+          animate={reduced ? undefined : { opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: EASE, delay: 1.9 }}
           className="mt-6 flex items-end justify-between border-t border-hairline pt-5"
         >
           <div>
@@ -98,8 +122,8 @@ export function HeroFlow() {
               caps &amp; milestones factored in
             </p>
           </div>
-        </Reveal>
-      </Reveal>
+        </motion.div>
+      </div>
     </div>
   );
 }

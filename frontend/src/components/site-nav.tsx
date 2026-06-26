@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Menu, X } from "lucide-react"
 
@@ -17,10 +17,28 @@ const LINKS = [
 
 export function SiteNav() {
   const [open, setOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24)
+    onScroll()
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => window.removeEventListener("scroll", onScroll)
+  }, [])
 
   return (
-    <header className="sticky top-0 z-50 border-b border-hairline bg-background/80 backdrop-blur-md">
-      <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+    <header
+      className={`sticky top-0 z-50 border-b backdrop-blur-md transition-colors duration-300 ${
+        scrolled
+          ? "border-hairline bg-background/85"
+          : "border-transparent bg-background/0"
+      }`}
+    >
+      <nav
+        className={`mx-auto flex max-w-6xl items-center justify-between px-6 transition-all duration-300 ${
+          scrolled ? "py-3" : "py-5"
+        }`}
+      >
         <Brand />
 
         <div className="hidden items-center gap-7 text-sm text-muted-foreground lg:flex">
