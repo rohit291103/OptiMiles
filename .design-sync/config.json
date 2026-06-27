@@ -1,0 +1,24 @@
+{
+  "projectId": "8aa116b0-5eef-4309-8ea7-9f68a64c59e6",
+  "shape": "storybook",
+  "storybookConfigDir": "frontend/.storybook",
+  "storybookStatic": ".design-sync/sb-reference",
+  "pkg": "@optimiles/ui",
+  "globalName": "OptiMiles",
+  "srcDir": "src",
+  "componentSrcMap": {
+    "Button": "src/components/ui/button.tsx",
+    "Badge": "src/components/ui/badge.tsx",
+    "Card": "src/components/ui/card.tsx",
+    "Input": "src/components/ui/input.tsx",
+    "HeroFlow": "src/components/sections/hero-flow.tsx",
+    "TrustPillars": "src/components/sections/trust-pillars.tsx"
+  },
+  "provider": {
+    "component": "DsThemeProvider"
+  },
+  "extraFonts": ["../.design-sync/fonts/fraunces.css"],
+  "runtimeFontPrefixes": ["Cascadia", "Roboto Mono", "SF Mono", "Menlo", "Monaco", "Liberation Mono", "Consolas", "Courier"],
+  "readmeHeader": ".design-sync/conventions.md",
+  "buildCmd": "cd frontend && npx tsc -p tsconfig.dts.json"
+}

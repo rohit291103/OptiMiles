@@ -1,0 +1,12 @@
+# OS
+.DS_Store
+
+# design-sync — transient/build/verification artifacts (durable config under
+# .design-sync/ that is NOT listed here is committed: config.json, NOTES.md,
+# conventions.md, previews/, overrides/)
+.design-sync/sb-reference/
+.design-sync/learnings/
+.design-sync/.cache/
+.design-sync/node_modules
+.ds-sync/
+ds-bundle/

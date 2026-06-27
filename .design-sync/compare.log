@@ -1,0 +1,10 @@
+○ [COMPARE] Badge: 6 needs-grade — grade keys: "Default", "Secondary", "Outline", "Gold accent", "With Icon", "All Variants"
+  [STORY_CAP] Button: comparing first 6 of 9 stories — pass --max-stories 9 to cover all
+○ [COMPARE] Button: 6 needs-grade — grade keys: "Default", "Gold (primary CTA)", "Outline", "Secondary", "Ghost", "Link"
+○ [COMPARE] Card: 2 needs-grade — grade keys: "Default", "Compact"
+○ [COMPARE] HeroFlow: 1 needs-grade — grade keys: "Default"
+○ [COMPARE] Input: 4 needs-grade — grade keys: "Default", "With Value", "Disabled", "Invalid"
+○ [COMPARE] TrustPillars: 1 needs-grade — grade keys: "Default"
+
+compare: 6 component(s) — 0 carried forward unchanged, 6 captured, 0 with factual failures, 6 awaiting your grade
+Grade from the true images: Read each _screenshots/compare/<group>__<Name>.png sheet (raw/ PNGs are the full-res authority), then Write the verdicts to .design-sync/.cache/compare/<Name>.grade.json (a recapture clears the old grade — its contract changed).

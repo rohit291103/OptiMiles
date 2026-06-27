@@ -1,0 +1,109 @@
+» @optimiles/ui@0.1.0 → /Users/store/Documents/Projects/OptiMiles/ds-bundle (window.OptiMiles)
+  react@19.2.4 has no UMD — bundling via esbuild
+[DETECT] shape=storybook (explicit --storybook-static)
+  source shape: storybook (from cfg.shape)
+  entry: ../src/lib-entry.ts
+  [DTS] parsed 11 .d.ts files from /Users/store/Documents/Projects/OptiMiles/frontend/dist/types
+  storybook-static: 29 entries → 6 components
+  story sources: 23/23 stories paired to module exports
+  bundle: 468 KB
+  inlined npm packages: 80
+  (decorator auto-detect skipped — cfg.provider is set)
+[CSS_FROM_STORYBOOK] _ds_bundle.css was missing — replaced with ../.design-sync/sb-reference/assets/iframe-D8Rrqo29.css (67 KB).
+  fonts: 1 @font-face rule(s) → fonts/
+  exported PascalCase symbols: 13; bundle export list: 15
+  6/6 storybook components are public exports
+  components: 6
+  (excluded 0 enum/type/context/hook exports; 6 components)
+  docs: 0/6 components matched
+  previews: 6 generated → .design-sync/.cache/previews/
+  [DTS] 6/6 components
+  styles.css: 2 @import(s) (incl. _ds_bundle.css — component styles ship to designs via this closure)
+  readmeHeader: stitching .design-sync/conventions.md
+  _ds_sync.json: 6 render hash(es) + source key(s) (verification anchor)
+✓ wrote /Users/store/Documents/Projects/OptiMiles/ds-bundle: _ds_bundle.js + styles.css + 6 component previews
+no remote anchor — full scope (6 component(s) verify + upload)
+→ /Users/store/Documents/Projects/OptiMiles/ds-bundle/.sync-diff.json
+  .ds-build-meta.json: 6 components (storybook)
+  _ds_bundle.js: 471 KB, syntax OK
+  _ds_bundle.js header: window.OptiMiles, 6 components, 80 inlined externals
+  _ds_sync.json: 6 render hash(es), anchor matches the bundle
+  _ds_sync.json render hashes match disk (6 recomputed)
+  styles.css: 2 @import(s), all resolve
+  _ds_bundle.css: 67 KB
+  tokens: 163 defined, 90 referenced
+  components/: 6 previews, 6 .prompt.md
+  (.d.ts parse check skipped — typescript not in node_modules)
+  window.OptiMiles: 15 exports (6 fn + 0 compound)
+  render check: 6/6 previews render cleanly (screenshots in _screenshots/)
+  contact sheets: 1 sheet(s) → _screenshots/contact-sheet-1.png
+
+✓ bundle is complete
+↻ [COMPARE] Badge: sources unchanged & fully graded — carried forward (--force to recapture)
+↻ [COMPARE] Button: sources unchanged & fully graded — carried forward (--force to recapture)
+↻ [COMPARE] Card: sources unchanged & fully graded — carried forward (--force to recapture)
+↻ [COMPARE] HeroFlow: sources unchanged & fully graded — carried forward (--force to recapture)
+↻ [COMPARE] Input: sources unchanged & fully graded — carried forward (--force to recapture)
+↻ [COMPARE] TrustPillars: sources unchanged & fully graded — carried forward (--force to recapture)
+
+compare: 6 component(s) — 6 carried forward unchanged, 0 captured, 0 with factual failures, 0 awaiting your grade
+Grade from the true images: Read each _screenshots/compare/<group>__<Name>.png sheet (raw/ PNGs are the full-res authority), then Write the verdicts to .design-sync/.cache/compare/<Name>.grade.json (a recapture clears the old grade — its contract changed).
+{
+  "version": 2,
+  "ok": true,
+  "shape": "storybook",
+  "anchor": "not_provided",
+  "learningsUnmerged": [],
+  "stages": {
+    "build": {
+      "ok": true,
+      "exit": 0,
+      "skipped": null
+    },
+    "diff": {
+      "ok": true,
+      "exit": 0,
+      "skipped": null
+    },
+    "validate": {
+      "ok": true,
+      "exit": 0,
+      "skipped": null
+    },
+    "capture": {
+      "ok": true,
+      "exit": 0,
+      "skipped": null
+    }
+  },
+  "verification": {
+    "unchanged": [],
+    "changed": [],
+    "added": [
+      "Badge",
+      "Button",
+      "Card",
+      "HeroFlow",
+      "Input",
+      "TrustPillars"
+    ],
+    "removed": [],
+    "pendingGrade": [],
+    "canary": null
+  },
+  "upload": {
+    "any": true,
+    "components": [
+      "Badge",
+      "Button",
+      "Card",
+      "HeroFlow",
+      "Input",
+      "TrustPillars"
+    ],
+    "deletePaths": [],
+    "bundle": true,
+    "styling": true,
+    "aux": true
+  }
+}

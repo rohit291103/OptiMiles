@@ -1,0 +1,659 @@
+
+┌  Building storybook v10.4.6
+│
+◇  Cleaning outputDir: ../.design-sync/sb-reference
+│
+◇  Loading presets
+│
+◇  Building manager..
+│
+●  Building preview..
+│
+▲  No story files found for the specified pattern: src/**/*.mdx
+│
+●  Copying static files: public at ../.design-sync/sb-reference
+│  Vite vite v7.3.6 building client environment for production...
+│  Vite transforming...
+│
+▲  Vite src/components/sections/hero-flow.tsx (1:0): Error when using
+│  sourcemap for reporting an error: Can't resolve original location of
+│  error.
+│
+▲  Vite src/components/sections/hero-flow.tsx (1:0): Module level
+│  directives cause errors when bundled, "use client" in
+│  "src/components/sections/hero-flow.tsx" was ignored.
+│
+▲  Vite node_modules/lucide-react/dist/esm/context.mjs (2:0): Module
+│  level directives cause errors when bundled, "use client" in
+│  "node_modules/lucide-react/dist/esm/context.mjs" was ignored.
+│
+▲  Vite node_modules/lucide-react/dist/esm/Icon.mjs (2:0): Module level
+│  directives cause errors when bundled, "use client" in
+│  "node_modules/lucide-react/dist/esm/Icon.mjs" was ignored.
+│
+▲  Vite node_modules/@radix-ui/react-alert-dialog/dist/index.mjs (1:0):
+│  Module level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-alert-dialog/dist/index.mjs" was
+│  ignored.
+│
+▲  Vite node_modules/@radix-ui/react-collapsible/dist/index.mjs (1:0):
+│  Module level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-collapsible/dist/index.mjs" was ignored.
+│
+▲  Vite node_modules/@radix-ui/react-checkbox/dist/index.mjs (1:0):
+│  Module level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-checkbox/dist/index.mjs" was ignored.
+│
+▲  Vite node_modules/@radix-ui/react-direction/dist/index.mjs (1:0):
+│  Module level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-direction/dist/index.mjs" was ignored.
+│
+▲  Vite node_modules/@radix-ui/react-accordion/dist/index.mjs (1:0):
+│  Module level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-accordion/dist/index.mjs" was ignored.
+│
+▲  Vite node_modules/@radix-ui/react-dialog/dist/index.mjs (1:0): Module
+│  level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-dialog/dist/index.mjs" was ignored.
+│
+▲  Vite node_modules/@radix-ui/react-label/dist/index.mjs (1:0): Module
+│  level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-label/dist/index.mjs" was ignored.
+│
+▲  Vite node_modules/@radix-ui/react-context-menu/dist/index.mjs (1:0):
+│  Module level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-context-menu/dist/index.mjs" was
+│  ignored.
+│
+▲  Vite node_modules/@radix-ui/react-dropdown-menu/dist/index.mjs (1:0):
+│  Module level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-dropdown-menu/dist/index.mjs" was
+│  ignored.
+│
+▲  Vite node_modules/@radix-ui/react-hover-card/dist/index.mjs (1:0):
+│  Module level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-hover-card/dist/index.mjs" was ignored.
+│
+▲  Vite node_modules/@radix-ui/react-form/dist/index.mjs (1:0): Module
+│  level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-form/dist/index.mjs" was ignored.
+│
+▲  Vite node_modules/@radix-ui/react-avatar/dist/index.mjs (1:0): Module
+│  level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-avatar/dist/index.mjs" was ignored.
+│
+▲  Vite node_modules/@radix-ui/react-menubar/dist/index.mjs (1:0): Module
+│  level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-menubar/dist/index.mjs" was ignored.
+│
+▲  Vite node_modules/@radix-ui/react-navigation-menu/dist/index.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in "node_modules/@radix-ui/react-navigation-menu/dist/index.mjs" was
+│  ignored.
+│
+▲  Vite node_modules/@radix-ui/react-progress/dist/index.mjs (1:0):
+│  Module level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-progress/dist/index.mjs" was ignored.
+│
+▲  Vite node_modules/@radix-ui/react-portal/dist/index.mjs (1:0): Module
+│  level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-portal/dist/index.mjs" was ignored.
+│
+▲  Vite node_modules/@radix-ui/react-popover/dist/index.mjs (1:0): Module
+│  level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-popover/dist/index.mjs" was ignored.
+│
+▲  Vite
+│  node_modules/@radix-ui/react-one-time-password-field/dist/index.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/@radix-ui/react-one-time-password-field/dist/index.mjs"
+│  was ignored.
+│
+▲  Vite node_modules/@radix-ui/react-password-toggle-field/dist/index.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in "node_modules/@radix-ui/react-password-toggle-field/dist/index.mjs"
+│  was ignored.
+│
+▲  Vite node_modules/@radix-ui/react-slider/dist/index.mjs (1:0): Module
+│  level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-slider/dist/index.mjs" was ignored.
+│
+▲  Vite node_modules/@radix-ui/react-scroll-area/dist/index.mjs (1:0):
+│  Module level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-scroll-area/dist/index.mjs" was ignored.
+│
+▲  Vite node_modules/@radix-ui/react-radio-group/dist/index.mjs (1:0):
+│  Module level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-radio-group/dist/index.mjs" was ignored.
+│
+▲  Vite node_modules/@radix-ui/react-switch/dist/index.mjs (1:0): Module
+│  level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-switch/dist/index.mjs" was ignored.
+│
+▲  Vite node_modules/@radix-ui/react-tabs/dist/index.mjs (1:0): Module
+│  level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-tabs/dist/index.mjs" was ignored.
+│
+▲  Vite node_modules/@radix-ui/react-select/dist/index.mjs (1:0): Module
+│  level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-select/dist/index.mjs" was ignored.
+│
+▲  Vite node_modules/@radix-ui/react-toast/dist/index.mjs (1:0): Module
+│  level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-toast/dist/index.mjs" was ignored.
+│
+▲  Vite node_modules/@radix-ui/react-toolbar/dist/index.mjs (1:0): Module
+│  level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-toolbar/dist/index.mjs" was ignored.
+│
+▲  Vite node_modules/@radix-ui/react-toggle/dist/index.mjs (1:0): Module
+│  level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-toggle/dist/index.mjs" was ignored.
+│
+▲  Vite node_modules/@radix-ui/react-toggle-group/dist/index.mjs (1:0):
+│  Module level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-toggle-group/dist/index.mjs" was
+│  ignored.
+│
+▲  Vite node_modules/@radix-ui/react-tooltip/dist/index.mjs (1:0): Module
+│  level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-tooltip/dist/index.mjs" was ignored.
+│
+▲  Vite node_modules/@radix-ui/react-presence/dist/index.mjs (1:0):
+│  Module level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-presence/dist/index.mjs" was ignored.
+│
+▲  Vite node_modules/@radix-ui/react-dismissable-layer/dist/index.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in "node_modules/@radix-ui/react-dismissable-layer/dist/index.mjs" was
+│  ignored.
+│
+▲  Vite node_modules/@radix-ui/react-focus-scope/dist/index.mjs (1:0):
+│  Module level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-focus-scope/dist/index.mjs" was ignored.
+│
+▲  Vite node_modules/@radix-ui/react-collection/dist/index.mjs (1:0):
+│  Module level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-collection/dist/index.mjs" was ignored.
+│
+▲  Vite node_modules/@radix-ui/react-popper/dist/index.mjs (1:0): Module
+│  level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-popper/dist/index.mjs" was ignored.
+│
+▲  Vite node_modules/@radix-ui/react-focus-guards/dist/index.mjs (1:0):
+│  Module level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-focus-guards/dist/index.mjs" was
+│  ignored.
+│
+▲  Vite node_modules/@radix-ui/react-roving-focus/dist/index.mjs (1:0):
+│  Module level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-roving-focus/dist/index.mjs" was
+│  ignored.
+│
+▲  Vite node_modules/@radix-ui/react-menu/dist/index.mjs (1:0): Module
+│  level directives cause errors when bundled, "use client" in
+│  "node_modules/@radix-ui/react-menu/dist/index.mjs" was ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/components/AnimatePresence/PopChild.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/components/AnimatePresence/PopChild.mjs"
+│  was ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/components/AnimatePresence/PresenceChild.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/components/AnimatePresence/PresenceChild.mjs"
+│  was ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/components/LazyMotion/index.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/components/LazyMotion/index.mjs"
+│  was ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/components/MotionConfig/index.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/components/MotionConfig/index.mjs"
+│  was ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/components/LayoutGroup/index.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/components/LayoutGroup/index.mjs"
+│  was ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/motion/utils/use-visual-state.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/motion/utils/use-visual-state.mjs"
+│  was ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/render/dom/features-animation.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/render/dom/features-animation.mjs"
+│  was ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/render/dom/features-min.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in "node_modules/framer-motion/dist/es/render/dom/features-min.mjs"
+│  was ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/render/dom/features-max.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in "node_modules/framer-motion/dist/es/render/dom/features-max.mjs"
+│  was ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/utils/use-force-update.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in "node_modules/framer-motion/dist/es/utils/use-force-update.mjs" was
+│  ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/utils/use-isomorphic-effect.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/utils/use-isomorphic-effect.mjs"
+│  was ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/utils/use-unmount-effect.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in "node_modules/framer-motion/dist/es/utils/use-unmount-effect.mjs"
+│  was ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/value/use-motion-value.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in "node_modules/framer-motion/dist/es/value/use-motion-value.mjs" was
+│  ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/utils/use-motion-value-event.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/utils/use-motion-value-event.mjs"
+│  was ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/value/use-time.mjs (1:0):
+│  Module level directives cause errors when bundled, "use client" in
+│  "node_modules/framer-motion/dist/es/value/use-time.mjs" was ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/value/use-follow-value.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in "node_modules/framer-motion/dist/es/value/use-follow-value.mjs" was
+│  ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/value/use-spring.mjs (1:0):
+│  Module level directives cause errors when bundled, "use client" in
+│  "node_modules/framer-motion/dist/es/value/use-spring.mjs" was ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/value/use-transform.mjs (1:0):
+│  Module level directives cause errors when bundled, "use client" in
+│  "node_modules/framer-motion/dist/es/value/use-transform.mjs" was
+│  ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/value/use-motion-template.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in "node_modules/framer-motion/dist/es/value/use-motion-template.mjs"
+│  was ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/value/use-velocity.mjs (1:0):
+│  Module level directives cause errors when bundled, "use client" in
+│  "node_modules/framer-motion/dist/es/value/use-velocity.mjs" was
+│  ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/value/use-scroll.mjs (1:0):
+│  Module level directives cause errors when bundled, "use client" in
+│  "node_modules/framer-motion/dist/es/value/use-scroll.mjs" was ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/utils/reduced-motion/use-reduced-motion-config.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/utils/reduced-motion/use-reduced-motion-config.mjs"
+│  was ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/value/use-will-change/index.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/value/use-will-change/index.mjs"
+│  was ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/animation/hooks/use-animate-style.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/animation/hooks/use-animate-style.mjs"
+│  was ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/animation/hooks/use-animate.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/animation/hooks/use-animate.mjs"
+│  was ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/components/AnimatePresence/use-presence.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/components/AnimatePresence/use-presence.mjs"
+│  was ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/events/use-dom-event.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in "node_modules/framer-motion/dist/es/events/use-dom-event.mjs" was
+│  ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/components/AnimatePresence/use-presence-data.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/components/AnimatePresence/use-presence-data.mjs"
+│  was ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/utils/use-cycle.mjs (1:0):
+│  Module level directives cause errors when bundled, "use client" in
+│  "node_modules/framer-motion/dist/es/utils/use-cycle.mjs" was ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/utils/use-page-in-view.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in "node_modules/framer-motion/dist/es/utils/use-page-in-view.mjs" was
+│  ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/animation/hooks/use-animation.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/animation/hooks/use-animation.mjs"
+│  was ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/utils/use-animation-frame.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in "node_modules/framer-motion/dist/es/utils/use-animation-frame.mjs"
+│  was ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/utils/use-instant-transition.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/utils/use-instant-transition.mjs"
+│  was ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/context/PresenceContext.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in "node_modules/framer-motion/dist/es/context/PresenceContext.mjs"
+│  was ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/context/MotionContext/index.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/context/MotionContext/index.mjs"
+│  was ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/utils/use-in-view.mjs (1:0):
+│  Module level directives cause errors when bundled, "use client" in
+│  "node_modules/framer-motion/dist/es/utils/use-in-view.mjs" was
+│  ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/context/LayoutGroupContext.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in "node_modules/framer-motion/dist/es/context/LayoutGroupContext.mjs"
+│  was ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/context/SwitchLayoutGroupContext.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/context/SwitchLayoutGroupContext.mjs"
+│  was ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/animation/hooks/use-animated-state.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/animation/hooks/use-animated-state.mjs"
+│  was ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/context/MotionConfigContext.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/context/MotionConfigContext.mjs"
+│  was ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/context/DeprecatedLayoutGroupContext.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/context/DeprecatedLayoutGroupContext.mjs"
+│  was ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/value/use-inverted-scale.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in "node_modules/framer-motion/dist/es/value/use-inverted-scale.mjs"
+│  was ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/components/AnimateSharedLayout.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/components/AnimateSharedLayout.mjs"
+│  was ignored.
+│
+▲  Vite src/components/ui/count-up.tsx (1:0): Error when using sourcemap
+│  for reporting an error: Can't resolve original location of error.
+│
+▲  Vite src/components/ui/count-up.tsx (1:0): Module level directives
+│  cause errors when bundled, "use client" in
+│  "src/components/ui/count-up.tsx" was ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/utils/reduced-motion/use-reduced-motion.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/utils/reduced-motion/use-reduced-motion.mjs"
+│  was ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/utils/use-constant.mjs (1:0):
+│  Module level directives cause errors when bundled, "use client" in
+│  "node_modules/framer-motion/dist/es/utils/use-constant.mjs" was
+│  ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/components/AnimatePresence/index.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/components/AnimatePresence/index.mjs"
+│  was ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/context/LazyContext.mjs (1:0):
+│  Module level directives cause errors when bundled, "use client" in
+│  "node_modules/framer-motion/dist/es/context/LazyContext.mjs" was
+│  ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/utils/use-is-mounted.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in "node_modules/framer-motion/dist/es/utils/use-is-mounted.mjs" was
+│  ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/value/use-computed.mjs (1:0):
+│  Module level directives cause errors when bundled, "use client" in
+│  "node_modules/framer-motion/dist/es/value/use-computed.mjs" was
+│  ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/value/use-combine-values.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in "node_modules/framer-motion/dist/es/value/use-combine-values.mjs"
+│  was ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/components/Reorder/Group.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in "node_modules/framer-motion/dist/es/components/Reorder/Group.mjs"
+│  was ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/components/Reorder/Item.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in "node_modules/framer-motion/dist/es/components/Reorder/Item.mjs"
+│  was ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/motion/features/layout/MeasureLayout.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/motion/features/layout/MeasureLayout.mjs"
+│  was ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/context/ReorderContext.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in "node_modules/framer-motion/dist/es/context/ReorderContext.mjs" was
+│  ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/motion/index.mjs (1:0): Module
+│  level directives cause errors when bundled, "use client" in
+│  "node_modules/framer-motion/dist/es/motion/index.mjs" was ignored.
+│
+▲  Vite src/components/ui/motion.tsx (1:0): Error when using sourcemap
+│  for reporting an error: Can't resolve original location of error.
+│
+▲  Vite src/components/ui/motion.tsx (1:0): Module level directives cause
+│  errors when bundled, "use client" in "src/components/ui/motion.tsx"
+│  was ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/render/svg/use-svg-visual-state.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/render/svg/use-svg-visual-state.mjs"
+│  was ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/render/dom/use-render.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in "node_modules/framer-motion/dist/es/render/dom/use-render.mjs" was
+│  ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/context/MotionContext/create.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/context/MotionContext/create.mjs"
+│  was ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/render/html/use-html-visual-state.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/render/html/use-html-visual-state.mjs"
+│  was ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/motion/utils/use-motion-ref.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/motion/utils/use-motion-ref.mjs"
+│  was ignored.
+│
+▲  Vite
+│  node_modules/framer-motion/dist/es/motion/utils/use-visual-element.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in
+│  "node_modules/framer-motion/dist/es/motion/utils/use-visual-element.mjs"
+│  was ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/render/svg/use-props.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in "node_modules/framer-motion/dist/es/render/svg/use-props.mjs" was
+│  ignored.
+│
+▲  Vite node_modules/framer-motion/dist/es/render/html/use-props.mjs
+│  (1:0): Module level directives cause errors when bundled, "use client"
+│  in "node_modules/framer-motion/dist/es/render/html/use-props.mjs" was
+│  ignored.
+│  Vite ✓ 2713 modules transformed.
+│  Vite rendering chunks...
+│  Vite computing gzip size...
+│  Vite ../.design-sync/sb-reference/iframe.html
+│  18.96 kB │ gzip:   5.28 kB
+│  Vite ../.design-sync/sb-reference/assets/iframe-D8Rrqo29.css
+│  68.72 kB │ gzip:  11.75 kB
+│  Vite ../.design-sync/sb-reference/assets/jsx-runtime-BDBjFUwv.js
+│  0.06 kB │ gzip:   0.08 kB
+│  Vite
+│  ../.design-sync/sb-reference/assets/formatter-L2YTDE3Q-CnPshRqD.js
+│  0.29 kB │ gzip:   0.24 kB
+│  Vite ../.design-sync/sb-reference/assets/shield-check-CkgdsVW4.js
+│  0.33 kB │ gzip:   0.26 kB
+│  Vite ../.design-sync/sb-reference/assets/preload-helper-PPVm8Dsz.js
+│  1.23 kB │ gzip:   0.71 kB
+│  Vite ../.design-sync/sb-reference/assets/createLucideIcon-CsM3gG6G.js
+│  1.38 kB │ gzip:   0.78 kB
+│  Vite ../.design-sync/sb-reference/assets/badge-qJQ9WAFb.js
+│  1.66 kB │ gzip:   0.79 kB
+│  Vite ../.design-sync/sb-reference/assets/input.stories-DtD6PClH.js
+│  2.12 kB │ gzip:   0.90 kB
+│  Vite ../.design-sync/sb-reference/assets/badge.stories-CV8D98Wg.js
+│  2.72 kB │ gzip:   0.95 kB
+│  Vite ../.design-sync/sb-reference/assets/index-DfPMEBVT.js
+│  3.03 kB │ gzip:   1.42 kB
+│  Vite ../.design-sync/sb-reference/assets/button-DtEQlrJv.js
+│  3.10 kB │ gzip:   1.10 kB
+│  Vite
+│  ../.design-sync/sb-reference/assets/trust-pillars.stories-Dv1D9016.js
+│  4.01 kB │ gzip:   1.86 kB
+│  Vite ../.design-sync/sb-reference/assets/button.stories-YRX_5YgR.js
+│  4.22 kB │ gzip:   1.31 kB
+│  Vite ../.design-sync/sb-reference/assets/card.stories-BPuSRy_l.js
+│  5.07 kB │ gzip:   1.59 kB
+│  Vite ../.design-sync/sb-reference/assets/hero-flow.stories-CQcvUvpy.js
+│  6.48 kB │ gzip:   2.93 kB
+│  Vite ../.design-sync/sb-reference/assets/utils-DCADjnpI.js
+│  27.55 kB │ gzip:   8.70 kB
+│  Vite ../.design-sync/sb-reference/vite-inject-mocker-entry.js
+│  28.11 kB │ gzip:   9.82 kB
+│  Vite ../.design-sync/sb-reference/assets/matchers-JIUQ3HVY-N4FjKbka.js
+│  29.23 kB │ gzip:  10.05 kB
+│  Vite ../.design-sync/sb-reference/assets/Color-KMSTOMOX-Om6anZsC.js
+│  30.12 kB │ gzip:  11.45 kB
+│  Vite
+│  ../.design-sync/sb-reference/assets/WithTooltip-7X4HQR7L-C_hB4mv_.js
+│  33.11 kB │ gzip:  11.67 kB
+│  Vite
+│  ../.design-sync/sb-reference/assets/syntaxhighlighter-RTCFPKCB-By5q7hPk.js
+│  78.57 kB │ gzip:  27.53 kB
+│  Vite ../.design-sync/sb-reference/assets/react-OVJnaFNp.js
+│  122.79 kB │ gzip:  40.12 kB
+│  Vite ../.design-sync/sb-reference/assets/react-18-BxFpkNRj.js
+│  206.32 kB │ gzip:  64.62 kB
+│  Vite ../.design-sync/sb-reference/assets/axe-DBBvo9j5.js
+│  592.15 kB │ gzip: 163.49 kB
+│  Vite
+│  ../.design-sync/sb-reference/assets/DocsRenderer-JROSPFPF-D7Hi509K.js
+│  825.06 kB │ gzip: 264.23 kB
+│  Vite ../.design-sync/sb-reference/assets/iframe-DoIDr6tk.js
+│  1,277.05 kB │ gzip: 361.31 kB
+│
+▲  Vite
+│  (!) Some chunks are larger than 500 kB after minification. Consider:
+│  - Using dynamic import() to code-split the application
+│  - Use build.rollupOptions.output.manualChunks to improve chunking:
+│  ]8;;https://rollupjs.org/configuration-options/#output-manualchunkshttps://rollupjs.org/configuration-options/#output-manualchunks]8;;
+│  - Adjust chunk size limit for this warning via
+│  build.chunkSizeWarningLimit.
+│  Vite ✓ built in 6.07s
+│
+◇  Output directory:
+│  /Users/store/Documents/Projects/OptiMiles/.design-sync/sb-reference
+│
+└  Storybook build completed successfully
+

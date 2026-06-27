@@ -1,0 +1,27 @@
+/*
+ * Storybook-only shim. In the real app, next/font (layout.tsx) injects the
+ * --font-* CSS variables that globals.css maps to --font-sans / --font-heading
+ * / --font-mono. Storybook's Vite adapter doesn't run layout.tsx, so we map
+ * those variables to close system-font stacks here. This keeps previews
+ * representative without pulling the Google fonts at build time.
+ *
+ * Fraunces is a serif display face; Geist Sans/Mono are grotesque/monospace.
+ * The fallbacks below preserve the serif-display vs. sans contrast that the
+ * design system relies on (h1-h3 use font-heading).
+ */
+:root {
+  --font-geist-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+  --font-geist-mono: ui-monospace, "SF Mono", Menlo, Monaco, "Cascadia Mono",
+    "Roboto Mono", monospace;
+  --font-fraunces: "Fraunces", ui-serif, Georgia, "Times New Roman", serif;
+}
+
+/* The site is dark-only (globals.css sets color-scheme: dark and defines the
+   gold/--gold tokens under .dark). Give the Storybook canvas the same base so
+   stories render on the real background instead of a bare white page. */
+html,
+body {
+  background: var(--background);
+  color: var(--foreground);
+}

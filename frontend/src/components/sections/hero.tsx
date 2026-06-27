@@ -24,12 +24,22 @@ const EASE = [0.16, 1, 0.3, 1] as const;
  */
 export function Hero() {
   const reduced = useReducedMotion();
-  const { scrollYProgress } = useScroll();
-  // Pin-release choreography over the first ~viewport of scroll.
-  const scale = useTransform(scrollYProgress, [0, 0.14], [1, 0.94]);
-  const y = useTransform(scrollYProgress, [0, 0.14], [0, -80]);
-  const opacity = useTransform(scrollYProgress, [0, 0.13], [1, 0]);
-  const blur = useTransform(scrollYProgress, [0, 0.13], [0, 6]);
+  // Drive the pin-release off raw document scroll position in PIXELS, not a
+  // fraction of the (very tall) page. A scoped useScroll({ target }) mis-reads
+  // its progress on first paint before layout is measured, which left the whole
+  // hero invisible until the first scroll. scrollY starts at a correct 0 on
+  // mount, so the hero is fully crisp/opaque at rest and only pulls back as you
+  // scroll the first ~viewport away.
+  const { scrollY } = useScroll();
+  // px thresholds: hero holds crisp for the first ~12% of the viewport, then
+  // scales/fades/blurs out by the time you've scrolled ~70% of it.
+  const VH = typeof window !== "undefined" ? window.innerHeight : 800;
+  const start = VH * 0.12;
+  const end = VH * 0.7;
+  const scale = useTransform(scrollY, [start, end], [1, 0.94], { clamp: true });
+  const y = useTransform(scrollY, [start, end], [0, -80], { clamp: true });
+  const opacity = useTransform(scrollY, [start, end], [1, 0], { clamp: true });
+  const blur = useTransform(scrollY, [start, end], [0, 6], { clamp: true });
   const filter = useTransform(blur, (b) => `blur(${b}px)`);
 
   return (

@@ -1,0 +1,15 @@
+/* Fraunces (brand heading display face) for design-sync previews.
+   Variable font, latin subset, fetched from Google Fonts (OFL).
+   globals.css binds font-heading -> var(--font-fraunces); next/font normally
+   sets that variable. It doesn't run in the design-sync bundle, so define both
+   the @font-face and the variable here. */
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("./fraunces-latin.woff2") format("woff2");
+}
+:root {
+  --font-fraunces: "Fraunces", ui-serif, Georgia, serif;
+}

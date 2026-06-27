@@ -1,0 +1,23 @@
+» @optimiles/ui@0.1.0 → ./ds-bundle (window.OptiMiles)
+  react@19.2.4 has no UMD — bundling via esbuild
+[DETECT] shape=storybook (explicit --storybook-static)
+  source shape: storybook (from cfg.shape)
+  entry: ../src/lib-entry.ts
+  [DTS] parsed 11 .d.ts files from /Users/store/Documents/Projects/OptiMiles/frontend/dist/types
+  storybook-static: 29 entries → 6 components
+  story sources: 23/23 stories paired to module exports
+  bundle: 468 KB
+  inlined npm packages: 80
+  (decorator auto-detect skipped — cfg.provider is set)
+[CSS_FROM_STORYBOOK] _ds_bundle.css was missing — replaced with ../.design-sync/sb-reference/assets/iframe-D8Rrqo29.css (67 KB).
+  fonts: 1 @font-face rule(s) → fonts/
+  exported PascalCase symbols: 13; bundle export list: 15
+  6/6 storybook components are public exports
+  components: 6
+  (excluded 0 enum/type/context/hook exports; 6 components)
+  docs: 0/6 components matched
+  previews: 6 generated → .design-sync/.cache/previews/
+  [DTS] 6/6 components
+  styles.css: 2 @import(s) (incl. _ds_bundle.css — component styles ship to designs via this closure)
+  _ds_sync.json: 6 render hash(es) + source key(s) (verification anchor)
+✓ wrote ./ds-bundle: _ds_bundle.js + styles.css + 6 component previews

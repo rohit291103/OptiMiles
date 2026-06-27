@@ -1,0 +1,15 @@
+  .ds-build-meta.json: 6 components (storybook)
+  _ds_bundle.js: 471 KB, syntax OK
+  _ds_bundle.js header: window.OptiMiles, 6 components, 80 inlined externals
+  _ds_sync.json: 6 render hash(es), anchor matches the bundle
+  _ds_sync.json render hashes match disk (6 recomputed)
+  styles.css: 2 @import(s), all resolve
+  _ds_bundle.css: 67 KB
+  tokens: 163 defined, 90 referenced
+  components/: 6 previews, 6 .prompt.md
+  (.d.ts parse check skipped — typescript not in node_modules)
+  window.OptiMiles: 15 exports (6 fn + 0 compound)
+  render check: 6/6 previews render cleanly (screenshots in _screenshots/)
+  contact sheets: 1 sheet(s) → _screenshots/contact-sheet-1.png
+
+✓ bundle is complete
