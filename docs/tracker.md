@@ -51,13 +51,11 @@ Phase 0 (Product Definition & Architecture, per root `CLAUDE.md`). Backend has n
 ### In progress
 - Auth forms are **front-end only** — submit handler is a `setTimeout` stub, not wired to a real backend auth route.
 - Product-first/edge-to-edge redesign is `tsc`/`eslint`/HTTP-200 verified but **not yet eyeballed in a browser** — a human visual scroll-through (hero pin-and-release, simulator entrance, full-bleed rhythm, mobile) is still pending per root `CLAUDE.md`.
-- Uncommitted working-tree change: two `frontend/.agents/skills/{brandkit,design-taste-frontend-v1}/SKILL.md` files staged for deletion (mirror copies of the `.claude/skills` versions added in `c49111e`).
 - `testimonials.tsx` remains in-repo unused (dropped from the homepage, not deleted).
 - **Flagged drift (not yet reconciled):** the `2026-06-21` redesign decision recorded the project as "dependency-free, no Framer Motion," but the `2026-06-26` redesign adopted `motion/react`. That decision doc needs reconciling — see `2026-06-26-...fullbleed.md` "Notes / follow-ups."
 
 ### Next up
 - Visual browser pass (desktop + mobile) of the redesigned homepage: hero pin-and-release scale/blur/fade, simulator section entrance + that it doesn't clip expanding results, full-bleed gutter rhythm, marquee, autoplay carousel, mobile nav.
-- Decide whether to commit the `.agents` skill-mirror deletions or restore them.
 - (Optional) Add Axis/Amex card photos to `public/cards/` if they should appear in the wallet example.
 - Swap gradient placeholders in `DreamOutcomes` for real photos once supplied to `/public`.
 - Wire `AuthForm` to a real backend endpoint once one exists.
