@@ -6,7 +6,7 @@ Maintained by the `tracker-sync` skill (`.claude/skills/tracker-sync/SKILL.md`).
 
 ---
 
-**Last updated:** 2026-06-27 — Supported-cards reworked into a static all-visible grid (5 cards, landscape, uncropped, no scroll); Amex Platinum Travel added; Infinia/Amex art refreshed. Prior same-day: design-sync to claude.ai/design (6 components, all `match`), hero scroll-bug fix (user-confirmed), Storybook, root README.
+**Last updated:** 2026-06-28 — PRD & UX docs reconciled to the built MVP: PRD card list trimmed 15–20 → the committed 8 (broader list parked as "deferred candidates"); all 3 goal types kept in scope with flight-only marked as the surfaced one; simulator routes fixed to Singapore/London/New York; UX supported-cards description rewritten (static 5-card all-Active grid, not a tiered roadmap). Decision logged. Prior: supported-cards grid rework, design-sync, Storybook, root README.
 
 ## Snapshot
 
@@ -70,7 +70,8 @@ Phase 0 (Product Definition & Architecture, per root `CLAUDE.md`). Backend has n
 ### Done
 - `/docs` structure established: `prd`, `architecture`, `research`, `ux`, `decisions`, `prompts`.
 - `docs/prd/mvp_scope_1.md`, `docs/architecture/{ai-tooling-setup-v1,db-schema-v1}.md`, `docs/research/singapore_airlines_krisflyer_indian_credit_card_research_v1.md`, `docs/ux/landing-page-v1.md`, `docs/prompts/template.md`.
-- Decision log entries: `2026-06-21-frontend-mvp-cleanup.md`, `2026-06-21-multi-tool-agent-skill-expansion.md`, `2026-06-21-landing-page-outcome-redesign.md`, `2026-06-21-supported-cards-photos-and-scope.md`, `2026-06-26-landing-page-product-first-fullbleed.md`, `2026-06-27-storybook-setup-for-design-sync.md`, `2026-06-27-design-sync-claude-design-import.md`.
+- Decision log entries: `2026-06-21-frontend-mvp-cleanup.md`, `2026-06-21-multi-tool-agent-skill-expansion.md`, `2026-06-21-landing-page-outcome-redesign.md`, `2026-06-21-supported-cards-photos-and-scope.md`, `2026-06-26-landing-page-product-first-fullbleed.md`, `2026-06-27-storybook-setup-for-design-sync.md`, `2026-06-27-design-sync-claude-design-import.md`, `2026-06-28-prd-ux-reconciled-to-built-mvp.md`.
+- **PRD & UX reconciled to the built MVP** (`2026-06-28-...md`): `mvp_scope_1.md` card universe trimmed 15–20 → the committed **8** (deferred candidates parked in a labeled note); all 3 goal categories kept in scope with **Flight Redemption marked as the only one surfaced** in product (Hotel/Lounge in-scope-but-unbuilt); simulator routes canonicalized to **Singapore/London/New York** (Dubai dropped to candidate). `landing-page-v1.md` supported-cards description rewritten to the real static 5-card all-Active grid (was a stale "tiered roadmap + Coming-soon badges + carousel" description).
 - Root `README.md` added (project overview, honest Phase-0 status table, MVP scope, architecture, tech stack, getting-started, docs map).
 - `CLAUDE.md` gained a "Skills & Agents — When To Use Them" section (skill/agent triggers); `docs-sync` made an unconditional default after any build/change/decision. The redundant `.cursor/rules` mirror of the `.claude` skills was removed.
 - Claude Code skills: `brandkit`, `codebase-design`, `design-taste-frontend-v1`, `diagnosing-bugs`, `docs-sync`, `domain-modeling`, `handoff`, `tdd`, `to-issues`, `to-prd`, `tracker-sync`.
@@ -85,6 +86,10 @@ Phase 0 (Product Definition & Architecture, per root `CLAUDE.md`). Backend has n
 ---
 
 ## Last session notes
+
+Documentation-only session: reconciled the PRD (`docs/prd/mvp_scope_1.md`) and UX doc (`docs/ux/landing-page-v1.md`) to what the landing page actually became, on the user's question "does mvp_scope match what we built." Core vision was intact; the drift was in concrete details. Four fixes (all in `2026-06-28-prd-ux-reconciled-to-built-mvp.md`): (1) PRD card list trimmed 15–20 → the committed 8, with the broader research list kept as a labeled "deferred candidates" note; (2) all 3 goal categories kept in MVP scope per user call, but Flight Redemption marked as the only one surfaced in product and Hotel/Lounge marked in-scope-but-unbuilt; (3) simulator routes canonicalized to Singapore/London/New York (built product is source of truth; Dubai demoted to candidate); (4) UX supported-cards description rewritten from a stale "tiered roadmap + Active/Coming-soon badges + carousel" to the real static 5-card all-Active grid. No code touched. Two user decisions confirmed via question prompt: trim cards to 8, keep all 3 goal types.
+
+### Prior session notes
 
 Reworked the "cards you already carry" section (`supported-cards.tsx`) on user feedback. Two new card images (HDFC Infinia + Amex Platinum Travel, refreshed high-res) were dropped into `public/cards/` and **Amex Platinum Travel was added** as a 5th card. The user supplied a new HSBC "T1" render, but it was a **portrait card on a checkered/transparent background** — first attempt placed it `object-contain` with a `portrait` branch, but the user then asked for **all-landscape, no white background, and no horizontal scroll with every card fitting the window**, which the portrait T1 couldn't satisfy. So: reverted HSBC to the existing landscape `hsbc-travelone.jpg`, deleted the cropped T1, and **replaced the autoplay/drag carousel with a static responsive grid** (5-up desktop → 2-up mobile, `object-contain` on a dark plate at `1.586:1`, labels below each card, no scrim). This fixed the original cropping (e.g. "C Infinia") that `object-cover` caused. `tsc`/eslint/HTTP-200 clean; user visually confirmed ("perfect"). Amex was already in CLAUDE.md + the PRD, so no scope drift. Bug fix / UI polish — no decision-log entry. (Earlier same day: design-sync to claude.ai/design — see `2026-06-27-design-sync-claude-design-import.md`; and a hero scroll-bug fix in `hero.tsx`.)
 

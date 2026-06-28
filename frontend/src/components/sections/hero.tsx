@@ -50,7 +50,7 @@ export function Hero() {
 
       <motion.div
         style={reduced ? undefined : { scale, y, opacity, filter }}
-        className="relative grid w-full grid-cols-1 items-center gap-12 px-5 py-24 sm:px-8 lg:grid-cols-[1.15fr_0.85fr] lg:gap-10 lg:px-12 xl:px-16 2xl:px-24"
+        className="relative grid w-full grid-cols-1 items-center gap-12 px-5 py-20 sm:px-8 lg:grid-cols-[1.15fr_0.85fr] lg:gap-10 lg:px-12 lg:py-16 xl:px-16 2xl:px-24"
       >
         <div className="max-w-[46rem]">
           <motion.div
@@ -63,7 +63,7 @@ export function Hero() {
             Google Maps for Indian credit card rewards
           </motion.div>
 
-          <h1 className="mt-8 font-heading font-light leading-[0.92] tracking-tight text-foreground text-[clamp(3rem,8.5vw,8rem)]">
+          <h1 className="mt-6 font-heading font-light leading-[0.9] tracking-tight text-foreground text-[clamp(2.75rem,7vw,6.25rem)]">
             <WordReveal text="Your cards." delay={0.15} />
             <br />
             <WordReveal text="Your goal." delay={0.3} />
@@ -79,7 +79,7 @@ export function Hero() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: EASE, delay: 0.8 }}
-            className="mt-8 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg"
+            className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg"
           >
             Tell OptiMiles where you want to fly. It maps the cards already in
             your wallet into a clear, explainable route to get you there, which
@@ -90,7 +90,7 @@ export function Hero() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: EASE, delay: 0.95 }}
-            className="mt-10 flex flex-wrap items-center gap-3"
+            className="mt-8 flex flex-wrap items-center gap-3"
           >
             <Button
               asChild
@@ -115,7 +115,7 @@ export function Hero() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: EASE, delay: 1.1 }}
-            className="mt-14 grid max-w-lg grid-cols-3 gap-6 border-t border-hairline pt-6"
+            className="mt-8 grid max-w-lg grid-cols-3 gap-6 border-t border-hairline pt-5"
           >
             <HeroStat value="8" label="Cards supported" />
             <HeroStat value="0" label="SMS or statements read" />
@@ -163,7 +163,7 @@ export function Hero() {
 function HeroStat({ value, label }: { value: string; label: string }) {
   return (
     <div>
-      <p className="font-heading text-2xl text-foreground sm:text-3xl">
+      <p className="font-heading text-xl text-foreground sm:text-2xl">
         {value}
       </p>
       <p className="mt-1 text-xs leading-snug text-muted-foreground/80">

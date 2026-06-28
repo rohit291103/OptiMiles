@@ -35,7 +35,7 @@ This should feel "intelligent, premium, strategic, trustworthy" per CLAUDE.md's 
 5. **How it works** (`#how`) — sticky-scroll step list.
 6. **Trust pillars** — "structured card logic first, AI second."
 7. **Strategy output** — concrete example of what the user gets.
-8. **Supported cards** (`#cards`) — roadmap roster by tier, **Active** (gold) vs **Coming soon** (muted) badges so MVP scope stays honest.
+8. **Supported cards** (`#cards`) — "the credit cards you already carry." A **static responsive grid** (no carousel): 5 cards, all **Active** (gold badge), each shown full-bleed-uncropped (`object-contain`, `1.586:1` landscape) on a dark plate with the name/tier label below. This is a **5-card illustrative wallet** (a deliberate subset of the 8-card MVP scope), *not* a tiered roadmap roster. (The component still supports a "Coming soon" badge branch, but no card uses it currently.) Earlier drafts described an autoplay/drag carousel and a tier-by-tier roadmap with Coming-soon cards — both were dropped: the carousel cropped wide card logos (`object-cover`), and the roadmap framing was replaced by the simpler "your existing wallet" story. See decision `2026-06-21-supported-cards-photos-and-scope.md`.
 9. **Ecosystem marquee** — airlines / hotels / banks.
 10. **Built for** — audience framing.
 11. **Feature tabs** (`#features`) — the four engine tools "under the hood."
@@ -47,7 +47,7 @@ Alternating sections use the `banded` flag on `Bleed` (tinted `bg-card/20` + hai
 ## Known constraints
 
 - The Goal Simulator is currently a static mock (`goal-simulator.tsx`) — destinations and mile counts are hardcoded, not wired to a real optimizer. This is correct for the current "frontend shell, no backend yet" phase, but should not be confused with the real Simulation Engine once the backend exists.
-- Only 3 destinations (Singapore, London, New York) are wired in the simulator, matching the routes listed in `docs/prd/mvp_scope_1.md`.
+- Only 3 destinations (Singapore, London, New York) are wired in the simulator. These are now the canonical MVP routes — `docs/prd/mvp_scope_1.md` was reconciled to match the built product (an earlier PRD draft listed Dubai instead of New York; the product is the source of truth).
 
 ## Open questions for future UX work
 

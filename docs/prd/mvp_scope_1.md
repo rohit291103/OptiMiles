@@ -81,7 +81,12 @@ The MVP should support ONLY travel reward goals.
 
 ## Supported Goal Categories
 
-### A. Flight Redemption Goals
+All three categories below remain in MVP scope. **Flight Redemption is the
+category currently surfaced in the product** (the live Goal Simulator); Hotel
+and Lounge/Lifestyle goals are planned-but-not-yet-built — modeled in scope and
+schema, not yet exposed in the UI.
+
+### A. Flight Redemption Goals  *(surfaced in product)*
 
 Examples:
 
@@ -94,12 +99,17 @@ Examples:
 Supported routes initially:
 
 * India → Singapore
-* India → Dubai
 * India → London
+* India → New York
+
+> **Implementation note:** the landing-page simulator currently wires exactly
+> these three destinations (Singapore, London, New York) as a static mock. An
+> earlier scope draft listed Dubai instead of New York; the built product is the
+> source of truth — Dubai is a candidate route, not yet wired.
 
 ---
 
-### B. Hotel Stay Goals
+### B. Hotel Stay Goals  *(in scope, not yet surfaced)*
 
 Examples:
 
@@ -109,7 +119,7 @@ Examples:
 
 ---
 
-### C. Lounge + Lifestyle Goals
+### C. Lounge + Lifestyle Goals  *(in scope, not yet surfaced)*
 
 Examples:
 
@@ -136,9 +146,15 @@ Examples:
 
 # 3. Supported Credit Cards
 
-## Initial Card Universe: 15–20 Cards Maximum
+## Initial Card Universe: 8 Cards (MVP)
 
-The cards should satisfy:
+The MVP commits to a tight, hand-validated set of 8 cards — deliberately
+narrower than the broad "15–20 card" universe explored in research. This keeps
+reward modeling, transfer logic, and manual validation tractable while still
+spanning the strongest Indian travel-reward ecosystems. This list is the single
+source of truth and matches root `CLAUDE.md` → "Initial Supported Cards."
+
+The cards satisfy:
 
 * strong reward ecosystems
 * transfer partner support
@@ -147,37 +163,28 @@ The cards should satisfy:
 
 ---
 
-## Recommended Initial Card List
-
-### Premium Travel Cards
+## MVP Card List (8)
 
 * HDFC Infinia
 * HDFC Diners Black
-* Axis Magnus
-* Axis Atlas
-* Amex Platinum Travel
-* Amex MRCC
-* Amex Gold Charge
-* HSBC TravelOne
-
----
-
-### Mid-Tier Reward Cards
-
-* SBI Cashback
 * HDFC Regalia Gold
-* Axis Select
-* IDFC First Wealth
-* Yes Marquee
-* AU Zenith+
+* HSBC TravelOne
+* Axis Atlas
+* Axis Magnus
+* Amex Platinum Travel
+* SBI Cashback
 
----
+> **UI note:** the landing page's "cards you already carry" section shows a
+> 5-card illustrative wallet (Infinia, Diners Black, Regalia Gold, HSBC
+> TravelOne, Amex Platinum Travel) — a deliberate visual subset of this MVP
+> set, not the full scope. Axis Atlas, Axis Magnus, and SBI Cashback remain in
+> MVP scope but aren't pictured.
 
-### Airline/Travel Specific
-
-* Air India SBI Signature
-* Vistara IDFC
-* Vistara SBI Prime
+> **Deferred (post-MVP candidates):** Amex MRCC, Amex Gold Charge, Axis Select,
+> IDFC First Wealth, Yes Marquee, AU Zenith+, Air India SBI Signature, Vistara
+> IDFC, Vistara SBI Prime. These came out of ecosystem research but are out of
+> the initial 8-card scope to avoid breadth-too-early. Revisit once the core
+> engines are validated against the MVP set.
 
 ---
 
@@ -189,6 +196,7 @@ This set provides:
 * realistic optimization opportunities
 * enough combinational depth
 * manageable reward modeling complexity
+* a small enough surface to hand-validate every reward rule
 
 ---
 
