@@ -1,0 +1,23 @@
+# Transfer partners in MVP scope v2: KrisFlyer + Air India Maharaja Club ONLY.
+# (Emirates/Qatar dropped; Vistara merged into Air India; "Flying Returns"
+# renamed to Maharaja Club — mvp-scope-v2.md.)
+
+- slug: krisflyer
+  partner_name: Singapore Airlines
+  program_name: KrisFlyer
+  partner_type: airline
+  iata_code: SQ
+  alliance: Star Alliance
+  source: docs/prd/mvp-scope-v2.md (primary MVP program)
+  verified_on: 2026-07-04
+  needs_verification: false
+
+- slug: maharaja-club
+  partner_name: Air India
+  program_name: Maharaja Club
+  partner_type: airline
+  iata_code: AI
+  alliance: Star Alliance
+  source: docs/prd/mvp-scope-v2.md (secondary MVP program; ex-Flying Returns)
+  verified_on: 2026-07-04
+  needs_verification: false

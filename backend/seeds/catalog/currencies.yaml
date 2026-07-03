@@ -1,0 +1,73 @@
+# Reward currencies (schema v1.1, D-1). Transfer links attach HERE, not to cards.
+#
+# MODELING NOTE (decision-logged 2026-07-04): HDFC is seeded as TWO currencies
+# because the transfer entitlement differs by card tier — Infinia/Diners Black
+# transfer to KrisFlyer at 1:1 (research doc §1) while the Regalia tier
+# transfers at a worse ratio. A currency here means "a points pool with one
+# transfer entitlement", so tiers with different entitlements are different
+# currencies. This is the build plan §3.3 alternative to a premature card_id
+# override column.
+#
+# Every row: source + verified_on (build plan §6). needs_verification: true
+# means the value was seeded from general market knowledge, not the research
+# doc, and MUST be human-verified against the bank's current page before the
+# catalog is treated as trustworthy.
+
+- slug: hdfc-rp-premium
+  currency_name: HDFC Reward Points (Infinia/Diners tier)
+  issuer: HDFC
+  expiry_rules: 2 years from earning
+  source: docs/research/singapore_airlines_krisflyer_indian_credit_card_research_v1.md §1
+  verified_on: 2026-07-04
+  needs_verification: false
+
+- slug: hdfc-rp-regalia
+  currency_name: HDFC Reward Points (Regalia tier)
+  issuer: HDFC
+  expiry_rules: 2 years from earning
+  source: market knowledge — Regalia-tier transfer entitlement differs from Infinia tier
+  verified_on: 2026-07-04
+  needs_verification: true
+
+- slug: hsbc-reward-points
+  currency_name: HSBC Reward Points
+  issuer: HSBC
+  expiry_rules: 3 years from earning
+  source: market knowledge — HSBC TravelOne programme
+  verified_on: 2026-07-04
+  needs_verification: true
+
+- slug: axis-edge-miles
+  currency_name: EDGE Miles
+  issuer: Axis
+  expiry_rules: No expiry while card is active
+  source: docs/research/singapore_airlines_krisflyer_indian_credit_card_research_v1.md §1 (Atlas)
+  verified_on: 2026-07-04
+  needs_verification: false
+
+- slug: axis-edge-rewards
+  currency_name: EDGE Rewards
+  issuer: Axis
+  expiry_rules: No expiry while card is active
+  source: docs/research/singapore_airlines_krisflyer_indian_credit_card_research_v1.md §1 (Magnus)
+  verified_on: 2026-07-04
+  needs_verification: false
+
+- slug: amex-mr
+  currency_name: Membership Rewards
+  issuer: Amex
+  expiry_rules: No expiry while card is active
+  source: docs/research/singapore_airlines_krisflyer_indian_credit_card_research_v1.md §1
+  verified_on: 2026-07-04
+  needs_verification: false
+
+# Deliberate negative case (build plan §6): cashback is INR, not transferable
+# points. This currency must have ZERO transfer links — validate_catalog()
+# enforces it, and Stage 5 must yield no KrisFlyer opportunities for it.
+- slug: sbi-cashback-inr
+  currency_name: SBI Cashback (INR)
+  issuer: SBI
+  expiry_rules: Statement credit, no expiry
+  source: SBI Cashback card is a cashback product with no transfer partners (MVP scope v2)
+  verified_on: 2026-07-04
+  needs_verification: false

@@ -27,10 +27,19 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
+def _execute(sql: str) -> None:
+    """asyncpg prepares one command per statement — split multi-statement
+    blocks. Statements in this file must never contain ';' inside string
+    literals (keep table/column comments semicolon-free)."""
+    for statement in sql.split(";"):
+        if statement.strip():
+            op.execute(statement)
+
+
 def upgrade() -> None:
     # ── Catalog layer (dependency order per build plan §3.5) ──────────────
 
-    op.execute("""
+    _execute("""
         CREATE TABLE reward_currencies (
           id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
           currency_name  TEXT        NOT NULL UNIQUE,
@@ -44,7 +53,7 @@ def upgrade() -> None:
           'Bank points currencies (v1.1, D-1). Transfer relationships belong here, not to cards.';
     """)
 
-    op.execute("""
+    _execute("""
         CREATE TABLE transfer_partners (
           id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
           partner_name   TEXT        NOT NULL,
@@ -61,7 +70,7 @@ def upgrade() -> None:
           'Loyalty programs that Indian credit card points can be transferred into.';
     """)
 
-    op.execute("""
+    _execute("""
         CREATE TABLE cards (
           id                 UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
           bank               TEXT        NOT NULL,
@@ -86,7 +95,7 @@ def upgrade() -> None:
           'v1.1 (D-1): replaces points_currency TEXT. Card → currency → transfer links.';
     """)
 
-    op.execute("""
+    _execute("""
         CREATE TABLE reward_categories (
           id                 UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
           card_id            UUID        NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
@@ -106,7 +115,7 @@ def upgrade() -> None:
           'Max eligible spend/month at this rate. Beyond the cap, spend earns base_earn_rate.';
     """)
 
-    op.execute("""
+    _execute("""
         CREATE TABLE currency_transfer_partners (
           id                    UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
           currency_id           UUID    NOT NULL REFERENCES reward_currencies(id) ON DELETE CASCADE,
@@ -130,7 +139,7 @@ def upgrade() -> None:
           'NULL = uncapped. Recent bank transfer caps make this a real field.';
     """)
 
-    op.execute("""
+    _execute("""
         CREATE TABLE reward_milestones (
           id                   UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
           card_id              UUID        NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
@@ -153,7 +162,7 @@ def upgrade() -> None:
           'Bonus point thresholds and accelerators per card. Used in milestone projection.';
     """)
 
-    op.execute("""
+    _execute("""
         CREATE TABLE award_charts (
           id                    UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
           partner_id            UUID        NOT NULL REFERENCES transfer_partners(id) ON DELETE CASCADE,
@@ -178,7 +187,7 @@ def upgrade() -> None:
 
     # ── User layer (Supabase auth + RLS) ──────────────────────────────────
 
-    op.execute("""
+    _execute("""
         CREATE TABLE users (
           id                 UUID        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
           full_name          TEXT,
@@ -191,7 +200,7 @@ def upgrade() -> None:
           'Profile extending Supabase auth. Identity/email live in auth.users only.';
     """)
 
-    op.execute("""
+    _execute("""
         CREATE TABLE user_cards (
           id                       UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
           user_id                  UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -208,7 +217,7 @@ def upgrade() -> None:
           'Cards held by a user, with balances used as simulation starting points.';
     """)
 
-    op.execute("""
+    _execute("""
         CREATE TABLE user_goals (
           id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
           user_id             UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -237,7 +246,7 @@ def upgrade() -> None:
 
     # ── Simulation layer ──────────────────────────────────────────────────
 
-    op.execute("""
+    _execute("""
         CREATE TABLE spend_simulations (
           id               UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
           user_id          UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -250,7 +259,7 @@ def upgrade() -> None:
         );
     """)
 
-    op.execute("""
+    _execute("""
         CREATE TABLE simulation_line_items (
           id                   UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
           simulation_id        UUID        NOT NULL REFERENCES spend_simulations(id) ON DELETE CASCADE,
@@ -264,7 +273,7 @@ def upgrade() -> None:
           'NULL = left to the optimizer. Non-NULL = user pinned this spend to a card.';
     """)
 
-    op.execute("""
+    _execute("""
         CREATE TABLE simulation_results (
           id                            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
           simulation_id                 UUID        NOT NULL REFERENCES spend_simulations(id) ON DELETE CASCADE,
@@ -289,7 +298,7 @@ def upgrade() -> None:
 
     # ── Recommendation layer ──────────────────────────────────────────────
 
-    op.execute("""
+    _execute("""
         CREATE TABLE recommendation_outputs (
           id                    UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
           user_id               UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -320,7 +329,7 @@ def upgrade() -> None:
 
     # ── Indexes (db-schema-v1 §5; junction indexes re-pointed per v1.1) ───
 
-    op.execute("""
+    _execute("""
         CREATE INDEX idx_cards_bank        ON cards(bank);
         CREATE INDEX idx_cards_is_active   ON cards(is_active) WHERE is_active = TRUE;
         CREATE INDEX idx_rewcat_card_id    ON reward_categories(card_id);
@@ -353,7 +362,7 @@ def upgrade() -> None:
     # direct-from-frontend reads. Catalog tables stay RLS-off: admin-seeded,
     # served to clients via the API, never written by users.
 
-    op.execute("""
+    _execute("""
         ALTER TABLE users ENABLE ROW LEVEL SECURITY;
         CREATE POLICY users_own ON users FOR ALL
           USING (auth.uid() = id);
@@ -391,7 +400,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute("""
+    _execute("""
         DROP TABLE IF EXISTS recommendation_outputs;
         DROP TABLE IF EXISTS simulation_results;
         DROP TABLE IF EXISTS simulation_line_items;

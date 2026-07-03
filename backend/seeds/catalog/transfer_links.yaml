@@ -1,0 +1,116 @@
+# Currency → program transfer relationships (schema v1.1: currency_transfer_partners).
+# ratio_from : ratio_to = currency points consumed : partner miles credited.
+# max_transfer_points = per CALENDAR YEAR unless noted (Axis Group A caps,
+# research §2) — NULL/absent means uncapped.
+#
+# THE MOST DANGEROUS FILE IN THE REPO. A wrong ratio shipped confidently is
+# the product's existential failure (PRD risk 8-A). Review every row.
+#
+# NOTE vs older docs: db-schema-v1 §3.1 example rows showed Infinia/Atlas at
+# 2:1 — those were illustrative examples, superseded by the research doc's
+# ratios (Infinia 1:1, Atlas 1:2). Where they conflict, the research doc wins.
+
+- currency: hdfc-rp-premium
+  partner: krisflyer
+  ratio_from: 1
+  ratio_to: 1
+  min_transfer_points: 1000
+  transfer_fee_inr: 0
+  processing_days_min: 1
+  processing_days_max: 5
+  notes: Infinia/Diners Black tier, straightforward 1:1 (research §2 "HDFC Stability")
+  source: docs/research/singapore_airlines_krisflyer_indian_credit_card_research_v1.md §1
+  verified_on: 2026-07-04
+  needs_verification: false
+
+- currency: hdfc-rp-regalia
+  partner: krisflyer
+  ratio_from: 2
+  ratio_to: 1
+  min_transfer_points: 1000
+  transfer_fee_inr: 0
+  processing_days_min: 1
+  processing_days_max: 5
+  notes: Regalia-tier ratio is worse than Infinia tier — VERIFY before trusting
+  source: market knowledge; not covered by the research doc
+  verified_on: 2026-07-04
+  needs_verification: true
+
+- currency: hsbc-reward-points
+  partner: krisflyer
+  ratio_from: 1
+  ratio_to: 1
+  min_transfer_points: 1000
+  transfer_fee_inr: 0
+  processing_days_min: 1
+  processing_days_max: 7
+  notes: HSBC TravelOne airline transfer — VERIFY ratio and minimum
+  source: market knowledge; not covered by the research doc
+  verified_on: 2026-07-04
+  needs_verification: true
+
+- currency: axis-edge-miles
+  partner: krisflyer
+  ratio_from: 1
+  ratio_to: 2
+  min_transfer_points: 500
+  max_transfer_points: 30000
+  transfer_fee_inr: 0
+  processing_days_min: 1
+  processing_days_max: 3
+  notes: >-
+    Group A hard cap — 30,000 EDGE Miles per calendar year, i.e. max 60,000
+    KrisFlyer miles/year through this avenue (research §2 "Atlas Bottleneck").
+  source: docs/research/singapore_airlines_krisflyer_indian_credit_card_research_v1.md §1–2
+  verified_on: 2026-07-04
+  needs_verification: false
+
+- currency: axis-edge-rewards
+  partner: krisflyer
+  ratio_from: 5
+  ratio_to: 2
+  min_transfer_points: 500
+  transfer_fee_inr: 0
+  processing_days_min: 1
+  processing_days_max: 3
+  notes: >-
+    Standard Magnus 5:2. Research §1 confirms "strict annual caps into Group A"
+    but gives no figure for the standard tier (Burgundy is 2,00,000/yr) —
+    max_transfer_points left uncapped pending verification of the exact cap.
+  source: docs/research/singapore_airlines_krisflyer_indian_credit_card_research_v1.md §1
+  verified_on: 2026-07-04
+  needs_verification: true
+
+- currency: amex-mr
+  partner: krisflyer
+  ratio_from: 2
+  ratio_to: 1
+  min_transfer_points: 1000
+  transfer_fee_inr: 0
+  processing_days_min: 2
+  processing_days_max: 5
+  notes: Standard Amex India MR transfer terms for premium cards (research footnote)
+  source: docs/research/singapore_airlines_krisflyer_indian_credit_card_research_v1.md §1
+  verified_on: 2026-07-04
+  needs_verification: false
+
+# ── Maharaja Club (secondary program) ────────────────────────────────────
+# Deliberately sparse: the research doc is KrisFlyer-only, and absent data
+# fails honestly ("unsupported route") while wrong data lies. Only the
+# best-documented link is seeded; expanding Maharaja Club coverage is a
+# tracked next step, not an oversight.
+
+- currency: hdfc-rp-premium
+  partner: maharaja-club
+  ratio_from: 1
+  ratio_to: 1
+  min_transfer_points: 1000
+  transfer_fee_inr: 0
+  processing_days_min: 1
+  processing_days_max: 5
+  notes: VERIFY — seeded from market knowledge, not the research doc
+  source: market knowledge; Maharaja Club not covered by the research doc
+  verified_on: 2026-07-04
+  needs_verification: true
+
+# sbi-cashback-inr: NO rows here, by design (the negative case).

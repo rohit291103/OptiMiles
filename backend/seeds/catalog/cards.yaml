@@ -1,0 +1,270 @@
+# The 8 MVP cards (mvp-scope-v2.md). earn rates are points per ₹100.
+#
+# SEEDING POLICY (decision-logged 2026-07-04): earn rates are seeded
+# CONSERVATIVELY — every card gets a `default` category at its base rate;
+# accelerated categories are added only where documented, so projections
+# under-promise rather than over-promise. Caps are spend-INR per month
+# (schema semantics: beyond the cap, spend earns base rate).
+
+- slug: hdfc-infinia
+  bank: HDFC
+  card_name: Infinia Metal
+  card_network: Visa
+  currency: hdfc-rp-premium
+  annual_fee_inr: 12500
+  joining_fee_inr: 12500
+  base_earn_rate: "3.33"
+  min_income_inr: 4800000
+  has_lounge_access: true
+  source: docs/research/singapore_airlines_krisflyer_indian_credit_card_research_v1.md §1 (5 RP per ₹150 ≈ 3.33/₹100); fee per db-schema-v1 example
+  verified_on: 2026-07-04
+  needs_verification: false
+  categories:
+    - category_slug: default
+      category_label: All other spend
+      earn_rate: "3.33"
+      source: research §1 base rate
+      verified_on: 2026-07-04
+      needs_verification: false
+    - category_slug: travel
+      category_label: Travel via SmartBuy portal
+      earn_rate: "16.65"
+      monthly_cap_inr: 150000
+      notes: >-
+        5X of base via SmartBuy (research §2 says "up to 10X"; 5X seeded
+        conservatively). Cap seeded as ₹1.5L/month spend — research §1's
+        "1.5L RP monthly cap" reads as a POINTS cap; VERIFY unit and value.
+      source: docs/research/...krisflyer...research_v1.md §1–2 (SmartBuy multiplier)
+      verified_on: 2026-07-04
+      needs_verification: true
+  milestones: []
+
+- slug: hdfc-diners-black
+  bank: HDFC
+  card_name: Diners Club Black Metal
+  card_network: Diners Club
+  currency: hdfc-rp-premium
+  annual_fee_inr: 10000
+  joining_fee_inr: 10000
+  base_earn_rate: "3.33"
+  min_income_inr: 2100000
+  has_lounge_access: true
+  source: docs/research/...krisflyer...research_v1.md §1 (rate + ₹10,000 fee)
+  verified_on: 2026-07-04
+  needs_verification: false
+  categories:
+    - category_slug: default
+      category_label: All other spend
+      earn_rate: "3.33"
+      source: research §1 base rate
+      verified_on: 2026-07-04
+      needs_verification: false
+    - category_slug: travel
+      category_label: Travel via SmartBuy portal
+      earn_rate: "16.65"
+      monthly_cap_inr: 150000
+      notes: 5X via SmartBuy, seeded conservatively — same caveats as Infinia
+      source: docs/research/...krisflyer...research_v1.md §2
+      verified_on: 2026-07-04
+      needs_verification: true
+  milestones:
+    - milestone_type: spend_bonus
+      spend_threshold_inr: 400000
+      bonus_points: 10000
+      period: quarterly
+      description: 10,000 RP on ₹4L quarterly spend
+      source: docs/research/...krisflyer...research_v1.md §4
+      verified_on: 2026-07-04
+      needs_verification: false
+
+- slug: hdfc-regalia-gold
+  bank: HDFC
+  card_name: Regalia Gold
+  card_network: Visa
+  currency: hdfc-rp-regalia
+  annual_fee_inr: 2500
+  joining_fee_inr: 2500
+  base_earn_rate: "2.67"
+  min_income_inr: 1200000
+  has_lounge_access: true
+  source: market knowledge (4 RP per ₹150 ≈ 2.67/₹100) — NOT in the research doc
+  verified_on: 2026-07-04
+  needs_verification: true
+  categories:
+    - category_slug: default
+      category_label: All other spend
+      earn_rate: "2.67"
+      source: market knowledge — VERIFY
+      verified_on: 2026-07-04
+      needs_verification: true
+  milestones: []
+
+- slug: hsbc-travelone
+  bank: HSBC
+  card_name: TravelOne
+  card_network: Visa
+  currency: hsbc-reward-points
+  annual_fee_inr: 4999
+  joining_fee_inr: 4999
+  base_earn_rate: "2.00"
+  min_income_inr: 1500000
+  has_lounge_access: true
+  source: market knowledge — NOT in the research doc; VERIFY all values
+  verified_on: 2026-07-04
+  needs_verification: true
+  categories:
+    - category_slug: default
+      category_label: All other spend
+      earn_rate: "2.00"
+      source: market knowledge — VERIFY
+      verified_on: 2026-07-04
+      needs_verification: true
+    - category_slug: travel
+      category_label: Flights, hotels and travel spend
+      earn_rate: "4.00"
+      notes: Accelerated travel earning — VERIFY rate and any cap
+      source: market knowledge — VERIFY
+      verified_on: 2026-07-04
+      needs_verification: true
+  milestones: []
+
+- slug: axis-atlas
+  bank: Axis
+  card_name: Atlas
+  card_network: Visa
+  currency: axis-edge-miles
+  annual_fee_inr: 5000
+  joining_fee_inr: 5000
+  base_earn_rate: "2.00"
+  min_income_inr: 1200000
+  has_lounge_access: true
+  source: docs/research/...krisflyer...research_v1.md §1 (fee ₹5,000 + GST); earn structure market knowledge
+  verified_on: 2026-07-04
+  needs_verification: true
+  categories:
+    - category_slug: default
+      category_label: All other spend
+      earn_rate: "2.00"
+      source: market knowledge (2 EDGE Miles/₹100) — VERIFY
+      verified_on: 2026-07-04
+      needs_verification: true
+    - category_slug: travel
+      category_label: Direct airlines, hotels and travel
+      earn_rate: "5.00"
+      monthly_cap_inr: 200000
+      notes: 5 EDGE Miles/₹100 up to ₹2L/month, then base rate — VERIFY
+      source: market knowledge — VERIFY
+      verified_on: 2026-07-04
+      needs_verification: true
+  milestones:
+    - milestone_type: spend_bonus
+      spend_threshold_inr: 300000
+      bonus_points: 2500
+      period: annual
+      description: Tier milestone (research §1 "tiered milestone rewards") — VERIFY thresholds
+      source: market knowledge; research §1 confirms tiered structure only
+      verified_on: 2026-07-04
+      needs_verification: true
+    - milestone_type: welcome_bonus
+      bonus_points: 2500
+      period: one_time
+      description: Welcome EDGE Miles on first spend — VERIFY
+      source: market knowledge — VERIFY
+      verified_on: 2026-07-04
+      needs_verification: true
+
+- slug: axis-magnus
+  bank: Axis
+  card_name: Magnus
+  card_network: Visa
+  currency: axis-edge-rewards
+  annual_fee_inr: 12500
+  joining_fee_inr: 12500
+  base_earn_rate: "6.00"
+  min_income_inr: 2400000
+  has_lounge_access: true
+  source: research §1 covers Magnus tiers; standard-tier fee/rate from market knowledge (12 EDGE pts/₹200)
+  verified_on: 2026-07-04
+  needs_verification: true
+  categories:
+    - category_slug: default
+      category_label: All spend (tiered earning above monthly threshold not modeled)
+      earn_rate: "6.00"
+      notes: >-
+        Magnus earns accelerated points above a monthly spend threshold
+        (research §1 "tiered milestones based on spend"); MVP seeds the flat
+        base rate only — conservative by policy.
+      source: market knowledge — VERIFY
+      verified_on: 2026-07-04
+      needs_verification: true
+  milestones: []
+
+- slug: amex-platinum-travel
+  bank: Amex
+  card_name: Platinum Travel
+  card_network: Amex
+  currency: amex-mr
+  annual_fee_inr: 5000
+  joining_fee_inr: 3500
+  base_earn_rate: "2.00"
+  min_income_inr: 600000
+  has_lounge_access: true
+  source: research §1–2 (milestone-driven); fee/base from market knowledge (1 MR/₹50). NOTE — db-schema-v1's ₹60,000 example fee was the Platinum CHARGE card, not Platinum Travel.
+  verified_on: 2026-07-04
+  needs_verification: true
+  categories:
+    - category_slug: default
+      category_label: All eligible spend
+      earn_rate: "2.00"
+      source: market knowledge (1 MR per ₹50) — VERIFY
+      verified_on: 2026-07-04
+      needs_verification: true
+  milestones:
+    - milestone_type: spend_bonus
+      spend_threshold_inr: 190000
+      bonus_points: 15000
+      period: annual
+      description: Annual milestone tier 1 — VERIFY thresholds; bonuses earned pre-March-2026 require manual claiming (research §1)
+      source: research §2 "Amex Milestone Maximization" confirms structure; figures market knowledge
+      verified_on: 2026-07-04
+      needs_verification: true
+    - milestone_type: spend_bonus
+      spend_threshold_inr: 400000
+      bonus_points: 25000
+      period: annual
+      description: Annual milestone tier 2 — VERIFY
+      source: research §2 confirms structure; figures market knowledge
+      verified_on: 2026-07-04
+      needs_verification: true
+
+# Deliberate negative case: cashback product, no transferable currency.
+# Must yield ZERO KrisFlyer opportunities in Stage 5.
+- slug: sbi-cashback
+  bank: SBI
+  card_name: Cashback
+  card_network: Visa
+  currency: sbi-cashback-inr
+  annual_fee_inr: 999
+  joining_fee_inr: 999
+  base_earn_rate: "1.00"
+  min_income_inr: 400000
+  has_lounge_access: false
+  source: MVP scope v2 (deliberate cashback contrast card); rates market knowledge
+  verified_on: 2026-07-04
+  needs_verification: true
+  categories:
+    - category_slug: default
+      category_label: Offline spend (1% cashback)
+      earn_rate: "1.00"
+      source: market knowledge — VERIFY
+      verified_on: 2026-07-04
+      needs_verification: true
+    - category_slug: online
+      category_label: Online spend (5% cashback)
+      earn_rate: "5.00"
+      monthly_cap_inr: 100000
+      notes: Cashback capped monthly — VERIFY cap value
+      source: market knowledge — VERIFY
+      verified_on: 2026-07-04
+      needs_verification: true
+  milestones: []

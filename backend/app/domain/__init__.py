@@ -49,6 +49,7 @@ from app.domain.opportunity import (
 )
 from app.domain.ranking import RankedStrategy, ScoreBreakdown
 from app.domain.recommendation import FinalRecommendation
+from app.domain.resolution import GoalResolution, UnsupportedRoute
 from app.domain.simulation import MonthLedgerEntry, SimulationOutcome, TransferExecution
 from app.domain.strategy import CandidateStrategy, ExpectedMilestone, TransferPlanItem
 
@@ -69,6 +70,7 @@ __all__ = [
     "ExpectedMilestone",
     "FeasibilityVerdict",
     "FinalRecommendation",
+    "GoalResolution",
     "GoalStatus",
     "GoalType",
     "MilestonePeriod",
@@ -98,5 +100,6 @@ __all__ = [
     "TransferPath",
     "TransferPlanItem",
     "TravelGoal",
+    "UnsupportedRoute",
     "WalletCard",
 ]

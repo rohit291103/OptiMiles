@@ -1,0 +1,70 @@
+# KrisFlyer award chart — MVP routes × cabins (one-way, per passenger).
+#
+# Values originate from db-schema-v1 §3.1's example table, which was itself
+# illustrative — every row here is needs_verification until checked against
+# the live KrisFlyer award chart. The three MVP routes (Singapore, London,
+# New York from India — mvp-scope-v2) × business are the validate_catalog()
+# coverage requirement.
+#
+# Maharaja Club rows are deliberately ABSENT: no verified data yet, and an
+# absent row fails honestly as "unsupported route" while a wrong row lies.
+
+- partner: krisflyer
+  origin_region: India
+  destination_region: Southeast Asia
+  cabin_class: business
+  award_type: saver
+  miles_required: 35000
+  taxes_fees_inr: 8500
+  effective_date: 2026-07-04
+  source: db-schema-v1 §3.1 example table — VERIFY vs live KrisFlyer chart
+  verified_on: 2026-07-04
+  needs_verification: true
+
+- partner: krisflyer
+  origin_region: India
+  destination_region: Southeast Asia
+  cabin_class: first
+  award_type: saver
+  miles_required: 47500
+  taxes_fees_inr: 9000
+  effective_date: 2026-07-04
+  source: db-schema-v1 §3.1 example table — VERIFY
+  verified_on: 2026-07-04
+  needs_verification: true
+
+- partner: krisflyer
+  origin_region: India
+  destination_region: Southeast Asia
+  cabin_class: economy
+  award_type: saver
+  miles_required: 16000
+  taxes_fees_inr: 6500
+  effective_date: 2026-07-04
+  source: extrapolated from db-schema-v1 example ratios — VERIFY
+  verified_on: 2026-07-04
+  needs_verification: true
+
+- partner: krisflyer
+  origin_region: India
+  destination_region: Europe
+  cabin_class: business
+  award_type: saver
+  miles_required: 67500
+  taxes_fees_inr: 32000
+  effective_date: 2026-07-04
+  source: db-schema-v1 §3.1 example table — VERIFY
+  verified_on: 2026-07-04
+  needs_verification: true
+
+- partner: krisflyer
+  origin_region: India
+  destination_region: North America
+  cabin_class: business
+  award_type: saver
+  miles_required: 84500
+  taxes_fees_inr: 38000
+  effective_date: 2026-07-04
+  source: db-schema-v1 §3.1 example table — VERIFY
+  verified_on: 2026-07-04
+  needs_verification: true
