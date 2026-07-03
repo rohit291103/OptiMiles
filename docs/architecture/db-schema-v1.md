@@ -1,7 +1,17 @@
 # OptiMILES — Database Schema v1
 **Document Type:** Backend Architecture  
-**Version:** 1.0.0  
+**Version:** 1.0.0 — **amended by v1.1, see banner**  
 **Status:** MVP Draft  
+
+> **v1.1 AMENDMENT (2026-07-03, decided):** the authoritative deltas live in
+> [`backend-build-plan-v1.md`](backend-build-plan-v1.md) §3 — (1) new `reward_currencies`
+> table; (2) `cards.points_currency` TEXT → `reward_currency_id` FK; (3)
+> `card_transfer_partners` replaced by **`currency_transfer_partners`** (transfer
+> relationships belong to currencies, not cards — RKE spec AD-04, build plan D-1);
+> (4) lineage columns (`catalog_snapshot_version`, `engine_version`) on
+> `simulation_results` / `recommendation_outputs`. No migration has ever run, so the
+> amendment applies to the initial DDL. Fold into a `db-schema-v2.md` at leisure.
+
 **Focus:** Singapore Airlines KrisFlyer · Indian Travel Credit Cards · Reward Optimization  
 
 ---

@@ -1,5 +1,11 @@
 # OptiMILES MVP Scope v1
 
+> **SUPERSEDED (2026-07-03):** this document is retained as history. The canonical
+> scope is now [`mvp-scope-v2.md`](mvp-scope-v2.md) (mirrored from Notion "OptiMiles
+> MVP Scope v2" and reconciled to the built product). Key v2 changes: airlines
+> narrowed to KrisFlyer + Air India Maharaja Club, ICICI Rewards dropped,
+> primary-user definition added, 30s performance target, six core capabilities.
+
 **Document Path:** `/docs/prd/mvp-scope-v1.md`
 **Version:** v1
 **Product:** OptiMILES

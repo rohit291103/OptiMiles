@@ -10,3 +10,11 @@
 .design-sync/node_modules
 .ds-sync/
 ds-bundle/
+
+# Python / backend
+backend/.venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+backend/.env

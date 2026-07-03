@@ -1,0 +1,24 @@
+# Decision Log — Backend Build Plan v1, Schema v1.1 (Reward Currencies), CLAUDE.md Build Rules
+
+**Date:** 2026-07-03
+**Area:** backend / architecture
+
+## Context
+
+With the docs corpus complete and reconciled (execution blueprint v1.1, Scope v2, engine specs, domain model — see the two earlier 2026-07-03 entries), the user asked for an architecture verdict ("are we building/thinking right?"), a single backend-and-database plan document pointing at the governing docs, build rules wired into `CLAUDE.md`, and a call on the open reward-currency schema question ("choose best you think").
+
+## Decisions
+
+1. **Architecture verdict recorded: sound — proceed to build.** Assessment written into `backend-build-plan-v1.md` §0. Strengths: deterministic-core/AI-edges is the right architecture for a trust product; five-engine modular monolith right-sized; scope small enough to hand-validate every reward rule; docs mutually consistent. Watchouts: documentation is now ahead of code (the build plan is declared the **last** planning doc — Valuation/Simulation specs will be written as docstrings + tests, not standalone docs); the real product risk is seed-data correctness, not code; greedy allocation vs. milestone/cap interactions needs adversarial tests early; RKE's full ambition (merchants/promotions/scraping/versioning) must not leak into MVP scaffolding.
+2. **`docs/architecture/backend-build-plan-v1.md` created as the backend entry-point doc.** Contains: governing-documents map (this plan points, those docs govern), locked decisions D-1…D-7, the schema v1.1 amendment DDL, backend repo layout (engines DB-free; only `knowledge/` + `repositories/` touch the DB; only `ai_reasoning/` touches an LLM), 8 sequential build phases with exit criteria, seed-data rules (every row carries `source` + `verified_on`; line-by-line human review; `validate_catalog()` in CI), a 6-endpoint API surface, and MVP definition-of-done.
+3. **Schema v1.1: Reward Currency adopted as a first-class entity** (the "choose best" call — build plan D-1, RKE spec AD-04). New `reward_currencies` table; `cards.points_currency` TEXT → `reward_currency_id` FK; `card_transfer_partners` replaced by **`currency_transfer_partners`** keyed on currency (+ `max_transfer_points` column, reflecting real bank transfer caps). Rationale: HDFC's three cards share one currency — per-card transfer rows store the same ratio 3× and will drift; changing this pre-code is ~free, post-code a painful migration. Card-level ratio overrides deferred until the first *validated* real exception. Also locked: lineage columns (`catalog_snapshot_version`, `engine_version`) on results tables (D-2). Since no migration has ever run, amendments apply to the initial DDL; `db-schema-v1.md` carries a banner pointing to the plan's §3 as authoritative until a v2 doc consolidates.
+4. **Other locked build decisions:** PydanticAI for the two LLM calls, LangGraph deferred (D-3); async SQLAlchemy 2.x + Alembic on Supabase Postgres, RLS kept as defense-in-depth (D-4); two-part response API — structured results first, narration second — as the *planned* shape given Scope v2's 30s budget (D-5); uv/pytest/ruff/mypy-strict-on-engines, DB-free fixture-tested engines (D-6); no OR-Tools/NetworkX in the MVP build — greedy first, escape hatch behind `generate_candidates()` (D-7).
+5. **`CLAUDE.md` updated for the build phase:** (a) new **"Backend Build Rules (Phase 1)"** section — canonical doc pointers + 8 hard rules (five-engine boundary, fixed implementation order, DB/LLM access confinement, currency-level transfers, config-not-code for reward rules, lineage persistence, sync 30s pipeline, determinism as a standing test); (b) the long-pending LLM "orchestration" bullet amended to "conversational orchestration only — pipeline orchestration is deterministic code"; (c) AI-layer stack annotated (LangGraph deferred) and optimization layer annotated (heuristics first); (d) **Current Development Phase bumped: Phase 0 → Phase 1 — Backend Foundation**, with "no more planning documents" listed as an explicit NOT.
+6. **Errata:** the previous decision entry's claim that CLAUDE.md's "Initial Focus Areas" listed Emirates/Qatar/Vistara was wrong (that list was PRD-v1-only); corrected in place same-day in both the decision entry and the tracker.
+
+## Not done (deferred)
+
+- **`db-schema-v2.md` consolidation** — the v1 doc + banner + build-plan §3 is sufficient to build from; consolidate when convenient, not blocking.
+- **Backend code** — Phase 0 (skeleton) is the next unit of work; nothing scaffolded in this session.
+- **Notion-side corrections** (RED-001 AI-assisted marker, missing simulation stage, engine→module naming) — still pending; Claude can push via the connector on request.
+- **Frontend simulator wiring** — build plan Phase 7, after the pipeline exists.

@@ -141,7 +141,7 @@ The system should rely primarily on:
 
 LLMs should primarily assist with:
 
-* orchestration
+* conversational orchestration only (the goal-clarification loop) — **pipeline orchestration is deterministic code**, per `docs/architecture/system-execution-flow-v1.md` §0.2
 * summarization
 * explanation
 * intent extraction
@@ -202,16 +202,16 @@ Avoid:
 
 ## AI Layer
 
-* OpenAI / Gemini
-* LangGraph
-* PydanticAI
+* OpenAI / Gemini (provider behind one config setting, used only inside `ai_reasoning/`)
+* PydanticAI (the two structured LLM calls: intent extraction, narration)
+* LangGraph — **deferred**; adopt only if the clarification loop grows real branching (build plan D-3)
 
 ---
 
 ## Optimization Layer
 
-* OR-Tools
-* NetworkX
+* Greedy heuristics first (build plan D-7)
+* OR-Tools / NetworkX — only behind `generate_candidates()` when a real failing case demands it, never speculatively
 
 ---
 
@@ -285,6 +285,28 @@ Responsible for:
 * recommendation summaries
 
 NOT direct reward calculations.
+
+---
+
+# Backend Build Rules (Phase 1)
+
+The backend is built to a locked plan. **Entry point: `docs/architecture/backend-build-plan-v1.md`** — read it before touching `backend/`. Canonical references:
+
+* Pipeline & boundaries: `docs/architecture/system-execution-flow-v1.md` (v1.1) — 11 stages; LLM only at Stage 1 (intent, re-validated) and Stage 10 (narration, number-echo-validated with template fallback); Stages 2–9/11 deterministic and replayable from a versioned catalog snapshot.
+* Scope: `docs/prd/mvp-scope-v2.md` (canonical; v1 is superseded). Vocabulary: `docs/architecture/core-domain-model-v1.md`.
+* Schema: `docs/architecture/db-schema-v1.md` **plus the v1.1 amendment in the build plan §3** (reward currencies, currency-level transfer links, lineage columns).
+* Engine behavior: `reward-knowledge-engine-spec-v1.md`, `optimization-engine-spec-v1.md`, `recommendation-engine-design-v1.md`.
+
+Hard rules while building:
+
+1. **The five engines are the module boundary.** Opportunity enumeration lives in `valuation/opportunities.py`; ranking in `optimization/ranking.py`. No sixth engine, no new top-level module without a decision-log entry.
+2. **Implementation order is fixed** (build plan §5): domain types → Knowledge (+ `validate_catalog()` + seeds) → Valuation → Simulation → Optimization → AI Reasoning → pipeline/API. Each engine lands fixture-tested (`tdd` skill, mandatory) before the next begins.
+3. **Only `knowledge/` and `repositories/` touch the database; only `ai_reasoning/` touches an LLM.** Valuation/Simulation/Optimization are pure functions over the `PlanningContext` snapshot.
+4. **Transfer relationships belong to reward currencies, not cards** (build plan D-1). Cards reference their currency; eligibility = card → currency → transfer links.
+5. **Reward rules are config, not code:** catalog changes = seed/DB rows; ranking weights = versioned config file. Every seed row carries `source` + `verified_on`; seed PRs get line-by-line human review.
+6. **Persist lineage:** `catalog_snapshot_version` + `engine_version` on every `simulation_results` / `recommendation_outputs` row.
+7. **Sync single-request pipeline, no queues/workers/events.** 30-second budget (Scope v2); two-part response (structured first, narration second) is the planned API shape.
+8. **Determinism is a test:** same goal + user context + snapshot version ⇒ byte-identical results. Keep that end-to-end test green from Phase 6 onward.
 
 ---
 
@@ -427,18 +449,18 @@ The product should feel:
 # Current Development Phase
 
 Current phase:
-Phase 0 — Product Definition & Architecture
+Phase 1 — Backend Foundation (entered 2026-07-03; Phase 0 docs complete)
 
 Current priorities:
 
-* MVP scope refinement
-* reward ecosystem modeling
-* architecture clarity
-* UX flow definition
-* documentation discipline
+* executing `docs/architecture/backend-build-plan-v1.md` phase by phase (skeleton → Knowledge Engine + validated seeds → Valuation → Simulation → Optimization → AI Reasoning → pipeline/API)
+* seed-data correctness (the highest-review-bar artifact in the repo)
+* fixture-tested engines (TDD mandatory for all calculation logic)
+* documentation discipline (tracker + decision log stay current as code lands)
 
 NOT:
 
+* more planning documents (the build plan is the last one — write further specs as docstrings + tests)
 * scaling infrastructure
 * advanced agents
 * production optimization
