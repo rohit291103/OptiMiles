@@ -23,34 +23,34 @@ def _goal(snapshot: CatalogSnapshot, **intent_overrides: object) -> TravelGoal:
 
 
 def test_golden_singapore_business_for_two(snapshot: CatalogSnapshot) -> None:
-    """35,000 chart miles × 2 passengers = 70,000; 5% buffer = 3,500 (build
-    plan §8's '70k+buffer KrisFlyer requirement')."""
+    """45,000 chart miles (post-Nov-2025 Zone 6 saver) × 2 passengers =
+    90,000; 5% buffer = 4,500."""
     goal = _goal(snapshot)
     requirement = estimate_requirement(goal, snapshot, buffer_pct=5.0)
 
-    assert requirement.chart_miles_per_passenger == 35000
-    assert requirement.miles_required_total == 70000
-    assert requirement.buffer_miles == 3500
-    assert requirement.taxes_fees_inr_estimate == 8500 * 2
+    assert requirement.chart_miles_per_passenger == 45000
+    assert requirement.miles_required_total == 90000
+    assert requirement.buffer_miles == 4500
+    assert requirement.taxes_fees_inr_estimate == 8000 * 2
     assert requirement.target_program_id == seed_id("partner", "krisflyer")
     assert requirement.target_program_name == "KrisFlyer"
     assert requirement.stale_chart is False
 
 
 def test_buffer_rounds_up_never_down(snapshot: CatalogSnapshot) -> None:
-    """A buffer that rounds down understates the safety margin. 35,000 × 3.3%
-    = 1,155.0? No — 1155 exactly; use 1 passenger × 3.33% = 1,165.5 → 1,166."""
+    """A buffer that rounds down understates the safety margin:
+    1 passenger × 45,000 × 3.33% = 1,498.5 → must ceil to 1,499."""
     goal = _goal(snapshot, num_passengers=1)
     requirement = estimate_requirement(goal, snapshot, buffer_pct=3.33)
-    assert requirement.buffer_miles == 1166
+    assert requirement.buffer_miles == 1499
 
 
 def test_single_passenger_economy(snapshot: CatalogSnapshot) -> None:
     goal = _goal(snapshot, cabin_class="economy", num_passengers=1)
     requirement = estimate_requirement(goal, snapshot, buffer_pct=5.0)
-    assert requirement.chart_miles_per_passenger == 16000
-    assert requirement.miles_required_total == 16000
-    assert requirement.buffer_miles == 800
+    assert requirement.chart_miles_per_passenger == 19000
+    assert requirement.miles_required_total == 19000
+    assert requirement.buffer_miles == 950
 
 
 def test_locked_chart_row_missing_fails_loudly(snapshot: CatalogSnapshot) -> None:

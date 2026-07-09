@@ -4,6 +4,7 @@
 **Version:** v1.0
 **Status:** Active
 **Source:** Mirrored and consolidated from two Notion docs (2026-06-28) on 2026-07-03. Per [system-execution-flow-v1.md](system-execution-flow-v1.md) §0.3 and root `CLAUDE.md`'s five-system decomposition, "Strategy Generation Engine" and "Strategy Ranking Engine" are **modules of the Optimization Engine**, not standalone engines. This spec covers the whole engine: feasibility (`optimization/feasibility.py`), generation (`optimization/strategies.py`), and ranking (`optimization/ranking.py`) — blueprint Stages 6, 7 and 9.
+**Also see:** [strategy-ranking-engine-design-v1.md](strategy-ranking-engine-design-v1.md) — a newer (2026-07-03) Notion draft of the ranking module with additional architecture decisions (AD-01–06) and business rules (BR-01–08) not yet folded into §3 below; consult both until merged.
 
 ---
 

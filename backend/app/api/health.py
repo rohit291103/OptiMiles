@@ -1,11 +1,15 @@
 """GET /health — liveness + catalog snapshot version (build plan §7)."""
 
+import logging
+
 from fastapi import APIRouter
 from pydantic import BaseModel
 
+from app.api.deps import get_snapshot
 from app.config import ENGINE_VERSION
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 class HealthResponse(BaseModel):
@@ -16,10 +20,15 @@ class HealthResponse(BaseModel):
 
 @router.get("/health")
 async def health() -> HealthResponse:
-    # catalog_snapshot_version stays None until the Knowledge Engine lands
-    # (build-plan Phase 1) and a seeded catalog can be loaded.
+    # Liveness must not depend on the DB: report the snapshot version when it
+    # loads, but a DB hiccup returns status=ok with a null version, not a 500.
+    version: str | None = None
+    try:
+        version = (await get_snapshot()).version
+    except Exception:
+        logger.warning("health: catalog snapshot unavailable", exc_info=True)
     return HealthResponse(
         status="ok",
         engine_version=ENGINE_VERSION,
-        catalog_snapshot_version=None,
+        catalog_snapshot_version=version,
     )

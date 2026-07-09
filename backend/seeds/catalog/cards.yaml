@@ -1,4 +1,6 @@
-# The 8 MVP cards (mvp-scope-v2.md). earn rates are points per ₹100.
+# The 9 supported cards (mvp-scope-v2.md as amended by the 2026-07-04
+# catalog-expansion decision: Magnus standard → Magnus Burgundy, Amex
+# Platinum Charge added). earn rates are points per ₹100.
 #
 # SEEDING POLICY (decision-logged 2026-07-04): earn rates are seeded
 # CONSERVATIVELY — every card gets a `default` category at its base rate;
@@ -109,23 +111,24 @@
   base_earn_rate: "2.00"
   min_income_inr: 1500000
   has_lounge_access: true
-  source: market knowledge — NOT in the research doc; VERIFY all values
+  source: hsbc.co.in TravelOne rewards page + magnify.club review 2026 (fee ₹4,999 confirmed)
   verified_on: 2026-07-04
-  needs_verification: true
+  needs_verification: false
   categories:
     - category_slug: default
       category_label: All other spend
       earn_rate: "2.00"
-      source: market knowledge — VERIFY
+      notes: 2 RP/₹100, uncapped (confirmed 2026-07-04 web pass)
+      source: hsbc.co.in TravelOne rewards page; magnify.club TravelOne review 2026
       verified_on: 2026-07-04
-      needs_verification: true
+      needs_verification: false
     - category_slug: travel
-      category_label: Flights, hotels and travel spend
+      category_label: Flights, travel aggregators and foreign-currency spend
       earn_rate: "4.00"
-      notes: Accelerated travel earning — VERIFY rate and any cap
-      source: market knowledge — VERIFY
+      notes: 4 RP/₹100 on flights/OTA/forex, uncapped (confirmed 2026-07-04 web pass)
+      source: hsbc.co.in TravelOne rewards page; magnify.club TravelOne review 2026
       verified_on: 2026-07-04
-      needs_verification: true
+      needs_verification: false
   milestones: []
 
 - slug: axis-atlas
@@ -138,9 +141,14 @@
   base_earn_rate: "2.00"
   min_income_inr: 1200000
   has_lounge_access: true
-  source: docs/research/...krisflyer...research_v1.md §1 (fee ₹5,000 + GST); earn structure market knowledge
+  acquirable: false
+  notes: >-
+    DISCONTINUED for new applicants as of 2026 (existing holders keep all
+    benefits) — acquirable: false keeps Stage 7's one-new-card archetype
+    from ever recommending acquisition.
+  source: paisabazaar.com/axis-bank/atlas-credit-card + cardinsider.com Atlas review (2026); fee also research doc §1
   verified_on: 2026-07-04
-  needs_verification: true
+  needs_verification: false
   categories:
     - category_slug: default
       category_label: All other spend
@@ -161,40 +169,73 @@
       spend_threshold_inr: 300000
       bonus_points: 2500
       period: annual
-      description: Tier milestone (research §1 "tiered milestone rewards") — VERIFY thresholds
-      source: market knowledge; research §1 confirms tiered structure only
+      description: Silver tier — 2,500 EDGE Miles at ₹3L annual spend (confirmed by paisabazaar/cardinsider Atlas reviews 2026)
+      source: paisabazaar.com/axis-bank/atlas-credit-card + cardinsider.com Atlas review (2026)
       verified_on: 2026-07-04
-      needs_verification: true
+      needs_verification: false
     - milestone_type: welcome_bonus
       bonus_points: 2500
       period: one_time
-      description: Welcome EDGE Miles on first spend — VERIFY
-      source: market knowledge — VERIFY
+      description: 2,500 EDGE Miles on first transaction within 37 days of setup
+      source: paisabazaar.com/axis-bank/atlas-credit-card (2026)
       verified_on: 2026-07-04
-      needs_verification: true
+      needs_verification: false
+    - milestone_type: spend_bonus
+      spend_threshold_inr: 750000
+      bonus_points: 2500
+      period: annual
+      description: Gold tier — +2,500 EDGE Miles at ₹7.5L cumulative annual spend (5,000 total incl. Silver)
+      source: paisabazaar.com/axis-bank/atlas-credit-card + cardinsider.com Atlas review (2026)
+      verified_on: 2026-07-04
+      needs_verification: false
+    - milestone_type: spend_bonus
+      spend_threshold_inr: 1500000
+      bonus_points: 5000
+      period: annual
+      description: Platinum tier — +5,000 EDGE Miles at ₹15L cumulative annual spend (10,000 total)
+      source: paisabazaar.com/axis-bank/atlas-credit-card + cardinsider.com Atlas review (2026)
+      verified_on: 2026-07-04
+      needs_verification: false
 
-- slug: axis-magnus
+- slug: axis-magnus-burgundy
   bank: Axis
-  card_name: Magnus
+  card_name: Magnus for Burgundy
   card_network: Visa
   currency: axis-edge-rewards
-  annual_fee_inr: 12500
-  joining_fee_inr: 12500
+  annual_fee_inr: 30000
+  joining_fee_inr: 30000
   base_earn_rate: "6.00"
-  min_income_inr: 2400000
+  min_income_inr: null
   has_lounge_access: true
-  source: research §1 covers Magnus tiers; standard-tier fee/rate from market knowledge (12 EDGE pts/₹200)
+  notes: >-
+    Replaces standard Magnus in this catalog (user scope decision
+    2026-07-04). Eligibility is relationship-based (₹30L NRV with Axis
+    Burgundy), not income-based — min_income left null. Welcome benefit is a
+    ₹5,000 Yatra voucher (not points), so no welcome milestone row.
+  source: cardexpert.in/axis-magnus-burgundy-credit-card-review (2025-01-18) — fee, rates, eligibility
   verified_on: 2026-07-04
   needs_verification: true
   categories:
     - category_slug: default
-      category_label: All spend (tiered earning above monthly threshold not modeled)
+      category_label: All spend (tiered 35/₹200 above ₹1.5L/month not modeled)
       earn_rate: "6.00"
       notes: >-
-        Magnus earns accelerated points above a monthly spend threshold
-        (research §1 "tiered milestones based on spend"); MVP seeds the flat
-        base rate only — conservative by policy.
-      source: market knowledge — VERIFY
+        12 EDGE RP per ₹200 = 6/₹100. Burgundy earns MORE (35/₹200) on spend
+        beyond ₹1.5L/month — the schema models accelerated-up-to-cap, not
+        accelerated-above-threshold, so the flat base rate is seeded and the
+        tier upside is deliberately left on the table (under-promise).
+      source: cardexpert.in Magnus Burgundy review — VERIFY current earn table
+      verified_on: 2026-07-04
+      needs_verification: true
+    - category_slug: travel
+      category_label: Travel EDGE portal (5X)
+      earn_rate: "30.00"
+      monthly_cap_inr: 200000
+      notes: >-
+        60 RP/₹200 = 30/₹100 via Travel EDGE, capped at ₹2L/month spend
+        (cardexpert "24% value-back up to ₹2L/month" at the 5:4 ratio).
+        VERIFY the cap unit and whether direct airline spend qualifies.
+      source: cardexpert.in Magnus Burgundy review (2025-01-18) — VERIFY post-Apr-2026
       verified_on: 2026-07-04
       needs_verification: true
   milestones: []
@@ -209,16 +250,17 @@
   base_earn_rate: "2.00"
   min_income_inr: 600000
   has_lounge_access: true
-  source: research §1–2 (milestone-driven); fee/base from market knowledge (1 MR/₹50). NOTE — db-schema-v1's ₹60,000 example fee was the Platinum CHARGE card, not Platinum Travel.
+  source: research §1–2 (milestone-driven); rate confirmed by cardtrail.in Amex MR guide (2026-03-20, "1 MR per Rs 50")
   verified_on: 2026-07-04
   needs_verification: true
   categories:
     - category_slug: default
       category_label: All eligible spend
       earn_rate: "2.00"
-      source: market knowledge (1 MR per ₹50) — VERIFY
+      notes: 1 MR per ₹50 = 2.00/₹100 (confirmed 2026-07-04 web pass)
+      source: cardtrail.in Amex MR India guide (2026-03-20)
       verified_on: 2026-07-04
-      needs_verification: true
+      needs_verification: false
   milestones:
     - milestone_type: spend_bonus
       spend_threshold_inr: 190000
@@ -236,6 +278,38 @@
       source: research §2 confirms structure; figures market knowledge
       verified_on: 2026-07-04
       needs_verification: true
+
+- slug: amex-platinum-charge
+  bank: Amex
+  card_name: Platinum Charge
+  card_network: Amex
+  currency: amex-mr
+  annual_fee_inr: 66000
+  joining_fee_inr: 66000
+  base_earn_rate: "2.50"
+  min_income_inr: null
+  has_lounge_access: true
+  notes: >-
+    Added per user scope decision 2026-07-04. Charge card — no preset limit,
+    invitation/relationship-based eligibility (min_income null). Welcome
+    benefit is ₹60,000 in hotel vouchers (Taj/Postcard), not points — no
+    welcome milestone row. Shares the amex-mr currency with Platinum Travel
+    (same MR program, same transfer entitlements).
+  source: americanexpress.com/in/charge-cards/platinum-card (fee ₹66,000; 1 MR/₹40) via 2026-07-04 web pass
+  verified_on: 2026-07-04
+  needs_verification: true
+  categories:
+    - category_slug: default
+      category_label: All eligible spend (excl. fuel/insurance/utilities)
+      earn_rate: "2.50"
+      notes: >-
+        1 MR per ₹40 = 2.50/₹100. Fuel earns 5 MR/₹100 but is not seeded
+        (conservative; fuel-category acceleration can be added once the
+        exclusion list is verified). Fuel/insurance/utilities earn nothing.
+      source: americanexpress.com/in/charge-cards/platinum-card (2026-07-04 web pass)
+      verified_on: 2026-07-04
+      needs_verification: true
+  milestones: []
 
 # Deliberate negative case: cashback product, no transferable currency.
 # Must yield ZERO KrisFlyer opportunities in Stage 5.

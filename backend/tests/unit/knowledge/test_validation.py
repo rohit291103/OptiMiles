@@ -120,3 +120,19 @@ def test_rejects_duplicate_category_slug_per_card(snapshot: CatalogSnapshot) -> 
     broken = snapshot.model_copy(update={"category_rules": (*snapshot.category_rules, duplicate)})
     with pytest.raises(CatalogValidationError, match="duplicate category"):
         validate_catalog(broken)
+
+
+def test_milestone_validity_window_rejected_until_projector_enforces_it(
+    snapshot: CatalogSnapshot,
+) -> None:
+    """BR-05/BR-06 (SIM-001): the v1 projector does not evaluate milestone
+    valid_from/valid_until — it has no calendar anchor. Until it does, a seed
+    row carrying a validity window must fail catalog validation rather than
+    silently influence every projection forever (reviewer finding,
+    2026-07-04: Unknown Over Incorrect)."""
+    from datetime import date
+
+    expired = snapshot.milestones[0].model_copy(update={"valid_until": date(2025, 12, 31)})
+    broken = snapshot.model_copy(update={"milestones": (expired, *snapshot.milestones[1:])})
+    with pytest.raises(CatalogValidationError, match="validity window"):
+        validate_catalog(broken)

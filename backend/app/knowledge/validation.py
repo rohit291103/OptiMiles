@@ -47,6 +47,15 @@ def validate_catalog(snapshot: CatalogSnapshot) -> None:
     for milestone in snapshot.milestones:
         if milestone.card_id not in card_by_id:
             issues.append(f"orphan FK: milestone {milestone.id} references unknown card")
+        if milestone.valid_from is not None or milestone.valid_until is not None:
+            # BR-05/BR-06 (SIM-001): the v1 projector has no calendar anchor
+            # and cannot evaluate validity windows. An expired promo silently
+            # influencing every projection is worse than refusing the row.
+            issues.append(
+                f"milestone {milestone.id} carries a validity window "
+                "(valid_from/valid_until) — the simulation engine does not enforce "
+                "these yet; remove the window or implement BR-05/BR-06 first"
+            )
     for chart in snapshot.award_charts:
         if chart.partner_id not in partner_by_id:
             issues.append(f"orphan FK: award chart {chart.id} references unknown partner")

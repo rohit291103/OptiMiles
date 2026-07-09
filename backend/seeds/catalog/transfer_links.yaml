@@ -1,14 +1,23 @@
 # Currency → program transfer relationships (schema v1.1: currency_transfer_partners).
 # ratio_from : ratio_to = currency points consumed : partner miles credited.
-# max_transfer_points = per CALENDAR YEAR unless noted (Axis Group A caps,
-# research §2) — NULL/absent means uncapped.
+# max_transfer_points = per CALENDAR YEAR unless noted (Axis group caps) —
+# NULL/absent means uncapped.
 #
 # THE MOST DANGEROUS FILE IN THE REPO. A wrong ratio shipped confidently is
 # the product's existential failure (PRD risk 8-A). Review every row.
 #
-# NOTE vs older docs: db-schema-v1 §3.1 example rows showed Infinia/Atlas at
-# 2:1 — those were illustrative examples, superseded by the research doc's
-# ratios (Infinia 1:1, Atlas 1:2). Where they conflict, the research doc wins.
+# 2026-07-04 web-verification pass (decision log: catalog expansion):
+# - Ratios cross-checked against pointsmath.com (HDFC table updated
+#   2026-06-21; Axis table 2026-06-21), rivo.pe Axis guide (post Apr-2026
+#   devaluation), cardtrail.in Amex MR guide (2026-03-20), and the HSBC
+#   TravelOne partner list (livefromalounge.com / business-standard.com).
+# - CORRECTED from the previous seed pass: Maharaja Club from HDFC premium
+#   tier is 2:1, not 1:1; HDFC→KrisFlyer processing is ~7 working days, not
+#   1-5; Magnus standard's 5:2 replaced by Magnus Burgundy's 5:4.
+# - Axis REMOVED Marriott Bonvoy, Accor and Qatar on 2026-04-02 — no Axis
+#   rows to the hotel programs, deliberately.
+
+# ── KrisFlyer (primary program) ───────────────────────────────────────────
 
 - currency: hdfc-rp-premium
   partner: krisflyer
@@ -16,10 +25,13 @@
   ratio_to: 1
   min_transfer_points: 1000
   transfer_fee_inr: 0
-  processing_days_min: 1
-  processing_days_max: 5
-  notes: Infinia/Diners Black tier, straightforward 1:1 (research §2 "HDFC Stability")
-  source: docs/research/singapore_airlines_krisflyer_indian_credit_card_research_v1.md §1
+  processing_days_min: 7
+  processing_days_max: 10
+  notes: >-
+    Infinia/Diners Black tier 1:1 (100:100). Processing is the outlier among
+    HDFC partners: ~7 WORKING days (pointsmath, most other HDFC partners are
+    24h). Min-transfer figure still unconfirmed.
+  source: pointsmath.com/hdfc-bank-points-transfer-partners (updated 2026-06-21); ratio also research doc §1 and pointsmax.in KrisFlyer India guide 2026
   verified_on: 2026-07-04
   needs_verification: false
 
@@ -29,12 +41,12 @@
   ratio_to: 1
   min_transfer_points: 1000
   transfer_fee_inr: 0
-  processing_days_min: 1
-  processing_days_max: 5
-  notes: Regalia-tier ratio is worse than Infinia tier — VERIFY before trusting
-  source: market knowledge; not covered by the research doc
+  processing_days_min: 7
+  processing_days_max: 10
+  notes: Regalia tier 100:50 — confirmed by the pointsmath HDFC table (no longer market-knowledge-only)
+  source: pointsmath.com/hdfc-bank-points-transfer-partners (updated 2026-06-21)
   verified_on: 2026-07-04
-  needs_verification: true
+  needs_verification: false
 
 - currency: hsbc-reward-points
   partner: krisflyer
@@ -42,10 +54,13 @@
   ratio_to: 1
   min_transfer_points: 1000
   transfer_fee_inr: 0
-  processing_days_min: 1
-  processing_days_max: 7
-  notes: HSBC TravelOne airline transfer — VERIFY ratio and minimum
-  source: market knowledge; not covered by the research doc
+  processing_days_min: 0
+  processing_days_max: 2
+  notes: >-
+    HSBC TravelOne transfers 1:1 to 12 of its 15 airline partners incl.
+    KrisFlyer; app transfers are near-instant for most partners. Min-transfer
+    figure unconfirmed.
+  source: livefromalounge.com HSBC transfer partnerships; business-standard.com 2025-04-21; magnify.club TravelOne review 2026
   verified_on: 2026-07-04
   needs_verification: true
 
@@ -55,29 +70,36 @@
   ratio_to: 2
   min_transfer_points: 500
   max_transfer_points: 30000
-  transfer_fee_inr: 0
+  transfer_fee_inr: 235
   processing_days_min: 1
   processing_days_max: 3
   notes: >-
     Group A hard cap — 30,000 EDGE Miles per calendar year, i.e. max 60,000
-    KrisFlyer miles/year through this avenue (research §2 "Atlas Bottleneck").
-  source: docs/research/singapore_airlines_krisflyer_indian_credit_card_research_v1.md §1–2
+    KrisFlyer miles/year through this avenue. Ratio survived the Apr-2026
+    devaluation (confirmed post-deval by rivo.pe + pointsmath). Fee ₹199+GST
+    ≈ ₹235 per transfer (pointsmath) — VERIFY exact amount. NOTE: Atlas is
+    discontinued for NEW applicants (2026) — existing holders keep benefits;
+    flagged for Stage 7's one-new-card archetype.
+  source: pointsmath.com/axis-bank-transfer-partners (2026-06-21); rivo.pe Axis rewards guide 2026; research doc §1–2
   verified_on: 2026-07-04
-  needs_verification: false
+  needs_verification: true
 
 - currency: axis-edge-rewards
   partner: krisflyer
   ratio_from: 5
-  ratio_to: 2
+  ratio_to: 4
   min_transfer_points: 500
-  transfer_fee_inr: 0
+  max_transfer_points: 200000
+  transfer_fee_inr: 235
   processing_days_min: 1
   processing_days_max: 3
   notes: >-
-    Standard Magnus 5:2. Research §1 confirms "strict annual caps into Group A"
-    but gives no figure for the standard tier (Burgundy is 2,00,000/yr) —
-    max_transfer_points left uncapped pending verification of the exact cap.
-  source: docs/research/singapore_airlines_krisflyer_indian_credit_card_research_v1.md §1
+    MAGNUS BURGUNDY tier (replaces standard Magnus in this catalog per user
+    scope decision 2026-07-04): 5:4 to Group A partners — double the standard
+    Magnus 5:2. Group A cap 2,00,000 EDGE RP/calendar year (Group B 8L, 10L
+    total across groups — only Group A modeled; KrisFlyer is Group A). Fee
+    ₹199+GST ≈ ₹235 — VERIFY. Min transfer unconfirmed.
+  source: cardexpert.in Magnus Burgundy review (2025-01-18) + pointsmath.com Axis table (2026-06-21) agree on 5:4 and the 2L Group A cap; rivo.pe's differing cap table treated as the outlier
   verified_on: 2026-07-04
   needs_verification: true
 
@@ -87,29 +109,127 @@
   ratio_to: 1
   min_transfer_points: 1000
   transfer_fee_inr: 0
-  processing_days_min: 2
-  processing_days_max: 5
-  notes: Standard Amex India MR transfer terms for premium cards (research footnote)
-  source: docs/research/singapore_airlines_krisflyer_indian_credit_card_research_v1.md §1
+  processing_days_min: 1
+  processing_days_max: 3
+  notes: 1,000 MR → 500 KrisFlyer miles; transfers move in 1,000-MR increments (min confirmed)
+  source: cardtrail.in Amex MR India guide (2026-03-20); research doc §1
   verified_on: 2026-07-04
   needs_verification: false
 
 # ── Maharaja Club (secondary program) ────────────────────────────────────
-# Deliberately sparse: the research doc is KrisFlyer-only, and absent data
-# fails honestly ("unsupported route") while wrong data lies. Only the
-# best-documented link is seeded; expanding Maharaja Club coverage is a
-# tracked next step, not an oversight.
+# Still deliberately sparse — only the best-documented link. HSBC (1:1) and
+# Regalia (100:33) links exist in the wild; adding them is a tracked next
+# step once verified, not an oversight.
 
 - currency: hdfc-rp-premium
   partner: maharaja-club
+  ratio_from: 2
+  ratio_to: 1
+  min_transfer_points: 1000
+  transfer_fee_inr: 0
+  processing_days_min: 2
+  processing_days_max: 4
+  notes: >-
+    CORRECTED 2026-07-04: previous seed said 1:1 from market knowledge; the
+    pointsmath HDFC table says 100:50 with 48-96h processing.
+  source: pointsmath.com/hdfc-bank-points-transfer-partners (updated 2026-06-21)
+  verified_on: 2026-07-04
+  needs_verification: false
+
+# ── Marriott Bonvoy (hotel) ───────────────────────────────────────────────
+
+- currency: hdfc-rp-premium
+  partner: marriott-bonvoy
+  ratio_from: 2
+  ratio_to: 1
+  min_transfer_points: 1000
+  transfer_fee_inr: 0
+  processing_days_min: 0
+  processing_days_max: 1
+  notes: Infinia/DCB 100:50 to Bonvoy; ~24h processing. Min transfer unconfirmed.
+  source: pointsmath.com/hdfc-bank-points-transfer-partners (updated 2026-06-21)
+  verified_on: 2026-07-04
+  needs_verification: false
+
+- currency: hdfc-rp-regalia
+  partner: marriott-bonvoy
+  ratio_from: 100
+  ratio_to: 33
+  min_transfer_points: 1000
+  transfer_fee_inr: 0
+  processing_days_min: 0
+  processing_days_max: 1
+  notes: Regalia tier 100:33 to Bonvoy (worst ratio in the catalog — within the 5:1 sanity bound at ~3:1)
+  source: pointsmath.com/hdfc-bank-points-transfer-partners (updated 2026-06-21)
+  verified_on: 2026-07-04
+  needs_verification: false
+
+- currency: hsbc-reward-points
+  partner: marriott-bonvoy
+  ratio_from: 1
+  ratio_to: 1
+  min_transfer_points: 1000
+  transfer_fee_inr: 0
+  processing_days_min: 0
+  processing_days_max: 2
+  notes: TravelOne 1:1 to all 5 hotel partners incl. Bonvoy. Min transfer unconfirmed.
+  source: livefromalounge.com HSBC transfer partnerships; business-standard.com 2025-04-21
+  verified_on: 2026-07-04
+  needs_verification: true
+
+- currency: amex-mr
+  partner: marriott-bonvoy
   ratio_from: 1
   ratio_to: 1
   min_transfer_points: 1000
   transfer_fee_inr: 0
   processing_days_min: 1
-  processing_days_max: 5
-  notes: VERIFY — seeded from market knowledge, not the research doc
-  source: market knowledge; Maharaja Club not covered by the research doc
+  processing_days_max: 2
+  notes: 1,000 MR → 1,000 Bonvoy; described as the best-value MR transfer for India hotel coverage
+  source: cardtrail.in Amex MR India guide (2026-03-20)
+  verified_on: 2026-07-04
+  needs_verification: false
+
+# ── Accor ALL (hotel) ─────────────────────────────────────────────────────
+# No Amex row (Accor is not an Amex MR India partner) and no Axis rows
+# (removed 2026-04-02) — absences are deliberate.
+
+- currency: hdfc-rp-premium
+  partner: accor-all
+  ratio_from: 2
+  ratio_to: 1
+  min_transfer_points: 1000
+  transfer_fee_inr: 0
+  processing_days_min: 0
+  processing_days_max: 1
+  notes: Devalued from 1:1 to 2:1 in HDFC's transfer-program revamp (cardinsider)
+  source: pointsmath.com/hdfc-bank-points-transfer-partners (updated 2026-06-21); cardinsider.com HDFC revamp coverage
+  verified_on: 2026-07-04
+  needs_verification: false
+
+- currency: hdfc-rp-regalia
+  partner: accor-all
+  ratio_from: 2
+  ratio_to: 1
+  min_transfer_points: 1000
+  transfer_fee_inr: 0
+  processing_days_min: 0
+  processing_days_max: 1
+  notes: Regalia tier 100:50 to Accor (same as premium tier for this partner)
+  source: pointsmath.com/hdfc-bank-points-transfer-partners (updated 2026-06-21)
+  verified_on: 2026-07-04
+  needs_verification: false
+
+- currency: hsbc-reward-points
+  partner: accor-all
+  ratio_from: 1
+  ratio_to: 1
+  min_transfer_points: 1000
+  transfer_fee_inr: 0
+  processing_days_min: 0
+  processing_days_max: 2
+  notes: TravelOne 1:1 to all 5 hotel partners incl. Accor. Min transfer unconfirmed.
+  source: livefromalounge.com HSBC transfer partnerships; business-standard.com 2025-04-21
   verified_on: 2026-07-04
   needs_verification: true
 

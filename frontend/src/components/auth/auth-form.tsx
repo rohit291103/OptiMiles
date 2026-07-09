@@ -2,34 +2,93 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { supabase } from "@/lib/supabase";
 
 export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const isSignup = mode === "signup";
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setError(null);
+    setNotice(null);
+
+    if (!supabase) {
+      setError("Authentication isn't configured yet. Add the Supabase keys.");
+      return;
+    }
+
+    const form = new FormData(e.currentTarget);
+    const email = String(form.get("email") ?? "");
+    const password = String(form.get("password") ?? "");
+    const fullName = String(form.get("name") ?? "");
+
     setSubmitting(true);
-    // Front-end only for now, wire to the backend auth route when ready.
-    setTimeout(() => setSubmitting(false), 1200);
+    try {
+      if (isSignup) {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { full_name: fullName } },
+        });
+        if (error) throw error;
+        // With email confirmation on, there's no session yet — tell the user.
+        if (!data.session) {
+          setNotice("Check your email to confirm your account, then log in.");
+          return;
+        }
+        router.push("/");
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) throw error;
+        router.push("/");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleOAuth(provider: "google") {
+    setError(null);
+    if (!supabase) {
+      setError("Authentication isn't configured yet. Add the Supabase keys.");
+      return;
+    }
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      // Return to a dedicated route that exchanges the ?code= for a session,
+      // then sends the user home. Redirecting straight to "/" leaves the code
+      // unhandled and the user logged out.
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    if (error) setError(error.message);
   }
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Button variant="outline" className="border-hairline" type="button">
-          <GoogleGlyph /> Google
-        </Button>
-        <Button variant="outline" className="border-hairline" type="button">
-          <AppleGlyph /> Apple
-        </Button>
-      </div>
+      <Button
+        variant="outline"
+        className="w-full border-hairline"
+        type="button"
+        onClick={() => handleOAuth("google")}
+      >
+        <GoogleGlyph /> Continue with Google
+      </Button>
 
       <div className="flex items-center gap-3 text-xs text-muted-foreground/70">
         <span className="h-px flex-1 bg-hairline" />
@@ -103,6 +162,17 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
           </label>
         )}
 
+        {error && (
+          <p className="text-sm text-destructive" role="alert">
+            {error}
+          </p>
+        )}
+        {notice && (
+          <p className="text-sm text-gold" role="status">
+            {notice}
+          </p>
+        )}
+
         <Button
           type="submit"
           size="lg"
@@ -157,14 +227,6 @@ function GoogleGlyph() {
         d="M12 5.98c1.47 0 2.79.5 3.83 1.49l2.86-2.86C16.95 2.99 14.7 2 12 2 8.06 2 4.7 4.26 3.07 7.51l3.34 2.58C7.2 7.74 9.4 5.98 12 5.98Z"
         opacity=".85"
       />
-    </svg>
-  );
-}
-
-function AppleGlyph() {
-  return (
-    <svg viewBox="0 0 24 24" className="size-4" aria-hidden fill="currentColor">
-      <path d="M16.36 12.78c-.02-2.02 1.65-2.99 1.72-3.04-.94-1.37-2.4-1.56-2.92-1.58-1.24-.13-2.42.73-3.05.73-.63 0-1.6-.71-2.63-.69-1.35.02-2.6.79-3.3 2-1.4 2.44-.36 6.05 1.01 8.03.67.97 1.47 2.06 2.51 2.02 1.01-.04 1.39-.65 2.61-.65 1.22 0 1.56.65 2.63.63 1.09-.02 1.78-.99 2.45-1.96.77-1.12 1.09-2.21 1.1-2.27-.02-.01-2.11-.81-2.13-3.2ZM14.4 6.6c.56-.68.94-1.62.83-2.56-.81.03-1.79.54-2.37 1.21-.52.6-.97 1.56-.85 2.48.9.07 1.83-.46 2.39-1.13Z" />
     </svg>
   );
 }

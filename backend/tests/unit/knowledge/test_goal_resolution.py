@@ -45,7 +45,7 @@ def test_resolves_the_flagship_goal(snapshot: CatalogSnapshot) -> None:
     assert result.partner_id == seed_id("partner", "krisflyer")
     # Locked to the exact chart row so later chart updates never move the goal.
     chart = next(c for c in snapshot.award_charts if c.id == result.award_chart_id)
-    assert chart.miles_required == 35000
+    assert chart.miles_required == 45000  # post-Nov-2025 Zone 6 saver chart
 
 
 def test_program_hint_is_normalized(snapshot: CatalogSnapshot) -> None:

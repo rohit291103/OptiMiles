@@ -1,6 +1,9 @@
-# Transfer partners in MVP scope v2: KrisFlyer + Air India Maharaja Club ONLY.
-# (Emirates/Qatar dropped; Vistara merged into Air India; "Flying Returns"
-# renamed to Maharaja Club — mvp-scope-v2.md.)
+# Transfer partners — scope per decision log 2026-07-04 (catalog expansion):
+# KrisFlyer (primary) + Air India Maharaja Club (secondary) + the two hotel
+# programs the user asked for (Marriott Bonvoy, Accor ALL). Hotel partners
+# carry NO award-chart rows yet — hotel-goal support is out of scope; they
+# exist so transfer eligibility and ratios are modeled (Stages 5/8 pick them
+# up automatically once a hotel goal type exists).
 
 - slug: krisflyer
   partner_name: Singapore Airlines
@@ -19,5 +22,21 @@
   iata_code: AI
   alliance: Star Alliance
   source: docs/prd/mvp-scope-v2.md (secondary MVP program; ex-Flying Returns)
+  verified_on: 2026-07-04
+  needs_verification: false
+
+- slug: marriott-bonvoy
+  partner_name: Marriott International
+  program_name: Marriott Bonvoy
+  partner_type: hotel
+  source: user scope request 2026-07-04; live partner of HDFC (pointsmath.com/hdfc-bank-points-transfer-partners, Jun 2026), HSBC TravelOne and Amex MR India (cardtrail.in MR guide, Mar 2026)
+  verified_on: 2026-07-04
+  needs_verification: false
+
+- slug: accor-all
+  partner_name: Accor
+  program_name: ALL - Accor Live Limitless
+  partner_type: hotel
+  source: user scope request 2026-07-04; live partner of HDFC and HSBC. NOTE Axis REMOVED Accor on 2026-04-02 (rivo.pe Axis rewards guide 2026) — no Axis links below.
   verified_on: 2026-07-04
   needs_verification: false

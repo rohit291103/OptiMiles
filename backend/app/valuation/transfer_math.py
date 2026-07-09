@@ -23,6 +23,12 @@ Formulas (units in brackets):
 
   points_to_miles(P, link) [miles] = floor(P / ratio_from) × ratio_to
 
+  whole_block_transfer(P, link) [(pts, miles)]:
+      blocks = floor(P / ratio_from)
+      → (blocks × ratio_from, blocks × ratio_to)
+      the points side of the SAME flooring: what actually leaves a balance
+      when only whole blocks may transfer — the remainder stays on the card
+
   miles_per_100(rate, link) [miles/₹100] = rate × ratio_to / ratio_from,
       quantized to 4dp ROUND_DOWN
 
@@ -51,6 +57,17 @@ def transferable_points(points: int, link: CurrencyTransferLink) -> int:
 def points_to_miles(points: int, link: CurrencyTransferLink) -> int:
     """Whole-block conversion: floor(points / ratio_from) × ratio_to."""
     return (points // link.ratio_from) * link.ratio_to
+
+
+def whole_block_transfer(points: int, link: CurrencyTransferLink) -> tuple[int, int]:
+    """(points leaving the balance, miles credited) for a whole-block send.
+
+    Simulation's ledger needs both sides of the floor — points_to_miles
+    answers only the miles side, and re-deriving the points side elsewhere
+    would split ratio conversion across modules.
+    """
+    blocks = points // link.ratio_from
+    return blocks * link.ratio_from, blocks * link.ratio_to
 
 
 def convert_balance(points: int, link: CurrencyTransferLink) -> int:

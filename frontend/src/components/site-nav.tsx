@@ -6,6 +6,7 @@ import { Menu, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Brand } from "@/components/brand"
+import { signOut, useAuth } from "@/lib/use-auth"
 
 const LINKS = [
   { href: "/#simulate", label: "Simulator" },
@@ -18,6 +19,7 @@ const LINKS = [
 export function SiteNav() {
   const [open, setOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const { user } = useAuth()
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24)
@@ -53,13 +55,31 @@ export function SiteNav() {
           ))}
         </div>
 
-        <div className="hidden items-center gap-2 sm:flex">
-          <Button asChild variant="ghost" size="lg" className="text-foreground hover:bg-secondary">
-            <Link href="/login">Log in</Link>
-          </Button>
-          <Button asChild size="lg" className="bg-gold text-gold-foreground hover:bg-gold/90">
-            <Link href="/signup">Get started</Link>
-          </Button>
+        <div className="hidden items-center gap-3 sm:flex">
+          {user ? (
+            <>
+              <span className="max-w-56 truncate text-sm text-muted-foreground">
+                {user.email}
+              </span>
+              <Button
+                variant="ghost"
+                size="lg"
+                className="text-foreground hover:bg-secondary"
+                onClick={() => signOut()}
+              >
+                Sign out
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button asChild variant="ghost" size="lg" className="text-foreground hover:bg-secondary">
+                <Link href="/login">Log in</Link>
+              </Button>
+              <Button asChild size="lg" className="bg-gold text-gold-foreground hover:bg-gold/90">
+                <Link href="/signup">Get started</Link>
+              </Button>
+            </>
+          )}
         </div>
 
         <button
@@ -89,12 +109,30 @@ export function SiteNav() {
             ))}
           </div>
           <div className="mt-4 flex flex-col gap-2">
-            <Button asChild variant="outline" className="border-hairline">
-              <Link href="/login" onClick={() => setOpen(false)}>Log in</Link>
-            </Button>
-            <Button asChild className="bg-gold text-gold-foreground hover:bg-gold/90">
-              <Link href="/signup" onClick={() => setOpen(false)}>Get started</Link>
-            </Button>
+            {user ? (
+              <>
+                <span className="px-2 text-sm text-muted-foreground">{user.email}</span>
+                <Button
+                  variant="outline"
+                  className="border-hairline"
+                  onClick={() => {
+                    setOpen(false)
+                    signOut()
+                  }}
+                >
+                  Sign out
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button asChild variant="outline" className="border-hairline">
+                  <Link href="/login" onClick={() => setOpen(false)}>Log in</Link>
+                </Button>
+                <Button asChild className="bg-gold text-gold-foreground hover:bg-gold/90">
+                  <Link href="/signup" onClick={() => setOpen(false)}>Get started</Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
       )}

@@ -89,11 +89,11 @@ def test_sbi_cashback_yields_zero_opportunities(snapshot: CatalogSnapshot) -> No
 
 
 def test_every_eligible_card_covers_every_profile_category(snapshot: CatalogSnapshot) -> None:
-    """7 eligible cards (8 minus SBI) × 2 profile categories = 14 cells: the
+    """8 eligible cards (9 minus SBI) × 2 profile categories = 16 cells: the
     complete allocation search space, no gaps."""
     result = enumerate_opportunities(_context(snapshot))
-    assert len(result.opportunities) == 14
-    assert len(result.card_aggregates) == 7
+    assert len(result.opportunities) == 16
+    assert len(result.card_aggregates) == 8
 
 
 def test_golden_infinia_travel_within_cap(snapshot: CatalogSnapshot) -> None:
@@ -112,9 +112,10 @@ def test_golden_infinia_travel_beyond_cap_blends(snapshot: CatalogSnapshot) -> N
     assert any("cap" in note.lower() for note in opp.valuation_notes)
 
 
-def test_golden_atlas_travel_is_best_rate(snapshot: CatalogSnapshot) -> None:
-    """Atlas travel 5 EM/₹100 × 1:2 = 10 miles/₹100 — but the annual transfer
-    cap must be surfaced as a note, not hidden."""
+def test_golden_atlas_travel_rate(snapshot: CatalogSnapshot) -> None:
+    """Atlas travel 5 EM/₹100 × 1:2 = 10 miles/₹100 (no longer the best rate —
+    Burgundy's Travel EDGE 24.00 is) — and the annual transfer cap must be
+    surfaced as a note, not hidden."""
     opp = _find(enumerate_opportunities(_context(snapshot)), "axis-atlas", SpendCategory.TRAVEL)
     assert opp.effective_miles_per_100inr == Decimal("10.00")
     assert opp.in_wallet is False
@@ -133,8 +134,20 @@ def test_golden_amex_and_magnus_defaults(snapshot: CatalogSnapshot) -> None:
     result = enumerate_opportunities(_context(snapshot))
     amex = _find(result, "amex-platinum-travel", SpendCategory.DINING)
     assert amex.effective_miles_per_100inr == Decimal("1")  # 2.00 × 1/2
-    magnus = _find(result, "axis-magnus", SpendCategory.DINING)
-    assert magnus.effective_miles_per_100inr == Decimal("2.4")  # 6.00 × 2/5
+    charge = _find(result, "amex-platinum-charge", SpendCategory.DINING)
+    assert charge.effective_miles_per_100inr == Decimal("1.25")  # 2.50 × 1/2
+    magnus = _find(result, "axis-magnus-burgundy", SpendCategory.DINING)
+    assert magnus.effective_miles_per_100inr == Decimal("4.8")  # 6.00 × 4/5 (Burgundy 5:4)
+
+
+def test_golden_magnus_burgundy_travel_is_best_rate(snapshot: CatalogSnapshot) -> None:
+    """Travel EDGE 30/₹100 through the Burgundy 5:4 link = 24.00 miles/₹100 —
+    the new best travel rate in the catalog (₹40k ≤ ₹2L monthly cap)."""
+    opp = _find(
+        enumerate_opportunities(_context(snapshot)), "axis-magnus-burgundy", SpendCategory.TRAVEL
+    )
+    assert opp.effective_miles_per_100inr == Decimal("24.00")
+    assert opp.transfer_path.max_transfer_points == 200_000
 
 
 def test_aggregates_carry_fees_and_welcome_bonus(snapshot: CatalogSnapshot) -> None:
@@ -148,6 +161,18 @@ def test_aggregates_carry_fees_and_welcome_bonus(snapshot: CatalogSnapshot) -> N
     )
     assert infinia.in_wallet is True
     assert infinia.welcome_bonus_points == 0
+
+
+def test_aggregates_carry_acquirable_flag(snapshot: CatalogSnapshot) -> None:
+    """Stage 7's one-new-card archetype reads acquirability from the aggregates:
+    discontinued Atlas must arrive flagged non-acquirable."""
+    result = enumerate_opportunities(_context(snapshot))
+    atlas = next(a for a in result.card_aggregates if a.card_id == seed_id("card", "axis-atlas"))
+    assert atlas.acquirable is False
+    burgundy = next(
+        a for a in result.card_aggregates if a.card_id == seed_id("card", "axis-magnus-burgundy")
+    )
+    assert burgundy.acquirable is True
 
 
 def test_deterministic_output_order(snapshot: CatalogSnapshot) -> None:

@@ -1,0 +1,24 @@
+# OptiMiles ranking weights — v1 (build rule 5: reward rules are config, not
+# code; this is the most-tuned artifact in the system, so it is versioned).
+#
+# Weights feed the Stage 9 composite: score = Σ(weight × sub-score) / Σ weights,
+# sub-scores 0–100 each (formulas in app/optimization/ranking.py docstring).
+# goal_achievement dominates by design — reaching the target by the date is
+# the product promise; everything else is a trade-off dimension.
+#
+# near_tie_threshold: a top-2 score gap below this is presented honestly as a
+# co-recommendation (Stage 9 failure scenario) instead of a manufactured winner.
+#
+# Changing any number here changes ranking for every user — treat edits like
+# seed rows: human review, then bump the file version (v2) rather than
+# rewriting history silently.
+
+version: "1"
+weights:
+  goal_achievement: "35"
+  efficiency: "20"
+  cost: "15"
+  simplicity: "10"
+  portfolio_utilization: "10"
+  risk: "10"
+near_tie_threshold: "2.0"

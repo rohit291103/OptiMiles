@@ -3,7 +3,8 @@
     "allow": [
       "Bash(python3 -)",
       "Edit(/.claude/skills/codebase-design/**)",
-      "Edit(/.claude/skills/handoff/**)"
+      "Edit(/.claude/skills/handoff/**)",
+      "mcp__notion__notion-fetch"
     ]
   }
 }

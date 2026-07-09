@@ -39,7 +39,14 @@ def do_run_migrations(connection: Connection) -> None:
 async def run_async_migrations() -> None:
     configuration = config.get_section(config.config_ini_section, {})
     configuration["sqlalchemy.url"] = _database_url()
-    connectable = async_engine_from_config(configuration, prefix="sqlalchemy.")
+    # Disable asyncpg's prepared-statement cache: against Supabase's
+    # transaction-mode pooler (PgBouncer) it collides across pooled sessions
+    # (DuplicatePreparedStatementError). Mirrors app/api/deps.py.
+    connectable = async_engine_from_config(
+        configuration,
+        prefix="sqlalchemy.",
+        connect_args={"statement_cache_size": 0},
+    )
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
     await connectable.dispose()

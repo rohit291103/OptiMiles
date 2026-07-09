@@ -5,7 +5,7 @@
 **Version:** 1.1.0
 **Status:** Canonical execution blueprint (Phase 0)
 **Depends on:** `docs/prd/mvp-scope-v2.md`, `docs/architecture/db-schema-v1.md`, root `CLAUDE.md` (Core Backend Systems)
-**Related specs:** [recommendation-engine-design-v1.md](recommendation-engine-design-v1.md) (product-level workflow + reconciliation), [optimization-engine-spec-v1.md](optimization-engine-spec-v1.md), [reward-knowledge-engine-spec-v1.md](reward-knowledge-engine-spec-v1.md), [core-domain-model-v1.md](core-domain-model-v1.md)
+**Related specs:** [recommendation-engine-design-v1.md](recommendation-engine-design-v1.md) (product-level workflow + reconciliation), [optimization-engine-spec-v1.md](optimization-engine-spec-v1.md), [reward-knowledge-engine-spec-v1.md](reward-knowledge-engine-spec-v1.md), [core-domain-model-v1.md](core-domain-model-v1.md), [reward-opportunity-engine-design-v1.md](reward-opportunity-engine-design-v1.md), [strategy-ranking-engine-design-v1.md](strategy-ranking-engine-design-v1.md), [simulation-engine-spec-v1.md](simulation-engine-spec-v1.md)
 
 > **v1.1 (2026-07-03):** reconciled against the Notion engine docs (RED/REW/RIF, SGE, SRE, RKE, CDM), now mirrored into this repo. Adopted: preference-aware ranking weights (DP-07), explicit strategy validation + pruning steps, `PortfolioAssessment` as a named Stage-6 output, the Recommendation Package payload contract, portfolio-utilization ranking dimension, and the tightened **30-second** performance target from MVP Scope v2. Conflicts resolved (AI-assisted generation → deterministic; "every feasible strategy" → bounded archetypes) are recorded in recommendation-engine-design-v1.md §6.2.
 

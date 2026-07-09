@@ -14,6 +14,7 @@ from app.valuation.transfer_math import (
     miles_per_100,
     points_to_miles,
     transferable_points,
+    whole_block_transfer,
 )
 
 
@@ -167,3 +168,26 @@ def test_round_number_rates_never_serialize_as_scientific_notation() -> None:
         monthly_cap_inr=50_000,
     )
     assert "e" not in str(exact_ten_blend).lower()
+
+
+# ── whole_block_transfer: the (points_sent, miles) pair Simulation ledgers ──
+
+
+def test_whole_block_transfer_leaves_remainder_on_balance() -> None:
+    """Magnus 5:2, 12,347 points: 2,469 blocks ⇒ 12,345 points leave,
+    4,938 miles credit, 2-point remainder stays — flooring never destroys
+    points (Phase 3 ledger requirement)."""
+    assert whole_block_transfer(12_347, _link(5, 2)) == (12_345, 4_938)
+
+
+def test_whole_block_transfer_one_to_one_sends_everything() -> None:
+    assert whole_block_transfer(70_000, _link(1, 1)) == (70_000, 70_000)
+
+
+def test_whole_block_transfer_agrees_with_points_to_miles() -> None:
+    """The miles side must be points_to_miles exactly — one formula, two
+    views, never two implementations."""
+    link = _link(2, 1)
+    sent, miles = whole_block_transfer(999, link)
+    assert (sent, miles) == (998, 499)
+    assert miles == points_to_miles(999, link)

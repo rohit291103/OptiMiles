@@ -78,6 +78,12 @@ class Card(_Frozen):
     base_earn_rate: Decimal = Field(ge=0, description="Points per ₹100 on uncategorized spend")
     min_income_inr: int | None = None
     has_lounge_access: bool = False
+    acquirable: bool = Field(
+        default=True,
+        description="False when the card is closed to new applicants (e.g. Atlas, "
+        "discontinued 2026) — existing holders keep it, but Stage 7 must never "
+        "recommend acquiring it",
+    )
 
 
 class RewardCategoryRule(_Frozen):

@@ -67,6 +67,9 @@ class CardAggregates(BaseModel):
 
     card_id: UUID
     in_wallet: bool
+    acquirable: bool = Field(
+        default=True, description="False = closed to new applicants; never recommend acquiring"
+    )
     annual_fee_inr: int = Field(ge=0)
     joining_fee_inr: int = Field(ge=0)
     welcome_bonus_points: int = Field(ge=0, default=0)

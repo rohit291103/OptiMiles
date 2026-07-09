@@ -13,10 +13,10 @@ from app.knowledge.seed_catalog import load_seed_snapshot, seed_id
 
 
 def test_loads_full_mvp_catalog(snapshot: CatalogSnapshot) -> None:
-    assert len(snapshot.cards) == 8
+    assert len(snapshot.cards) == 9  # 2026-07-04 expansion: +Amex Plat Charge, Magnus→Burgundy
     assert len(snapshot.currencies) == 7
-    assert len(snapshot.partners) == 2
-    assert len(snapshot.transfer_links) == 7
+    assert len(snapshot.partners) == 4  # +Marriott Bonvoy, +Accor ALL (hotel)
+    assert len(snapshot.transfer_links) == 14  # 6 KrisFlyer + 1 Maharaja + 4 Bonvoy + 3 Accor
     assert len(snapshot.award_charts) == 5
     banks = {card.bank for card in snapshot.cards}
     assert banks == {"HDFC", "HSBC", "Axis", "Amex", "SBI"}
@@ -91,6 +91,17 @@ def test_golden_dcb_quarterly_milestone(snapshot: CatalogSnapshot) -> None:
 def test_golden_infinia_base_rate(snapshot: CatalogSnapshot) -> None:
     card = next(c for c in snapshot.cards if c.id == seed_id("card", "hdfc-infinia"))
     assert card.base_earn_rate == Decimal("3.33")
+
+
+def test_golden_atlas_discontinued_not_acquirable(snapshot: CatalogSnapshot) -> None:
+    """Atlas is discontinued for new applicants (2026) — the one non-acquirable
+    card. Stage 7's one-new-card archetype must never recommend acquiring it
+    (catalog-expansion decision log, 2026-07-04)."""
+    atlas = next(c for c in snapshot.cards if c.id == seed_id("card", "axis-atlas"))
+    assert atlas.acquirable is False
+    for card in snapshot.cards:
+        if card.id != atlas.id:
+            assert card.acquirable is True, f"{card.card_name} should default acquirable"
 
 
 def test_sbi_cashback_has_no_transfer_links(snapshot: CatalogSnapshot) -> None:

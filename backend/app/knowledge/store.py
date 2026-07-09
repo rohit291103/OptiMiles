@@ -55,7 +55,7 @@ async def load_snapshot(conn: AsyncConnection) -> CatalogSnapshot:
         for r in await rows(
             "SELECT id, bank, card_name, card_network, reward_currency_id,"
             " annual_fee_inr, joining_fee_inr, base_earn_rate, min_income_inr,"
-            " has_lounge_access"
+            " has_lounge_access, acquirable"
             " FROM cards WHERE is_active ORDER BY id"
         )
     )

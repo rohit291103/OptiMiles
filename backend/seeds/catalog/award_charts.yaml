@@ -1,23 +1,29 @@
 # KrisFlyer award chart — MVP routes × cabins (one-way, per passenger).
 #
-# Values originate from db-schema-v1 §3.1's example table, which was itself
-# illustrative — every row here is needs_verification until checked against
-# the live KrisFlyer award chart. The three MVP routes (Singapore, London,
-# New York from India — mvp-scope-v2) × business are the validate_catalog()
-# coverage requirement.
+# 2026-07-04 web-verification pass: values updated to the post-1-Nov-2025
+# Saver chart, Zone 6 ("India, Sri Lanka, Maldives, Bangladesh"), from the
+# suitesmile.com chart dump (2026-03-28). The official singaporeair.com PDF
+# was not fetchable at verification time, and one secondary source
+# (pointsmax.in) quotes 46,000 for DEL→SIN business vs the zone table's
+# 45,000 — so every row stays needs_verification until checked against the
+# live chart. These REPLACE the old db-schema-v1 example values, which were
+# materially wrong (35,000 vs 45,000 business to SEA; 84,500 vs 117,000 to
+# North America).
 #
 # Maharaja Club rows are deliberately ABSENT: no verified data yet, and an
 # absent row fails honestly as "unsupported route" while a wrong row lies.
+# Hotel partners (Marriott/Accor) have no award-chart rows by design —
+# hotel redemptions are not chart-priced flights.
 
 - partner: krisflyer
   origin_region: India
   destination_region: Southeast Asia
   cabin_class: business
   award_type: saver
-  miles_required: 35000
-  taxes_fees_inr: 8500
-  effective_date: 2026-07-04
-  source: db-schema-v1 §3.1 example table — VERIFY vs live KrisFlyer chart
+  miles_required: 45000
+  taxes_fees_inr: 8000
+  effective_date: 2025-11-01
+  source: suitesmile.com KrisFlyer award charts (2026-03-28), Zone 6 → SEA saver; pointsmax.in quotes 46,000 for DEL-SIN — VERIFY against live chart
   verified_on: 2026-07-04
   needs_verification: true
 
@@ -26,10 +32,10 @@
   destination_region: Southeast Asia
   cabin_class: first
   award_type: saver
-  miles_required: 47500
+  miles_required: 61500
   taxes_fees_inr: 9000
-  effective_date: 2026-07-04
-  source: db-schema-v1 §3.1 example table — VERIFY
+  effective_date: 2025-11-01
+  source: suitesmile.com KrisFlyer award charts (2026-03-28), Zone 6 → SEA saver — VERIFY
   verified_on: 2026-07-04
   needs_verification: true
 
@@ -38,10 +44,10 @@
   destination_region: Southeast Asia
   cabin_class: economy
   award_type: saver
-  miles_required: 16000
+  miles_required: 19000
   taxes_fees_inr: 6500
-  effective_date: 2026-07-04
-  source: extrapolated from db-schema-v1 example ratios — VERIFY
+  effective_date: 2025-11-01
+  source: suitesmile.com KrisFlyer award charts (2026-03-28), Zone 6 → SEA saver; pointsmax quotes 17,500 DEL-SIN / 13,000 MAA-SIN — VERIFY
   verified_on: 2026-07-04
   needs_verification: true
 
@@ -50,10 +56,10 @@
   destination_region: Europe
   cabin_class: business
   award_type: saver
-  miles_required: 67500
+  miles_required: 108500
   taxes_fees_inr: 32000
-  effective_date: 2026-07-04
-  source: db-schema-v1 §3.1 example table — VERIFY
+  effective_date: 2025-11-01
+  source: suitesmile.com KrisFlyer award charts (2026-03-28), Zone 6 → Europe saver (corroborated by pointsmax.in) — VERIFY
   verified_on: 2026-07-04
   needs_verification: true
 
@@ -62,9 +68,9 @@
   destination_region: North America
   cabin_class: business
   award_type: saver
-  miles_required: 84500
+  miles_required: 117000
   taxes_fees_inr: 38000
-  effective_date: 2026-07-04
-  source: db-schema-v1 §3.1 example table — VERIFY
+  effective_date: 2025-11-01
+  source: suitesmile.com KrisFlyer award charts (2026-03-28), Zone 6 → USA EAST coast saver (west coast is 112,500; NYC = MVP route, so the higher east-coast figure is seeded) — VERIFY
   verified_on: 2026-07-04
   needs_verification: true

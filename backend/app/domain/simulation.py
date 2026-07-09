@@ -30,7 +30,15 @@ class MonthLedgerEntry(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     month: int = Field(ge=0)
-    points_by_card: dict[UUID, int]
+    points_by_card: dict[UUID, int] = Field(
+        description="Running end-of-month point balance per card (decremented on transfer)"
+    )
+    points_earned_this_month: int = Field(
+        default=0,
+        ge=0,
+        description="Points earned this month (base + category + milestone bonuses), "
+        "the earn delta — NOT the balance; unaffected by transfers-out",
+    )
     cap_utilization: dict[UUID, Decimal] = Field(
         default_factory=dict, description="card id → fraction of accelerated cap consumed"
     )

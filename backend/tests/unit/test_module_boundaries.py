@@ -8,11 +8,15 @@ from pathlib import Path
 APP_DIR = Path(__file__).resolve().parents[2] / "app"
 
 ENGINES = {"knowledge", "valuation", "simulation", "optimization", "ai_reasoning"}
-# The two sanctioned intra-stage exceptions (blueprint §3.1): Optimization and
-# Simulation may call Valuation's pure functions.
+# Sanctioned cross-engine reads (blueprint §3.1 + Stage 1 §"Dependencies"):
+# - Optimization and Simulation may call Valuation's pure math functions.
+# - AI Reasoning (Stage 1) reads the Knowledge Engine's read-only vocabulary
+#   lists (supported cities/cabins) to normalize free text; it never touches
+#   the DB or reward math — the re-validation stays deterministic.
 ALLOWED_ENGINE_IMPORTS = {
     "optimization": {"valuation"},
     "simulation": {"valuation"},
+    "ai_reasoning": {"knowledge"},
 }
 
 
@@ -42,6 +46,31 @@ def test_engines_do_not_import_each_other() -> None:
         for module in (APP_DIR / engine).rglob("*.py"):
             illegal = _app_imports(module) - allowed
             assert not illegal, f"{engine}/{module.name} imports {illegal} across engine boundary"
+
+
+def test_ai_reasoning_reaches_only_the_knowledge_vocabulary() -> None:
+    """The ai_reasoning→knowledge exception (Stage 1 vocabulary) is granted at
+    package granularity by `test_engines_do_not_import_each_other`; narrow it
+    HERE to the vocabulary module only. `knowledge.store` (the DB reader) or any
+    other knowledge submodule must never be imported into ai_reasoning — that
+    would smuggle catalog/DB access into the one engine allowed an LLM, exactly
+    the coupling build rule 3 exists to prevent."""
+    allowed_knowledge_modules = {"app.knowledge.goal_resolution"}
+    for module in (APP_DIR / "ai_reasoning").rglob("*.py"):
+        tree = ast.parse(module.read_text())
+        for node in ast.walk(tree):
+            targets: list[str] = []
+            if isinstance(node, ast.ImportFrom) and node.module:
+                targets.append(node.module)
+            elif isinstance(node, ast.Import):
+                targets.extend(alias.name for alias in node.names)
+            for target in targets:
+                if target.startswith("app.knowledge"):
+                    assert target in allowed_knowledge_modules, (
+                        f"ai_reasoning/{module.name} imports '{target}' — ai_reasoning may "
+                        "read ONLY knowledge vocabulary (goal_resolution), never the DB/"
+                        "catalog surface (build rule 3)"
+                    )
 
 
 def test_only_ai_reasoning_may_reference_llm_clients() -> None:

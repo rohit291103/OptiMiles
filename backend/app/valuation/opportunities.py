@@ -134,6 +134,7 @@ def enumerate_opportunities(context: PlanningContext) -> OpportunitySet:
             CardAggregates(
                 card_id=card.id,
                 in_wallet=card.id in wallet_ids,
+                acquirable=card.acquirable,
                 annual_fee_inr=card.annual_fee_inr,
                 joining_fee_inr=card.joining_fee_inr,
                 welcome_bonus_points=sum(

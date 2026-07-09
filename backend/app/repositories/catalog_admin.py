@@ -39,11 +39,11 @@ _UPSERTS: dict[str, str] = {
         INSERT INTO cards
           (id, bank, card_name, card_network, reward_currency_id, annual_fee_inr,
            joining_fee_inr, base_earn_rate, min_income_inr, has_lounge_access,
-           is_active, updated_at)
+           acquirable, is_active, updated_at)
         VALUES
           (:id, :bank, :card_name, :card_network, :reward_currency_id, :annual_fee_inr,
            :joining_fee_inr, :base_earn_rate, :min_income_inr, :has_lounge_access,
-           TRUE, NOW())
+           :acquirable, TRUE, NOW())
         ON CONFLICT (id) DO UPDATE SET
           bank = EXCLUDED.bank,
           card_name = EXCLUDED.card_name,
@@ -54,6 +54,7 @@ _UPSERTS: dict[str, str] = {
           base_earn_rate = EXCLUDED.base_earn_rate,
           min_income_inr = EXCLUDED.min_income_inr,
           has_lounge_access = EXCLUDED.has_lounge_access,
+          acquirable = EXCLUDED.acquirable,
           is_active = TRUE,
           updated_at = NOW()
     """,
