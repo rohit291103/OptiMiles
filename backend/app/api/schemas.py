@@ -6,6 +6,7 @@ user-supplied wallet / spend profile / constraints; responses are the domain
 owns all the reward logic — these types only shape the HTTP edge.
 """
 
+from datetime import date, datetime
 from typing import Literal
 from uuid import UUID
 
@@ -117,3 +118,29 @@ class CardSummary(BaseModel):
 class CatalogCardsResponse(BaseModel):
     catalog_snapshot_version: str
     cards: tuple[CardSummary, ...]
+
+
+class SavedGoalSummary(BaseModel):
+    """GET /goals list item — one saved goal + its latest recommendation.
+
+    Read straight from persisted rows (no recomputation), so it reflects exactly
+    what was stored, including the snapshot version that produced it (D-2)."""
+
+    goal_id: UUID
+    goal_name: str
+    goal_type: str
+    destination_city: str | None
+    cabin_class: str | None
+    target_miles: int
+    target_date: date | None
+    status: str
+    saved_at: datetime
+    summary: str | None
+    confidence_score: float | None
+    catalog_snapshot_version: str | None
+
+
+class SavedGoalsResponse(BaseModel):
+    """The signed-in user's saved goals, newest first (empty list is valid)."""
+
+    goals: tuple[SavedGoalSummary, ...]

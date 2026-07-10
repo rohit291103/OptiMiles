@@ -22,9 +22,10 @@ def test_present_key_returns_pydanticai_adapter() -> None:
 
 def test_default_model_name_per_provider() -> None:
     """An empty llm_model resolves to a sensible provider default (no network
-    touched — construction is lazy)."""
-    openai = PydanticAIModel(Settings(llm_api_key="k", llm_provider="openai"))
-    gemini = PydanticAIModel(Settings(llm_api_key="k", llm_provider="gemini"))
+    touched — construction is lazy). llm_model is pinned empty so the default
+    logic is tested regardless of any ambient LLM_MODEL in the environment."""
+    openai = PydanticAIModel(Settings(llm_api_key="k", llm_provider="openai", llm_model=""))
+    gemini = PydanticAIModel(Settings(llm_api_key="k", llm_provider="gemini", llm_model=""))
     assert openai._model_name == "gpt-4o-mini"
     assert gemini._model_name == "gemini-2.0-flash"
 

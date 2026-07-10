@@ -154,6 +154,12 @@ def test_recommendation_save_requires_auth(client: TestClient) -> None:
     assert response.status_code == 401
 
 
+def test_my_goals_requires_auth(client: TestClient) -> None:
+    """The saved-goals list is per-user ⇒ no token, no list (401)."""
+    response = client.get("/goals")
+    assert response.status_code == 401
+
+
 def test_recommendation_save_with_valid_token(snapshot: CatalogSnapshot) -> None:
     """A valid Supabase-style token ⇒ 200 with the recommendation. Persistence
     is best-effort (no DB here), so a failed write is swallowed, not surfaced."""

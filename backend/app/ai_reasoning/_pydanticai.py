@@ -39,10 +39,15 @@ class PydanticAIModel:
             from pydantic_ai.models.openai import OpenAIChatModel
             from pydantic_ai.providers.openai import OpenAIProvider
 
-            return OpenAIChatModel(
-                self._model_name,
-                provider=OpenAIProvider(api_key=self._settings.llm_api_key),
+            # base_url lets an OpenAI-compatible gateway (e.g. OpenRouter) stand
+            # in for OpenAI without a new provider branch; empty ⇒ real OpenAI.
+            base_url = self._settings.llm_base_url
+            openai_provider = (
+                OpenAIProvider(api_key=self._settings.llm_api_key, base_url=base_url)
+                if base_url
+                else OpenAIProvider(api_key=self._settings.llm_api_key)
             )
+            return OpenAIChatModel(self._model_name, provider=openai_provider)
         from pydantic_ai.models.google import GoogleModel
         from pydantic_ai.providers.google import GoogleProvider
 

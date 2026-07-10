@@ -21,6 +21,8 @@ from app.api.schemas import (
     ParseGoalResponse,
     RecommendationRequest,
     RecommendationResponse,
+    SavedGoalsResponse,
+    SavedGoalSummary,
 )
 from app.config import Settings
 from app.domain import (
@@ -37,8 +39,41 @@ from app.pipeline.run import (
     run_goal_pipeline,
 )
 from app.repositories.results import persist_recommendation
+from app.repositories.saved_goals import list_saved_goals
 
 router = APIRouter(prefix="/goals", tags=["goals"])
+
+
+@router.get("", response_model=SavedGoalsResponse)
+async def my_goals(user_id: UUID = Depends(require_user)) -> SavedGoalsResponse:
+    """The signed-in user's saved goals, newest first — the "My Goals" view.
+
+    Read-only, scoped to the verified `auth.users` id from the access token
+    (the query never spans users; RLS is the second line of defence, D-4). Each
+    goal carries its latest recommendation summary and the snapshot version it
+    was computed against, straight from persisted rows — no recomputation, so
+    the list matches exactly what was saved."""
+    async with get_engine().connect() as conn:
+        rows = await list_saved_goals(conn, user_id=user_id)
+    return SavedGoalsResponse(
+        goals=tuple(
+            SavedGoalSummary(
+                goal_id=row.goal_id,
+                goal_name=row.goal_name,
+                goal_type=row.goal_type,
+                destination_city=row.destination_city,
+                cabin_class=row.cabin_class,
+                target_miles=row.target_miles,
+                target_date=row.target_date,
+                status=row.status,
+                saved_at=row.created_at,
+                summary=row.summary,
+                confidence_score=row.confidence_score,
+                catalog_snapshot_version=row.catalog_snapshot_version,
+            )
+            for row in rows
+        )
+    )
 
 
 @router.post("/parse", response_model=ParseGoalResponse)

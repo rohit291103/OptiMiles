@@ -160,6 +160,25 @@ export type CatalogCardsResponse = {
   cards: CardSummary[];
 };
 
+/** GET /goals list item — one saved goal + its latest recommendation summary,
+ * read straight from persisted rows (matches `SavedGoalSummary` in schemas.py). */
+export type SavedGoal = {
+  goal_id: string;
+  goal_name: string;
+  goal_type: string;
+  destination_city: string | null;
+  cabin_class: string | null;
+  target_miles: number;
+  target_date: string | null;
+  status: string;
+  saved_at: string;
+  summary: string | null;
+  confidence_score: number | null;
+  catalog_snapshot_version: string | null;
+};
+
+export type SavedGoalsResponse = { goals: SavedGoal[] };
+
 // ── Calls ────────────────────────────────────────────────────────────────
 
 export class ApiError extends Error {
@@ -214,6 +233,26 @@ export function simulateAndSave(
   token: string,
 ): Promise<SimulateResponse> {
   return postJson<SimulateResponse>("/goals/recommendation/save", request, token);
+}
+
+/** The signed-in user's saved goals, newest first (needs a Supabase token). */
+export async function fetchSavedGoals(token: string): Promise<SavedGoal[]> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}/goals`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    throw new ApiError("Couldn't reach the strategy engine. Please try again.");
+  }
+  if (response.status === 401) {
+    throw new ApiError("Your session expired — please log in again.", 401);
+  }
+  if (!response.ok) {
+    throw new ApiError(`Couldn't load your goals (${response.status}).`, response.status);
+  }
+  const body = (await response.json()) as SavedGoalsResponse;
+  return body.goals;
 }
 
 /** Supported cards for the wallet picker. */

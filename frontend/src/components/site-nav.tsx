@@ -58,6 +58,9 @@ export function SiteNav() {
         <div className="hidden items-center gap-3 sm:flex">
           {user ? (
             <>
+              <Button asChild variant="ghost" size="lg" className="text-foreground hover:bg-secondary">
+                <Link href="/goals">My goals</Link>
+              </Button>
               <span className="max-w-56 truncate text-sm text-muted-foreground">
                 {user.email}
               </span>
@@ -111,6 +114,9 @@ export function SiteNav() {
           <div className="mt-4 flex flex-col gap-2">
             {user ? (
               <>
+                <Button asChild variant="outline" className="border-hairline">
+                  <Link href="/goals" onClick={() => setOpen(false)}>My goals</Link>
+                </Button>
                 <span className="px-2 text-sm text-muted-foreground">{user.email}</span>
                 <Button
                   variant="outline"

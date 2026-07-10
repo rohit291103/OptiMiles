@@ -22,7 +22,15 @@ class Settings(BaseSettings):
     llm_model: str = Field(
         default="",
         description="Model id for the provider (e.g. 'gpt-4o-mini', "
-        "'gemini-2.0-flash'); empty ⇒ a sensible per-provider default",
+        "'gemini-2.0-flash', 'qwen/qwen3-next-80b-a3b-instruct:free'); "
+        "empty ⇒ a sensible per-provider default",
+    )
+    llm_base_url: str = Field(
+        default="",
+        description="Override the OpenAI-compatible base URL (provider "
+        "'openai' only). Empty ⇒ real OpenAI. Set to "
+        "'https://openrouter.ai/api/v1' to route through OpenRouter, which "
+        "exposes many models (incl. free Qwen/DeepSeek) behind the OpenAI API.",
     )
     ranking_weights_path: Path = Path("config/ranking-weights-v1.yaml")
     requirement_buffer_pct: float = 5.0

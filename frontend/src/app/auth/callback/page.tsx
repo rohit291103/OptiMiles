@@ -48,7 +48,7 @@ export default function AuthCallbackPage() {
       .then(({ data }) => {
         if (!active) return;
         if (data.session) {
-          router.replace("/");
+          router.replace("/goals");
           return;
         }
         // Fall back to an explicit exchange if auto-detection didn't fire.
@@ -63,7 +63,7 @@ export default function AuthCallbackPage() {
         client.auth.exchangeCodeForSession(code).then(({ error }) => {
           if (!active) return;
           if (error) setError(`Code exchange failed: ${error.message}`);
-          else router.replace("/");
+          else router.replace("/goals");
         });
       })
       .catch((e) => {
