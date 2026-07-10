@@ -1,0 +1,25 @@
+# Decision Log — Post-login Dashboard Revamp + Saved-Goal Detail
+
+**Date:** 2026-07-10
+**Area:** frontend / backend
+
+## Context
+
+The post-login experience was a thin read-slice, not a designed surface: `/goals` was a narrow single-column list of plain bordered cards with no app chrome, goals couldn't be opened into their strategies, and "Start a new goal" bounced signed-in users back to the marketing homepage's simulator section. The user called it out directly ("looks very shabby… shows our previous strategy in a very bad manner") and asked for a full revamp — starting with what the dashboard should be (top bar, left pane, content), with engine-output quality deferred to a later session.
+
+## Decisions
+
+1. **The signed-in surface is a real app shell, separated from the marketing site by a Next.js route group** (`src/app/(app)/` wrapping `/goals`, `/goals/new`, `/goals/[id]`, `/cards`). One shared client layout (`components/app/app-shell.tsx`) owns the auth gate (redirect to `/login` when signed out), a fixed left sidebar (Brand; nav: Dashboard, New goal, Supported cards; bottom user chip + sign-out), a slim sticky top bar (route-derived page title + gold "+ New goal" action), and a mobile drawer. Same dark/gold system as the marketing site, but denser and without marketing chrome. Rationale: pages inside the shell can assume a signed-in user, and the marketing routes stay untouched.
+2. **The dashboard home leads with the newest goal as a "focus" hero** (name, destination · cabin · miles, months-to-target from `target_date`, confidence bar, "View strategy"), followed by three honest stat tiles (saved goals, total miles targeted, nearest target date — all pure reads of persisted rows) and a 2-up grid of the remaining goals. Empty state is a goal-first invitation into `/goals/new`. Rationale: goal-orientation is the product philosophy; the newest goal is the one the user is acting on.
+3. **Saved goals now open into their stored strategy via a new `GET /goals/{goal_id}`** (auth required). The read side (`repositories/saved_goals.py::get_saved_goal`) joins the goal to its latest `recommendation_outputs` row (same deterministic `created_at DESC, id DESC` pick as the list) and that recommendation's `simulation_results` row, scoped to `g.id = :goal_id AND g.user_id = :user_id` — an unknown id and a foreign user's goal are the same 404 on purpose. The API mapper (`detail_from_row`) is pure reconstruction of the persisted JSONB payloads (spend allocation, cards used/to-acquire, month ledger, milestones, transfer plan, action items) — **never recomputation**, honoring D-2 lineage: reopening a goal shows exactly what the engine produced at save time, with the snapshot/engine version displayed in the UI footer.
+4. **Display names ride on the detail response as cosmetic maps** (`card_names`, `partner_names`), resolved from the *current* snapshot at the endpoint; ids retired from the catalog are omitted and the client falls back to a generic label. Rationale: the transfer plan references partner ids the frontend otherwise can't resolve (no partners endpoint), and names are labels, not engine values — the numbers stay persisted.
+5. **Goal creation moved inside the app** (`/goals/new` embeds the existing live `GoalSimulator` unchanged); the simulator's "Saved" state now links back to the dashboard. Signed-in users never exit to the marketing page to create a goal. Marketing nav label "My goals" → "Dashboard".
+6. **The saved-strategy renderer is a separate component** (`components/app/saved-strategy.tsx`) mirroring the live simulator's `strategy-detail.tsx` visual language (accumulation SVG chart from `points_earned_this_month`, spend routing rows, transfer/milestone timelines, action items) but typed against the persisted subset — see "Not done" for why it can't reuse `StrategyDetail` directly.
+7. **`/cards` lists the full catalog inside the shell**, grouped by bank from the existing `GET /catalog/cards`, with non-acquirable cards labeled "Existing holders". This is where a future "my wallet" lives.
+
+## Not done (deferred)
+
+- **Score breakdown & feasibility verdict on saved goals:** the 6-part `score_breakdown`, `verdict`, and `headline_differentiator` are not persisted by `repositories/results.py`, so the saved detail view is a reduced version of the live simulator's detail (composite score only). Extending persistence (e.g. storing the full `FinalRecommendation` JSON) is part of the deferred engine-output pass the user explicitly parked.
+- **Engine-output quality pass:** the user flagged that the simulator's explanation is vague and that spend distribution can omit the selected card while including others — deliberately deferred to the next session ("let's first start with the dashboard… then we'll have to figure out our engine").
+- **Wallet persistence / spend-profile editing:** the dashboard reads saved goals only; there is no per-user wallet or editable spend profile yet.
+- **Goal deletion/archiving:** `status` renders as a pill but there's no way to change it from the UI.

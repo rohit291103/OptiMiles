@@ -59,7 +59,7 @@ export function SiteNav() {
           {user ? (
             <>
               <Button asChild variant="ghost" size="lg" className="text-foreground hover:bg-secondary">
-                <Link href="/goals">My goals</Link>
+                <Link href="/goals">Dashboard</Link>
               </Button>
               <span className="max-w-56 truncate text-sm text-muted-foreground">
                 {user.email}
@@ -115,7 +115,7 @@ export function SiteNav() {
             {user ? (
               <>
                 <Button asChild variant="outline" className="border-hairline">
-                  <Link href="/goals" onClick={() => setOpen(false)}>My goals</Link>
+                  <Link href="/goals" onClick={() => setOpen(false)}>Dashboard</Link>
                 </Button>
                 <span className="px-2 text-sm text-muted-foreground">{user.email}</span>
                 <Button

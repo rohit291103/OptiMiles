@@ -179,6 +179,64 @@ export type SavedGoal = {
 
 export type SavedGoalsResponse = { goals: SavedGoal[] };
 
+/** GET /goals/{id} — the persisted strategy behind a saved goal (matches
+ * `SavedGoalDetail` in schemas.py). Everything is a stored engine artifact
+ * from save time; only the name maps come from the current catalog. */
+export type SavedLedgerEntry = {
+  month: number;
+  points_earned_this_month: number;
+  cumulative_target_miles: number;
+};
+
+export type SavedMilestone = {
+  milestone_id: string;
+  card_id: string;
+  expected_month: number;
+  bonus_points: number;
+};
+
+export type SavedTransferPlanItem = {
+  from_card_id: string;
+  to_partner_id: string;
+  points: number;
+  planned_month: number;
+};
+
+export type SavedStrategy = {
+  spend_allocation: Record<string, string>;
+  cards_used: string[];
+  cards_to_acquire: string[];
+  ledger: SavedLedgerEntry[];
+  months_to_goal: number | null;
+  optimization_score: string | null;
+  milestones: SavedMilestone[];
+  transfer_plan: SavedTransferPlanItem[];
+};
+
+export type SavedGoalDetail = {
+  goal_id: string;
+  goal_name: string;
+  goal_type: string;
+  origin_city: string | null;
+  destination_city: string | null;
+  cabin_class: string | null;
+  num_passengers: number | null;
+  target_miles: number;
+  target_date: string | null;
+  status: string;
+  saved_at: string;
+  recommendation_type: string | null;
+  summary: string | null;
+  reasoning: string | null;
+  action_items: { priority: number; action: string; impact: string | null }[];
+  confidence_score: number | null;
+  catalog_snapshot_version: string | null;
+  engine_version: string | null;
+  strategy: SavedStrategy | null;
+  card_names: Record<string, string>;
+  partner_names: Record<string, string>;
+};
+
 // ── Calls ────────────────────────────────────────────────────────────────
 
 export class ApiError extends Error {
@@ -253,6 +311,31 @@ export async function fetchSavedGoals(token: string): Promise<SavedGoal[]> {
   }
   const body = (await response.json()) as SavedGoalsResponse;
   return body.goals;
+}
+
+/** One saved goal's full stored strategy (needs a Supabase token). */
+export async function fetchSavedGoal(
+  goalId: string,
+  token: string,
+): Promise<SavedGoalDetail> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}/goals/${goalId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    throw new ApiError("Couldn't reach the strategy engine. Please try again.");
+  }
+  if (response.status === 401) {
+    throw new ApiError("Your session expired — please log in again.", 401);
+  }
+  if (response.status === 404) {
+    throw new ApiError("We couldn't find that goal.", 404);
+  }
+  if (!response.ok) {
+    throw new ApiError(`Couldn't load this goal (${response.status}).`, response.status);
+  }
+  return (await response.json()) as SavedGoalDetail;
 }
 
 /** Supported cards for the wallet picker. */

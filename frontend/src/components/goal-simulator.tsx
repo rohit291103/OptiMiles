@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { ArrowRight, Plane, Sparkles, TrendingUp } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -376,7 +377,10 @@ function SaveGoal({
       </Button>
       {state === "saved" && (
         <span className="text-sm text-muted-foreground" role="status">
-          Saved to your account.
+          Saved to your account.{" "}
+          <Link href="/goals" className="font-medium text-gold hover:underline">
+            View it on your dashboard →
+          </Link>
         </span>
       )}
       {state === "error" && (
