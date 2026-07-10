@@ -10,7 +10,7 @@ The public simulator (`/simulations`) shares the pipeline via the same
 
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.ai_reasoning.intent import ScopeRefusal, extract_intent
 from app.ai_reasoning.model import ChatModel
@@ -21,8 +21,14 @@ from app.api.schemas import (
     ParseGoalResponse,
     RecommendationRequest,
     RecommendationResponse,
+    SavedActionItem,
+    SavedGoalDetail,
     SavedGoalsResponse,
     SavedGoalSummary,
+    SavedLedgerEntry,
+    SavedMilestone,
+    SavedStrategy,
+    SavedTransferPlanItem,
 )
 from app.config import Settings
 from app.domain import (
@@ -39,7 +45,11 @@ from app.pipeline.run import (
     run_goal_pipeline,
 )
 from app.repositories.results import persist_recommendation
-from app.repositories.saved_goals import list_saved_goals
+from app.repositories.saved_goals import (
+    SavedGoalDetailRow,
+    get_saved_goal,
+    list_saved_goals,
+)
 
 router = APIRouter(prefix="/goals", tags=["goals"])
 
@@ -73,6 +83,117 @@ async def my_goals(user_id: UUID = Depends(require_user)) -> SavedGoalsResponse:
             )
             for row in rows
         )
+    )
+
+
+@router.get("/{goal_id}", response_model=SavedGoalDetail)
+async def goal_detail(
+    goal_id: UUID,
+    user_id: UUID = Depends(require_user),
+    snapshot: CatalogSnapshot = Depends(get_snapshot),
+) -> SavedGoalDetail:
+    """One saved goal's full stored recommendation — the dashboard detail view.
+
+    Reconstructed from the persisted lineage chain (D-2), never recomputed: the
+    numbers shown are exactly what the engine produced at save time, against the
+    snapshot version named in the response. Only the id → display-name maps use
+    the current snapshot (labels, not values). Scoped to the verified caller; an
+    unknown id and someone else's goal are the same 404 on purpose."""
+    async with get_engine().connect() as conn:
+        row = await get_saved_goal(conn, user_id=user_id, goal_id=goal_id)
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Goal not found")
+    detail = detail_from_row(row)
+    if detail.strategy is not None:
+        card_names, partner_names = display_names(detail.strategy, snapshot)
+        detail = detail.model_copy(
+            update={"card_names": card_names, "partner_names": partner_names}
+        )
+    return detail
+
+
+def display_names(
+    strategy: SavedStrategy, snapshot: CatalogSnapshot
+) -> tuple[dict[str, str], dict[str, str]]:
+    """Resolve the card/partner ids a saved strategy references to display
+    names from the current snapshot. Purely cosmetic — retired ids are omitted
+    (the client falls back to a generic label), never guessed."""
+    card_ids = {
+        *strategy.cards_used,
+        *strategy.cards_to_acquire,
+        *strategy.spend_allocation.values(),
+        *(str(m.card_id) for m in strategy.milestones),
+        *(str(t.from_card_id) for t in strategy.transfer_plan),
+    }
+    partner_ids = {str(t.to_partner_id) for t in strategy.transfer_plan}
+    card_names = {
+        str(card.id): card.card_name
+        for card in snapshot.cards
+        if str(card.id) in card_ids
+    }
+    partner_names = {
+        str(partner.id): partner.program_name
+        for partner in snapshot.partners
+        if str(partner.id) in partner_ids
+    }
+    return card_names, partner_names
+
+
+def detail_from_row(row: SavedGoalDetailRow) -> SavedGoalDetail:
+    """Persisted lineage row → response. Pure reshaping of stored JSONB into
+    typed fields (plus a priority sort for action items); no engine calls."""
+    strategy: SavedStrategy | None = None
+    if row.card_allocations is not None:
+        allocations = row.card_allocations
+        strategy = SavedStrategy(
+            spend_allocation=allocations.get("spend_allocation", {}),
+            cards_used=tuple(allocations.get("cards_used", [])),
+            cards_to_acquire=tuple(allocations.get("cards_to_acquire", [])),
+            ledger=tuple(
+                SavedLedgerEntry(
+                    month=entry["month"],
+                    points_earned_this_month=entry.get("points_earned_this_month", 0),
+                    cumulative_target_miles=entry.get("cumulative_target_miles", 0),
+                )
+                for entry in allocations.get("ledger", [])
+            ),
+            months_to_goal=row.months_to_goal,
+            optimization_score=row.optimization_score,
+            milestones=tuple(
+                SavedMilestone(**m) for m in (row.milestone_projections or [])
+            ),
+            transfer_plan=tuple(
+                SavedTransferPlanItem(**t) for t in (row.transfer_recommendation or [])
+            ),
+        )
+
+    action_items = tuple(
+        sorted(
+            (SavedActionItem(**item) for item in (row.action_items or [])),
+            key=lambda item: item.priority,
+        )
+    )
+
+    return SavedGoalDetail(
+        goal_id=row.goal_id,
+        goal_name=row.goal_name,
+        goal_type=row.goal_type,
+        origin_city=row.origin_city,
+        destination_city=row.destination_city,
+        cabin_class=row.cabin_class,
+        num_passengers=row.num_passengers,
+        target_miles=row.target_miles,
+        target_date=row.target_date,
+        status=row.status,
+        saved_at=row.created_at,
+        recommendation_type=row.recommendation_type,
+        summary=row.summary,
+        reasoning=row.reasoning,
+        action_items=action_items,
+        confidence_score=row.confidence_score,
+        catalog_snapshot_version=row.catalog_snapshot_version,
+        engine_version=row.engine_version,
+        strategy=strategy,
     )
 
 

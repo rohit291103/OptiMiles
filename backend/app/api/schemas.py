@@ -7,6 +7,7 @@ owns all the reward logic — these types only shape the HTTP edge.
 """
 
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
@@ -144,3 +145,82 @@ class SavedGoalsResponse(BaseModel):
     """The signed-in user's saved goals, newest first (empty list is valid)."""
 
     goals: tuple[SavedGoalSummary, ...]
+
+
+class SavedLedgerEntry(BaseModel):
+    """One month of the persisted accumulation ledger — exactly the fields the
+    dashboard's progress chart needs, read from the stored JSONB."""
+
+    month: int
+    points_earned_this_month: int
+    cumulative_target_miles: int
+
+
+class SavedMilestone(BaseModel):
+    milestone_id: UUID
+    card_id: UUID
+    expected_month: int
+    bonus_points: int
+
+
+class SavedTransferPlanItem(BaseModel):
+    from_card_id: UUID
+    to_partner_id: UUID
+    points: int
+    planned_month: int
+
+
+class SavedStrategy(BaseModel):
+    """The recommended strategy as persisted (results.py's JSONB payloads,
+    reconstructed — never recomputed). Card/partner ids are strings exactly as
+    stored; the client resolves names via the catalog it already fetches."""
+
+    spend_allocation: dict[str, str]
+    cards_used: tuple[str, ...]
+    cards_to_acquire: tuple[str, ...]
+    ledger: tuple[SavedLedgerEntry, ...]
+    months_to_goal: int | None
+    optimization_score: Decimal | None
+    milestones: tuple[SavedMilestone, ...]
+    transfer_plan: tuple[SavedTransferPlanItem, ...]
+
+
+class SavedActionItem(BaseModel):
+    priority: int
+    action: str
+    impact: str | None = None
+    card_id: UUID | None = None
+
+
+class SavedGoalDetail(BaseModel):
+    """GET /goals/{id} — one saved goal's full stored recommendation.
+
+    Everything here is a persisted engine artifact (D-2 lineage): re-opening a
+    goal shows what was computed at save time, against the snapshot named here.
+    `strategy` is None for infeasible goals (no simulation_results row) — the
+    summary/reasoning then carry the adjustment story."""
+
+    goal_id: UUID
+    goal_name: str
+    goal_type: str
+    origin_city: str | None
+    destination_city: str | None
+    cabin_class: str | None
+    num_passengers: int | None
+    target_miles: int
+    target_date: date | None
+    status: str
+    saved_at: datetime
+    recommendation_type: str | None
+    summary: str | None
+    reasoning: str | None
+    action_items: tuple[SavedActionItem, ...]
+    confidence_score: float | None
+    catalog_snapshot_version: str | None
+    engine_version: str | None
+    strategy: SavedStrategy | None
+    # Cosmetic id → display-name maps resolved from the *current* snapshot so
+    # the client can label cards/partners without extra calls. Ids no longer in
+    # the catalog are simply absent (client falls back to a generic label).
+    card_names: dict[str, str] = {}
+    partner_names: dict[str, str] = {}
