@@ -34,13 +34,27 @@ class Settings(BaseSettings):
     )
     ranking_weights_path: Path = Path("config/ranking-weights-v1.yaml")
     requirement_buffer_pct: float = 5.0
+    supabase_url: str = ""
+    """Supabase project URL (e.g. https://<ref>.supabase.co). When set, its JWKS
+    endpoint (`/auth/v1/.well-known/jwks.json`) is the primary way access tokens
+    are verified — newer projects sign tokens with an asymmetric key (ES256), so
+    the shared HS256 secret alone can't verify them. Empty ⇒ JWKS disabled and
+    verification falls back to `supabase_jwt_secret` (legacy HS256)."""
     supabase_jwt_secret: str = ""
-    """Supabase project JWT secret (Settings → API → JWT Secret). Empty ⇒ auth
-    is disabled and authenticated endpoints reject every request. Used to verify
-    the HS256 access token the frontend's Supabase session mints (D-4: FastAPI
-    uses the service role; this only extracts the caller's real auth.users id)."""
+    """Legacy Supabase JWT secret (Settings → API → JWT Secret), for projects
+    still signing HS256. Used as a fallback when `supabase_url` (JWKS) is unset
+    or the token's alg is HS256. With neither this nor `supabase_url` set, auth
+    is *disabled* and authenticated endpoints reject every request (fail closed).
+    D-4: FastAPI uses the service role; this only extracts the caller's real
+    auth.users id."""
     supabase_jwt_audience: str = "authenticated"
     """The `aud` claim Supabase stamps on a signed-in user's access token."""
+
+    @property
+    def supabase_jwks_url(self) -> str:
+        """The project's JWKS endpoint, or "" when no `supabase_url` is set."""
+        base = self.supabase_url.rstrip("/")
+        return f"{base}/auth/v1/.well-known/jwks.json" if base else ""
 
     cors_allow_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
     """Comma-separated browser origins allowed to call the API. The Next dev

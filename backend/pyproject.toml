@@ -13,7 +13,8 @@ dependencies = [
     "alembic>=1.14",
     "pyyaml>=6.0",
     "pydantic-ai-slim[google,openai]>=0.0.30",
-    "pyjwt>=2.10",
+    "pyjwt[crypto]>=2.10",
+    "certifi>=2024.0",
 ]
 
 [dependency-groups]
