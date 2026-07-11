@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { CountUp } from "@/components/ui/count-up";
+import { PlaneLoader } from "@/components/ui/plane-loader";
 import {
   ApiError,
   fetchCards,
@@ -317,7 +318,12 @@ export function GoalSimulator() {
         )}
 
         <div aria-live="polite">
-          {response && (
+          {loading && (
+            <div className="mt-8 rounded-2xl border border-hairline bg-background/40 p-4 sm:p-6">
+              <PlaneLoader />
+            </div>
+          )}
+          {!loading && response && (
             <SimulatorResult
               response={response}
               destination={destination}

@@ -23,7 +23,8 @@ import {
   type SavedGoal,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { PlaneLoader } from "@/components/ui/plane-loader";
 
 /**
  * The dashboard home — the signed-in landing page. Reads only persisted
@@ -109,25 +110,31 @@ export default function DashboardPage() {
  * holds its shape while goals load — on-brand, not a bare loading line. */
 function DashboardSkeleton() {
   return (
-    <div className="animate-pulse space-y-8" role="status" aria-label="Loading your goals">
-      <div className="grid gap-4 sm:grid-cols-3">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="h-24 rounded-xl border border-hairline bg-card/40" />
-        ))}
-      </div>
-      <div className="h-52 rounded-2xl border border-gold/20 bg-card/40" />
-      <div className="space-y-3">
-        <div className="h-3 w-24 rounded bg-card/50" />
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="space-y-8">
+      <PlaneLoader stages={LOADING_STAGES} />
+      <div className="animate-pulse space-y-8" aria-hidden="true">
+        <div className="grid gap-4 sm:grid-cols-3">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="h-40 rounded-xl border border-hairline bg-card/30" />
+            <div key={i} className="h-24 rounded-xl border border-hairline bg-card/40" />
           ))}
         </div>
+        <div className="h-52 rounded-2xl border border-gold/20 bg-card/40" />
+        <div className="space-y-3">
+          <div className="h-3 w-24 rounded bg-card/50" />
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-40 rounded-xl border border-hairline bg-card/30" />
+            ))}
+          </div>
+        </div>
       </div>
-      <span className="sr-only">Loading your goals…</span>
     </div>
   );
 }
+
+// Short, dashboard-appropriate copy (this load is a fast DB read, not a full
+// pipeline run — keep it to two calm lines rather than the pipeline narration).
+const LOADING_STAGES = ["Loading your goals…", "Fetching your saved strategies…"];
 
 // ── Stat tiles: honest aggregates over persisted goals ─────────────────────
 
@@ -307,12 +314,6 @@ function GoalCard({
 
 // ── Per-goal action menu (view / download / delete) ────────────────────────
 
-type MenuState =
-  | { phase: "idle" }
-  | { phase: "confirming-delete" }
-  | { phase: "busy"; action: "download" | "delete" }
-  | { phase: "error"; message: string };
-
 function GoalMenu({
   goal,
   onDeleted,
@@ -321,23 +322,23 @@ function GoalMenu({
   onDeleted: (goalId: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [state, setMenuState] = useState<MenuState>({ phase: "idle" });
+  const [downloading, setDownloading] = useState(false);
+  const [menuError, setMenuError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
-  // Close on outside click / Escape. Listeners only while open.
+  // Close the popover on outside click / Escape. Listeners only while open.
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (e: PointerEvent) => {
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
         setOpen(false);
-        setMenuState({ phase: "idle" });
       }
     };
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setOpen(false);
-        setMenuState({ phase: "idle" });
-      }
+      if (e.key === "Escape") setOpen(false);
     };
     document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
@@ -347,10 +348,9 @@ function GoalMenu({
     };
   }, [open]);
 
-  const busy = state.phase === "busy";
-
   const download = async () => {
-    setMenuState({ phase: "busy", action: "download" });
+    setDownloading(true);
+    setMenuError(null);
     try {
       const token = await getAccessToken();
       if (!token) throw new Error("Your session expired — please log in again.");
@@ -365,27 +365,25 @@ function GoalMenu({
       a.click();
       URL.revokeObjectURL(url);
       setOpen(false);
-      setMenuState({ phase: "idle" });
     } catch (e) {
-      setMenuState({
-        phase: "error",
-        message: e instanceof Error ? e.message : "Download failed.",
-      });
+      setMenuError(e instanceof Error ? e.message : "Download failed.");
+    } finally {
+      setDownloading(false);
     }
   };
 
   const confirmDelete = async () => {
-    setMenuState({ phase: "busy", action: "delete" });
+    setDeleting(true);
+    setDeleteError(null);
     try {
       const token = await getAccessToken();
       if (!token) throw new Error("Your session expired — please log in again.");
       await deleteSavedGoal(goal.goal_id, token);
+      // Success: the card unmounts as the parent drops it from state.
       onDeleted(goal.goal_id);
     } catch (e) {
-      setMenuState({
-        phase: "error",
-        message: e instanceof Error ? e.message : "Delete failed.",
-      });
+      setDeleteError(e instanceof Error ? e.message : "Couldn't delete this goal.");
+      setDeleting(false); // keep the dialog open so the error is visible
     }
   };
 
@@ -398,7 +396,7 @@ function GoalMenu({
         aria-expanded={open}
         onClick={() => {
           setOpen((o) => !o);
-          setMenuState({ phase: "idle" });
+          setMenuError(null);
         }}
         className="grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
       >
@@ -420,45 +418,56 @@ function GoalMenu({
           <button
             type="button"
             role="menuitem"
-            disabled={busy}
+            disabled={downloading}
             onClick={download}
             className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-secondary disabled:opacity-50"
           >
             <Download className="size-4 text-muted-foreground" />
-            {state.phase === "busy" && state.action === "download"
-              ? "Preparing…"
-              : "Download strategy"}
+            {downloading ? "Preparing…" : "Download strategy"}
           </button>
           <button
             type="button"
             role="menuitem"
-            disabled={busy}
-            onClick={() =>
-              state.phase === "confirming-delete"
-                ? confirmDelete()
-                : setMenuState({ phase: "confirming-delete" })
-            }
-            className={cn(
-              "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors disabled:opacity-50",
-              state.phase === "confirming-delete"
-                ? "bg-destructive/15 font-medium text-destructive hover:bg-destructive/25"
-                : "text-destructive hover:bg-destructive/10",
-            )}
+            onClick={() => {
+              setOpen(false);
+              setDeleteError(null);
+              setConfirmingDelete(true);
+            }}
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-destructive transition-colors hover:bg-destructive/10"
           >
-            <Trash2 className="size-4" />
-            {state.phase === "busy" && state.action === "delete"
-              ? "Deleting…"
-              : state.phase === "confirming-delete"
-                ? "Confirm delete"
-                : "Delete goal"}
+            <Trash2 className="size-4" /> Delete goal
           </button>
-          {state.phase === "error" && (
+          {menuError && (
             <p className="px-3 py-2 text-xs text-destructive" role="alert">
-              {state.message}
+              {menuError}
             </p>
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmingDelete}
+        destructive
+        title="Delete this goal?"
+        description={
+          <>
+            <span className="font-medium text-foreground">{goal.goal_name}</span>{" "}
+            and its saved strategy will be permanently removed. This can&apos;t be
+            undone.
+          </>
+        }
+        confirmLabel="Delete goal"
+        busyLabel="Deleting…"
+        busy={deleting}
+        errorMessage={deleteError}
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          if (!deleting) {
+            setConfirmingDelete(false);
+            setDeleteError(null);
+          }
+        }}
+      />
     </div>
   );
 }
