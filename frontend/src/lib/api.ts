@@ -63,6 +63,20 @@ export type MonthLedgerEntry = {
   cumulative_target_miles: number;
 };
 
+export type TransferPlanItem = {
+  from_card_id: string;
+  to_partner_id: string;
+  points: number;
+  planned_month: number;
+};
+
+export type ExpectedMilestone = {
+  milestone_id: string;
+  card_id: string;
+  expected_month: number;
+  bonus_points: number;
+};
+
 export type CandidateStrategy = {
   strategy_id: string;
   archetype: string;
@@ -70,6 +84,8 @@ export type CandidateStrategy = {
   cards_to_acquire: string[];
   // category slug → card id
   spend_allocation: Record<string, string>;
+  transfer_plan: TransferPlanItem[];
+  expected_milestones: ExpectedMilestone[];
 };
 
 /** Per-category earn detail — the "why" behind a routing (rates/points). */

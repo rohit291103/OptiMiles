@@ -2,13 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Plane, Sparkles, TrendingUp } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { CountUp } from "@/components/ui/count-up";
 import { PlaneLoader } from "@/components/ui/plane-loader";
 import {
   ApiError,
@@ -21,6 +19,7 @@ import {
   type SimulateResponse,
 } from "@/lib/api";
 import { StrategyDetail } from "@/components/strategy-detail";
+import { FinePrint, VerdictHero } from "@/components/strategy-story";
 import { getAccessToken } from "@/lib/supabase";
 import { useAuth } from "@/lib/use-auth";
 
@@ -28,42 +27,35 @@ import { useAuth } from "@/lib/use-auth";
 // North America are charted in business only, so the UI nudges toward it.
 const DESTINATIONS = ["Singapore", "London", "New York"];
 const ORIGINS = ["Hyderabad", "Mumbai", "Delhi", "Bangalore", "Chennai", "Pune"];
+const PASSENGERS = [1, 2, 3, 4];
 
 const CABINS = [
-  { label: "Economy", value: "economy" },
-  { label: "Business", value: "business" },
-  { label: "First", value: "first" },
+  { label: "economy", value: "economy" },
+  { label: "business", value: "business" },
+  { label: "first", value: "first" },
 ] as const;
 
-// The public simulator collects a single monthly-spend figure, but the engine
-// earns per category (accelerated categories are the whole point). A signed-in
-// user edits their real profile; here we spread the figure over a representative
-// premium-traveler mix so the result reflects categorized earning, not the low
-// uncategorized "default" rate. Fractions sum to 1.
-const SPEND_MIX: { category_slug: string; fraction: number }[] = [
-  { category_slug: "travel", fraction: 0.3 },
-  { category_slug: "dining", fraction: 0.2 },
-  { category_slug: "online", fraction: 0.2 },
-  { category_slug: "groceries", fraction: 0.15 },
-  { category_slug: "utilities", fraction: 0.15 },
+// The spend profile is entered per category — the engine earns per category
+// (accelerated categories are the whole point), so the user should see and
+// control exactly what the engine sees, not a single figure secretly split.
+const SPEND_CATEGORIES: { slug: string; label: string; initial: string }[] = [
+  { slug: "travel", label: "Travel", initial: "30000" },
+  { slug: "dining", label: "Dining", initial: "20000" },
+  { slug: "online", label: "Online shopping", initial: "20000" },
+  { slug: "groceries", label: "Groceries", initial: "15000" },
+  { slug: "utilities", label: "Utilities", initial: "15000" },
 ];
-
-function splitSpend(monthly: number): {
-  category_slug: string;
-  monthly_spend_inr: number;
-}[] {
-  return SPEND_MIX.map(({ category_slug, fraction }) => ({
-    category_slug,
-    monthly_spend_inr: Math.max(Math.round(monthly * fraction), 1),
-  }));
-}
 
 export function GoalSimulator() {
   const [origin, setOrigin] = useState(ORIGINS[0]);
   const [destination, setDestination] = useState(DESTINATIONS[0]);
   const [cabin, setCabin] = useState<(typeof CABINS)[number]["value"]>("business");
-  const [monthlySpend, setMonthlySpend] = useState("100000");
   const [timeline, setTimeline] = useState("8");
+  const [passengers, setPassengers] = useState(1);
+  const [spend, setSpend] = useState<Record<string, string>>(
+    Object.fromEntries(SPEND_CATEGORIES.map((c) => [c.slug, c.initial])),
+  );
+  const [openToNewCards, setOpenToNewCards] = useState(true);
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
 
   const [cards, setCards] = useState<CardSummary[]>([]);
@@ -79,10 +71,15 @@ export function GoalSimulator() {
   >("idle");
   const { user, loading: authLoading } = useAuth();
 
-  const cabinLabel =
-    CABINS.find((c) => c.value === cabin)?.label.toLowerCase() ?? "business";
   const cardNames = new Map(cards.map((c) => [c.id, c.card_name]));
-  const pickerCards = cards.filter((c) => c.acquirable);
+  // "Cards you already hold" lists the FULL catalog — `acquirable` gates what
+  // the engine may propose as a NEW card, not what a user can hold (Atlas is
+  // closed to new applicants but plenty of wallets have one).
+  const pickerCards = cards;
+  const totalSpend = SPEND_CATEGORIES.reduce(
+    (sum, c) => sum + Math.max(Math.round(Number(spend[c.slug]) || 0), 0),
+    0,
+  );
 
   // Load the real card catalog for the wallet picker (falls back to no picker
   // if the backend is unreachable — the sim still runs with an empty wallet).
@@ -94,7 +91,7 @@ export function GoalSimulator() {
         setCards(fetched);
         // Pre-select the two flagship cards if present.
         const defaults = fetched
-          .filter((c) => c.acquirable && /Infinia|Atlas/.test(c.card_name))
+          .filter((c) => /Infinia|Atlas/.test(c.card_name))
           .map((c) => c.id)
           .slice(0, 2);
         setSelectedCardIds(defaults);
@@ -114,20 +111,26 @@ export function GoalSimulator() {
   }
 
   function buildRequest(): SimulateRequest {
+    const spendProfile = SPEND_CATEGORIES.map((c) => ({
+      category_slug: c.slug,
+      monthly_spend_inr: Math.max(Math.round(Number(spend[c.slug]) || 0), 0),
+    })).filter((item) => item.monthly_spend_inr > 0);
     return {
       intent: {
         origin_city: origin,
         destination_city: destination,
         cabin_class: cabin,
         timeline_months: Math.max(Number(timeline) || 1, 1),
-        num_passengers: 1,
+        num_passengers: passengers,
         confidence: 1,
       },
       wallet: selectedCardIds.map((id) => ({
         card_id: id,
         current_points_balance: 0,
       })),
-      spend_profile: splitSpend(Math.max(Number(monthlySpend) || 1, 1)),
+      // No categories entered ⇒ omit, so the engine applies its (flagged)
+      // default template instead of an empty profile.
+      ...(spendProfile.length > 0 ? { spend_profile: spendProfile } : {}),
     };
   }
 
@@ -177,107 +180,68 @@ export function GoalSimulator() {
 
   return (
     <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-card/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-sm">
-      <div className="flex items-center gap-3 border-b border-hairline px-6 py-5 sm:px-8">
-        <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-gold/30 bg-gold/10 text-gold">
-          <Sparkles className="size-4" />
-        </span>
-        <h3 className="font-heading text-xl text-foreground sm:text-2xl">
+      {/* ── The goal, as the sentence you'd say out loud ── */}
+      <div className="border-b border-hairline px-6 py-6 sm:px-8">
+        <p className="flex items-center gap-2 text-xs uppercase tracking-[0.12em] text-muted-foreground">
+          <span className="grid size-7 shrink-0 place-items-center rounded-lg border border-gold/30 bg-gold/10 text-gold">
+            <Sparkles className="size-3.5" />
+          </span>
+          Your goal
+        </p>
+        <p className="mt-4 font-heading text-xl leading-[2.2] text-foreground sm:text-2xl">
           I want to fly{" "}
-          <span className="italic text-gold">{cabinLabel} class</span> to{" "}
-          <span className="italic text-gold">{destination}</span>
-        </h3>
-      </div>
-
-      <div className="p-6 sm:p-8">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="origin" className="text-muted-foreground">
-              Flying from
-            </Label>
-            <select
-              id="origin"
-              value={origin}
-              onChange={(e) => setOrigin(e.target.value)}
-              className="flex h-10 w-full rounded-lg border border-input bg-input/30 px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              {ORIGINS.map((c) => (
-                <option key={c} value={c} className="bg-card">
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="destination" className="text-muted-foreground">
-              Destination
-            </Label>
-            <select
-              id="destination"
-              value={destination}
-              onChange={(e) => setDestination(e.target.value)}
-              className="flex h-10 w-full rounded-lg border border-input bg-input/30 px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              {DESTINATIONS.map((d) => (
-                <option key={d} value={d} className="bg-card">
-                  {d}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="spend" className="text-muted-foreground">
-              Monthly spend (₹)
-            </Label>
-            <Input
-              id="spend"
-              type="number"
-              value={monthlySpend}
-              onChange={(e) => setMonthlySpend(e.target.value)}
-              className="h-10 bg-input/30"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="timeline" className="text-muted-foreground">
-              Timeline (months)
-            </Label>
-            <Input
-              id="timeline"
+          <InlineSelect
+            ariaLabel="Cabin class"
+            value={cabin}
+            onChange={(v) => setCabin(v as (typeof CABINS)[number]["value"])}
+            options={CABINS.map((c) => ({ value: c.value, label: c.label }))}
+          />{" "}
+          class to{" "}
+          <InlineSelect
+            ariaLabel="Destination"
+            value={destination}
+            onChange={setDestination}
+            options={DESTINATIONS.map((d) => ({ value: d, label: d }))}
+          />{" "}
+          from{" "}
+          <InlineSelect
+            ariaLabel="Flying from"
+            value={origin}
+            onChange={setOrigin}
+            options={ORIGINS.map((o) => ({ value: o, label: o }))}
+          />{" "}
+          within{" "}
+          <span className="inline-flex items-baseline gap-1 whitespace-nowrap">
+            <input
               type="number"
               min={1}
+              max={36}
               value={timeline}
               onChange={(e) => setTimeline(e.target.value)}
-              className="h-10 bg-input/30"
+              aria-label="Timeline in months"
+              className="w-14 rounded-none border-0 border-b border-gold/50 bg-transparent px-1 text-center font-heading italic text-gold focus:border-gold focus:outline-none"
             />
-          </div>
-        </div>
+            months
+          </span>
+          , for{" "}
+          <InlineSelect
+            ariaLabel="Passengers"
+            value={String(passengers)}
+            onChange={(v) => setPassengers(Number(v))}
+            options={PASSENGERS.map((n) => ({
+              value: String(n),
+              label: n === 1 ? "1 passenger" : `${n} passengers`,
+            }))}
+          />
+          .
+        </p>
+      </div>
 
-        <div className="mt-4 space-y-2">
-          <Label className="text-muted-foreground">Cabin class</Label>
-          <div className="inline-flex w-full rounded-lg border border-hairline bg-input/20 p-1 sm:w-auto">
-            {CABINS.map((c) => (
-              <button
-                key={c.value}
-                type="button"
-                onClick={() => setCabin(c.value)}
-                aria-pressed={cabin === c.value}
-                className={`flex-1 rounded-md px-4 py-1.5 text-sm font-medium transition-colors sm:flex-none ${
-                  cabin === c.value
-                    ? "bg-gold text-gold-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
+      {/* ── Your situation: cards, spend, appetite for new cards ── */}
+      <div className="p-6 sm:p-8">
         {pickerCards.length > 0 && (
-          <div className="mt-4 space-y-2">
-            <Label className="text-muted-foreground">Your credit cards</Label>
+          <div className="space-y-2">
+            <Label className="text-muted-foreground">Cards you already hold</Label>
             <div className="flex flex-wrap gap-2">
               {pickerCards.map((card) => {
                 const selected = selectedCardIds.includes(card.id);
@@ -300,6 +264,71 @@ export function GoalSimulator() {
             </div>
           </div>
         )}
+
+        <div className="mt-6 space-y-2">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <Label className="text-muted-foreground">
+              What you spend in a month
+            </Label>
+            <span className="text-xs tabular-nums text-muted-foreground">
+              Total ₹{totalSpend.toLocaleString("en-IN")}/mo
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground/80">
+            The engine routes each category to the card that earns it best —
+            rough numbers are fine.
+          </p>
+          <div className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
+            {SPEND_CATEGORIES.map((c) => (
+              <div key={c.slug} className="flex items-center justify-between gap-3">
+                <Label
+                  htmlFor={`spend-${c.slug}`}
+                  className="text-sm font-normal text-foreground/85"
+                >
+                  {c.label}
+                </Label>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm text-muted-foreground">₹</span>
+                  <Input
+                    id={`spend-${c.slug}`}
+                    type="number"
+                    min={0}
+                    step={1000}
+                    value={spend[c.slug]}
+                    onChange={(e) =>
+                      setSpend((prev) => ({ ...prev, [c.slug]: e.target.value }))
+                    }
+                    className="h-9 w-28 bg-input/30 text-right tabular-nums"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-6 space-y-2">
+          <Label className="text-muted-foreground">Open to adding a new card?</Label>
+          <div className="inline-flex rounded-lg border border-hairline bg-input/20 p-1">
+            {[
+              { label: "Yes, show me options", value: true },
+              { label: "Prefer to use my cards", value: false },
+            ].map((opt) => (
+              <button
+                key={String(opt.value)}
+                type="button"
+                onClick={() => setOpenToNewCards(opt.value)}
+                aria-pressed={openToNewCards === opt.value}
+                className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+                  openToNewCards === opt.value
+                    ? "bg-gold text-gold-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <Button
           onClick={handleCalculate}
@@ -328,6 +357,8 @@ export function GoalSimulator() {
               response={response}
               destination={destination}
               cardNames={cardNames}
+              horizonMonths={lastRequest?.intent.timeline_months ?? null}
+              preferNoNewCards={!openToNewCards}
             />
           )}
         </div>
@@ -344,6 +375,35 @@ export function GoalSimulator() {
         )}
       </div>
     </div>
+  );
+}
+
+/** A select disguised as the emphasized word in the goal sentence — the form
+ * IS the sentence, so entering the goal reads like saying it. */
+function InlineSelect({
+  value,
+  onChange,
+  options,
+  ariaLabel,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+  ariaLabel: string;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      aria-label={ariaLabel}
+      className="max-w-full appearance-none rounded-none border-0 border-b border-gold/50 bg-transparent px-1 pb-0.5 font-heading italic text-gold focus:border-gold focus:outline-none"
+    >
+      {options.map((o) => (
+        <option key={o.value} value={o.value} className="bg-card font-sans not-italic">
+          {o.label}
+        </option>
+      ))}
+    </select>
   );
 }
 
@@ -411,10 +471,14 @@ function SimulatorResult({
   response,
   destination,
   cardNames,
+  horizonMonths,
+  preferNoNewCards,
 }: {
   response: SimulateResponse;
   destination: string;
   cardNames: Map<string, string>;
+  horizonMonths: number | null;
+  preferNoNewCards: boolean;
 }) {
   if (response.kind === "clarification") {
     return (
@@ -450,84 +514,65 @@ function SimulatorResult({
     );
   }
 
-  return <RecommendationView rec={response.recommendation} cardNames={cardNames} />;
+  return (
+    <RecommendationView
+      rec={response.recommendation}
+      cardNames={cardNames}
+      horizonMonths={horizonMonths}
+      preferNoNewCards={preferNoNewCards}
+    />
+  );
 }
 
 function RecommendationView({
   rec,
   cardNames,
+  horizonMonths,
+  preferNoNewCards,
 }: {
   rec: FinalRecommendation;
   cardNames: Map<string, string>;
+  horizonMonths: number | null;
+  preferNoNewCards: boolean;
 }) {
   const { requirement, verdict, recommended, narration } = rec;
-  const milesNeeded = requirement.miles_required_total;
-  const bestCase = verdict.best_case_miles;
-  const monthsToGoal = recommended?.simulation.months_to_goal ?? null;
-  const progress = Math.min(
-    100,
-    Math.round((bestCase / Math.max(milesNeeded, 1)) * 100),
-  );
+
+  // Feasible → the full narrative (verdict, route tabs, plan steps, chart,
+  // why). Infeasible → an honest verdict plus the adjustment menu.
+  if (recommended) {
+    return (
+      <div className="mt-8 border-t border-hairline pt-6">
+        {/* Keyed on the preference so toggling it re-applies the default
+            route selection instead of keeping stale tab state. */}
+        <StrategyDetail
+          key={`plan-${preferNoNewCards}`}
+          rec={rec}
+          cardNames={cardNames}
+          horizonMonths={horizonMonths}
+          preferNoNewCards={preferNoNewCards}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="mt-8 space-y-6 border-t border-hairline pt-6">
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Stat
-          icon={<Plane className="size-4" />}
-          label="Miles required"
-          value={<CountUp value={milesNeeded} />}
-        />
-        <Stat
-          icon={<TrendingUp className="size-4" />}
-          label="Best-case miles"
-          value={<CountUp value={bestCase} />}
-        />
-        <Stat
-          label="Time to goal"
-          value={monthsToGoal !== null ? `${monthsToGoal} months` : "—"}
-        />
-      </div>
-
-      <div>
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>Projected progress</span>
-          <span className="font-medium text-foreground">{progress}%</span>
-        </div>
-        <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-input/40">
-          <div
-            className="h-full rounded-full bg-gold transition-all duration-700"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-hairline bg-background/40 p-4">
-        <Badge className="bg-gold text-gold-foreground hover:bg-gold/90">
-          {verdict.feasible
-            ? verdict.tight
-              ? "Achievable (tight)"
-              : "Achievable"
-            : "Not as stated"}
-        </Badge>
-        {recommended && (
-          <span className="text-sm text-foreground">
-            Best route: {recommended.headline_differentiator}
-          </span>
-        )}
-      </div>
-
-      {narration?.summary && (
-        <p className="text-sm text-foreground">{narration.summary}</p>
-      )}
-
-      {/* The explainable detail — only when there's a recommended strategy. */}
-      {recommended && <StrategyDetail rec={rec} cardNames={cardNames} />}
-
-      {/* Infeasible → the adjustment menu is the answer, not a strategy list. */}
-      {!verdict.feasible && verdict.adjustment_options.length > 0 && (
+      <VerdictHero
+        feasible={false}
+        tight={verdict.tight}
+        targetMiles={requirement.miles_required_total}
+        projectedMiles={verdict.best_case_miles}
+        goalMonth={null}
+        horizonMonths={horizonMonths}
+        newFees={0}
+        cardsToAcquireNames={[]}
+        programName={requirement.target_program_name}
+        narrationSummary={narration?.summary}
+      />
+      {verdict.adjustment_options.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
-            To make it work
+            What would make it work
           </p>
           <ul className="space-y-2">
             {verdict.adjustment_options.map((opt) => (
@@ -541,11 +586,7 @@ function RecommendationView({
           </ul>
         </div>
       )}
-
-      <p className="text-xs text-muted-foreground/70">
-        Computed from verified award charts, live transfer ratios, caps and
-        milestones — snapshot {rec.catalog_snapshot_version.slice(0, 8)}.
-      </p>
+      <FinePrint snapshotVersion={rec.catalog_snapshot_version} engineVersion={rec.engine_version} />
     </div>
   );
 }
@@ -557,26 +598,6 @@ function Note({ title, children }: { title: string; children: React.ReactNode })
         {title}
       </p>
       {children}
-    </div>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  icon,
-}: {
-  label: string;
-  value: React.ReactNode;
-  icon?: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-xl border border-hairline bg-background/40 p-4">
-      <p className="flex items-center gap-1.5 text-xs uppercase tracking-[0.12em] text-muted-foreground">
-        {icon}
-        {label}
-      </p>
-      <p className="mt-1.5 font-heading text-xl text-foreground">{value}</p>
     </div>
   );
 }

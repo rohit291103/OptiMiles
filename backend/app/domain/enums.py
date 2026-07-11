@@ -75,3 +75,4 @@ class StrategyArchetype(StrEnum):
     ONE_NEW_CARD = "one_new_card"
     CONCENTRATED = "concentrated"
     SIMPLEST_VIABLE = "simplest_viable"
+    CHEAPEST_VIABLE = "cheapest_viable"

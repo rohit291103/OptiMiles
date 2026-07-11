@@ -282,6 +282,136 @@ def test_golden_cap_saturation_reroutes_spend(snapshot: CatalogSnapshot) -> None
     # idle-balance transfer: fewest actions, honestly fewer miles
 
 
+# ── Cheapest viable (always tries the cheapest acquisition, not just the
+# highest-earning one — every archetype above optimizes for miles; without
+# this one, a card like Magnus (₹30,000) can shadow out cards like Diners
+# Club (₹10,000) that would ALSO clear the goal, and a cost-conscious user
+# never sees the cheap option even exists) ─────────────────────────────────
+
+
+def test_cheapest_viable_tries_every_acquirable_card_not_just_the_best_rate(
+    snapshot: CatalogSnapshot,
+) -> None:
+    """1 passenger, empty wallet, horizon 12 (required 45,000): Diners Club
+    Black Metal (₹10,000 fee) alone clears the goal at 84,249 miles — far
+    cheaper than Magnus (₹30,000, 121,440 miles). Hand-computed:
+
+      DCB solo (travel 16.65×, dining 3.33×, transfer cutoff month 10):
+      claim@10 = 10 × (40,000×0.1665 + 30,000×0.0333) = 10 × 8,424.9 → 84,249
+
+    Without the cheapest-viable search this candidate simply would not exist
+    on fixtures where hill-climbing from every OTHER basin also converges
+    away from it — proven by the sibling test below, which asserts the exact
+    opposite absence on the default (higher-required) fixture. On THIS
+    fixture, DCB also happens to be `one_new_card`'s best-3rd-by-claim pick
+    (dedup keeps first-in, so the surviving candidate may carry either
+    label) — what matters is that the cheap, goal-clearing option is never
+    silently dropped, which is exactly what BR-02 did before this change
+    (DCB alone doesn't beat an empty-wallet baseline by 5%... except an
+    empty baseline is 0, so BR-02 was accidentally toothless here; the
+    non-empty-wallet sibling test below is the one that actually exercises
+    the BR-02 exemption)."""
+    candidates = _generate(
+        _context(
+            snapshot,
+            spend={SpendCategory.TRAVEL: 40_000, SpendCategory.DINING: 30_000},
+            wallet={},
+            horizon_months=12,
+            num_passengers=1,
+        )
+    )
+    dcb = next(
+        (c for c in candidates if c.cards_to_acquire == (_card("hdfc-diners-black"),)), None
+    )
+    assert dcb is not None
+    assert dcb.cards_used == (_card("hdfc-diners-black"),)
+    assert dcb.claimed_total_miles == 84_249
+    assert dcb.spend_allocation == {
+        SpendCategory.TRAVEL: _card("hdfc-diners-black"),
+        SpendCategory.DINING: _card("hdfc-diners-black"),
+    }
+    (transfer,) = dcb.transfer_plan
+    assert transfer.points == 84_249
+    assert transfer.planned_month == 10
+
+    # Magnus (₹30,000) also clears this fixture at a higher claim — both must
+    # coexist as distinct options, not have the cheap one pruned away.
+    acquired_cards = {c.cards_to_acquire[0] for c in candidates if len(c.cards_to_acquire) == 1}
+    assert {_card("hdfc-diners-black"), _card("axis-magnus-burgundy")} <= acquired_cards
+
+
+def test_cheapest_viable_survives_br02_when_the_wallet_baseline_is_already_strong(
+    snapshot: CatalogSnapshot,
+) -> None:
+    """The bug this whole archetype exists to fix: with a strong wallet
+    (Infinia + Atlas), status quo alone already claims 59,565 — so Diners
+    Club Black Metal's 51,282-mile claim (still clearing the 45,000 target)
+    FAILS one_new_card's ≥5%-over-baseline gate (BR-02) and would vanish
+    without the cheapest_viable exemption, leaving Magnus (₹30,000) as the
+    only acquisition a user ever sees, even though a ₹10,000 card also
+    works. Hand-computed: DCB solo, travel 16.65×/dining 3.33×/online
+    3.33×/groceries 3.33×/utilities 3.33×, cutoff month 6 (8−1−ceil(10/30)):
+      pts@6 = 7 × (30,000×.1665 + 20,000×.0333×3 + 15,000×.0333)
+            = 7 × (4,995 + 1,998 + 499.5) → floored per-month = 7 × 7,326 = 51,282
+    """
+    candidates = _generate(
+        _context(
+            snapshot,
+            spend={
+                SpendCategory.TRAVEL: 30_000,
+                SpendCategory.DINING: 20_000,
+                SpendCategory.ONLINE: 20_000,
+                SpendCategory.GROCERIES: 15_000,
+                SpendCategory.UTILITIES: 15_000,
+            },
+            wallet={"hdfc-infinia": 0, "axis-atlas": 0},
+            horizon_months=8,
+            num_passengers=1,
+        )
+    )
+    dcb = next(
+        (c for c in candidates if c.cards_to_acquire == (_card("hdfc-diners-black"),)), None
+    )
+    assert dcb is not None
+    assert dcb.claimed_total_miles == 51_282
+    assert dcb.claimed_total_miles >= 45_000  # clears the goal despite not beating baseline+5%
+
+
+def test_cheapest_viable_absent_when_no_single_new_card_alone_clears_the_goal(
+    snapshot: CatalogSnapshot,
+) -> None:
+    """Default fixture (required 90,000): hand-computed in this module's
+    docstring-adjacent test comments, no single acquirable card alone clears
+    it without hill-climbing away from itself (only Magnus + idle Infinia
+    balance combined clears it) — cheapest_viable must not fabricate a
+    single-card plan that doesn't actually work, and no OTHER archetype
+    should have produced a single-card acquisition either."""
+    candidates = _generate(_context(snapshot))
+    assert not any(
+        len(c.cards_to_acquire) == 1 and c.cards_used == c.cards_to_acquire for c in candidates
+    )
+
+
+def test_cheapest_viable_respects_no_new_cards_and_fee_cap(snapshot: CatalogSnapshot) -> None:
+    """`no_new_cards` forbids any acquisition; a ₹5,000 cap excludes DCB
+    (₹10,000) — only HSBC/Amex Platinum Travel (≤₹5,000) would qualify by
+    fee, and neither alone clears this fixture's goal (hand-computed above:
+    HSBC 33,000 / Amex PT 30,500 < 45,000 required), so no acquiring
+    candidate should appear under either constraint."""
+    for constraints in (NO_NEW_CARDS, ConstraintSet(max_annual_fees_inr=5_000)):
+        candidates = _generate(
+            _context(
+                snapshot,
+                spend={SpendCategory.TRAVEL: 40_000, SpendCategory.DINING: 30_000},
+                wallet={},
+                horizon_months=12,
+                num_passengers=1,
+                constraints=constraints,
+            )
+        )
+        assert not any(c.cards_to_acquire for c in candidates)
+
+
 # ── Contract guarantees ───────────────────────────────────────────────────
 
 

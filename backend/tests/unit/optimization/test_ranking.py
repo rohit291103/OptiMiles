@@ -293,6 +293,78 @@ def test_dominated_strategy_is_pruned(snapshot: CatalogSnapshot, weights) -> Non
     assert [r.strategy.strategy_id for r in ranked] == ["x"]
 
 
+def test_acquiring_candidate_survives_domination_by_a_cheaper_no_new_card_option(
+    snapshot: CatalogSnapshot, weights
+) -> None:  # type: ignore[no-untyped-def]
+    """The bug this exemption exists to fix: a status-quo (no new card) plan
+    with more miles AND lower fees than an acquiring plan would classically
+    dominate it — but "add one cheap card" is a different trade-off a
+    cost-conscious user weighs against "use what I have," not a strict
+    downgrade of it. W (acquiring, fewer miles, higher fees than Y) must
+    still reach scoring alongside Y."""
+    y_strategy, y_outcome = _pair_y()  # no acquisition: months 6, miles 95,000, fees 0
+    w_strategy = _strategy(
+        "w",
+        allocation={SpendCategory.TRAVEL: BURGUNDY, SpendCategory.DINING: BURGUNDY},
+        acquire=(BURGUNDY,),
+        transfers=((BURGUNDY, 51_282),),
+        claimed=51_282,
+    )
+    w_outcome = _outcome("w", months=7, miles=51_282, fees=10_000)  # worse on every dimension
+    ranked = rank(((w_strategy, w_outcome), (y_strategy, y_outcome)), _context(snapshot), weights)
+    assert {r.strategy.strategy_id for r in ranked} == {"w", "y"}
+
+
+def test_goal_missing_acquisition_gets_no_dominance_exemption(
+    snapshot: CatalogSnapshot, weights
+) -> None:  # type: ignore[no-untyped-def]
+    """The exemption is scoped to GOAL-ACHIEVING acquisitions only: a
+    candidate that acquires a card but still misses the goal in simulation
+    is pruned normally when dominated — the achieving-before-missing hard
+    rule already excludes it from recommendation, so exempting it here
+    would only add dead weight, not a real user-facing option.
+
+    Both strategies use Infinia only (no acquisition, no risk penalty from a
+    Burgundy transfer) so risk_penalty ties at 0 and "missing" is dominated
+    on every OTHER dimension cleanly — isolating the months/misses boundary
+    instead of an incidental risk-penalty difference."""
+    dominating_strategy, dominating_outcome = _pair_y()  # months 6, miles 95,000, fees 0
+    missing_strategy = _strategy(
+        "missing",
+        allocation={SpendCategory.TRAVEL: INFINIA, SpendCategory.DINING: INFINIA},
+        acquire=(INFINIA,),  # synthetic: forces acquires=True without Burgundy's risk penalty
+        transfers=((INFINIA, 30_000),),
+        claimed=30_000,
+    )
+    missing_outcome = _outcome("missing", months=None, miles=30_000, fees=10_000, misses=True)
+    ranked = rank(
+        ((missing_strategy, missing_outcome), (dominating_strategy, dominating_outcome)),
+        _context(snapshot),
+        weights,
+    )
+    assert [r.strategy.strategy_id for r in ranked] == ["y"]
+
+
+def test_acquiring_candidate_still_dominated_by_a_better_acquiring_candidate(
+    snapshot: CatalogSnapshot, weights
+) -> None:  # type: ignore[no-untyped-def]
+    """The exemption is scoped to acquiring-vs-non-acquiring only: two
+    acquiring candidates still prune normally (this is the pre-existing
+    test_dominated_strategy_is_pruned fixture, re-asserted here to pin the
+    boundary explicitly)."""
+    x_strategy, x_outcome = _pair_x()  # acquires Burgundy: months 5, miles 100,000, fees 30,235
+    z_strategy = _strategy(
+        "z",
+        allocation={SpendCategory.TRAVEL: BURGUNDY, SpendCategory.DINING: INFINIA},
+        acquire=(BURGUNDY,),
+        transfers=((BURGUNDY, 96_000), (INFINIA, 26_993)),
+        claimed=90_000,
+    )
+    z_outcome = _outcome("z", months=7, miles=90_000, fees=30_235)  # worse on every dimension
+    ranked = rank(((z_strategy, z_outcome), (x_strategy, x_outcome)), _context(snapshot), weights)
+    assert [r.strategy.strategy_id for r in ranked] == ["x"]
+
+
 def test_duplicate_strategies_are_merged(snapshot: CatalogSnapshot, weights) -> None:  # type: ignore[no-untyped-def]
     """Same allocation + acquisitions + transfer plan = the same plan."""
     strategy, outcome = _pair_y()

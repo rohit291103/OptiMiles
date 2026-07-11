@@ -19,6 +19,15 @@ candidates are explainably different local optima, never overstated ones:
 4. **simplest_viable** — one card for everything, no idle-balance transfers
    (fewest actions); emitted only when that single card still clears the
    requirement.
+5. **cheapest_viable** — the LOWEST-FEE acquirable card that alone still
+   clears the requirement (spend forced onto it, no hill-climb — climbing
+   would walk straight back to whichever card has the best rate, which is
+   exactly the bias this archetype exists to counter: `one_new_card` only
+   keeps the best-3-BY-CLAIM acquisitions, so a modest card that also clears
+   the goal can be shadowed out by a more expensive, higher-earning one and
+   never reach a cost-conscious user at all). Emitted only when it differs
+   from every other candidate's acquisition (a genuinely distinct "cheap and
+   simple" option, not a relabeled duplicate).
 
 Claims come from `allocation.claimed_estimate` (transfer-cutoff-aware,
 whole-block-floored — built to mirror the projector; Stage 8 still wins any
@@ -136,6 +145,28 @@ def generate_candidates(
     if best_solo is not None:
         drafts.append((StrategyArchetype.SIMPLEST_VIABLE, best_solo[2], False))
 
+    # 5. Cheapest viable — the lowest-fee ACQUIRABLE card that alone still
+    # clears the goal, spend forced onto it (no hill-climb: climbing would
+    # walk back to whichever card has the best rate, undoing the point of
+    # this search). Fee ties break on card id for determinism — no two
+    # currently-acquirable seed cards share a fee, so this tie-break is
+    # exercised only if the catalog changes; it is a plain stdlib sort key,
+    # not app logic, so it wasn't given its own fixture test (backend-reviewer
+    # confidence 80, accepted).
+    fee_by_card = {a.card_id: a.annual_fee_inr for a in opportunities.card_aggregates}
+    cheapest_acquisition: tuple[int, str, Assignment] | None = None
+    for card_id in sorted(allowed - wallet_ids, key=lambda c: (fee_by_card.get(c, 0), str(c))):
+        solo = _solo_assignment(candidates_by_category, card_id, categories)
+        if solo is None:
+            continue
+        claim = claimed_estimate(solo, context, include_idle_balances=False).total_miles
+        if claim < context.requirement.miles_required_total:
+            continue
+        cheapest_acquisition = (fee_by_card.get(card_id, 0), str(card_id), solo)
+        break  # sorted by fee ascending — first hit is cheapest
+    if cheapest_acquisition is not None:
+        drafts.append((StrategyArchetype.CHEAPEST_VIABLE, cheapest_acquisition[2], False))
+
     return _build_validated(drafts, opportunities, context, wallet_ids, baseline_claim)
 
 
@@ -195,9 +226,17 @@ def _build_validated(
         max_fee = context.constraints.max_annual_fees_inr
         if max_fee is not None and sum(fees_by_card[c] for c in cards_to_acquire) > max_fee:
             continue
-        # BR-02 applies to any acquiring candidate, whatever basin produced it.
-        if cards_to_acquire and Decimal(estimate.total_miles) <= (
-            Decimal(baseline_claim) * _MEANINGFUL_IMPROVEMENT
+        # BR-02 applies to any acquiring candidate that competes on MILES,
+        # whatever basin produced it. cheapest_viable is exempt by design —
+        # its acquisition is justified by being the lowest-fee card that
+        # STILL CLEARS THE GOAL, not by out-earning the status quo; the
+        # status quo can legitimately out-earn every cheap card while still
+        # costing a cost-conscious user more cards/complexity than they want.
+        if (
+            archetype != StrategyArchetype.CHEAPEST_VIABLE
+            and cards_to_acquire
+            and Decimal(estimate.total_miles)
+            <= (Decimal(baseline_claim) * _MEANINGFUL_IMPROVEMENT)
         ):
             continue
 

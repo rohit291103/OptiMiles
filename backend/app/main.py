@@ -20,12 +20,15 @@ def create_app() -> FastAPI:
     # The Goal Simulator is a browser call from the Next site, so the API's
     # read/simulate surface is CORS-open to the configured origins. `Content-Type`
     # for the JSON body; `Authorization` so the signed-in save (a Bearer-token
-    # cross-origin POST) survives the browser preflight. No cookies/credentials
-    # cross the boundary — the token is an explicit header, not a cookie.
+    # cross-origin POST) survives the browser preflight. DELETE is listed so the
+    # dashboard's "delete goal" preflight passes — without it Starlette answers
+    # the OPTIONS preflight 400 and the browser blocks the DELETE before it's
+    # sent. No cookies/credentials cross the boundary — the token is an explicit
+    # header, not a cookie.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=get_settings().cors_origins,
-        allow_methods=["GET", "POST"],
+        allow_methods=["GET", "POST", "DELETE"],
         allow_headers=["Content-Type", "Authorization"],
     )
     app.include_router(health_router)

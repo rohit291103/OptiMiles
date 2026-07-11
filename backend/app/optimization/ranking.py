@@ -11,7 +11,14 @@ Pipeline (SRE workflow, optimization-engine-spec §3.2):
    plan) merge, first-in wins. Dominated candidates — worse-or-equal on every
    raw dimension (months, miles, fees, complexity, wallet-spend share, risk
    penalties) and strictly worse on one — are dropped before scoring, so
-   normalization never rewards a strategy for the company it keeps.
+   normalization never rewards a strategy for the company it keeps. EXCEPTION:
+   a GOAL-ACHIEVING candidate that acquires a card is never pruned for losing
+   to a cheaper/faster no-new-card candidate — "add one card" and "use what
+   you have" are different trade-offs a user weighs on cost vs. miles, not a
+   strict downgrade (dominance among acquiring candidates is still enforced,
+   so a worse acquisition can't hide behind a better one; a goal-MISSING
+   acquisition gets no such protection — the hard rule below already keeps
+   it out of the recommendation).
 2. **Hard rules before weights.** `misses_goal` candidates rank below every
    achieving one regardless of score (they are kept for transparency, never
    recommended). User constraints were filtered at generation (BR-03).
@@ -252,8 +259,25 @@ class _RawDimensions(BaseModel):
     complexity_units: int
     wallet_spend_share: Decimal  # 0–1
     risk_penalty: int
+    acquires: bool = Field(
+        default=False,
+        description="True iff this candidate adds a card — see dominated_by",
+    )
 
     def dominated_by(self, other: "_RawDimensions") -> bool:
+        # An acquiring candidate that STILL REACHES THE GOAL is never pruned
+        # for losing to a cheaper, no-new-card option — "add one cheap card"
+        # and "use what you have" are different choices a user weighs on
+        # cost vs. miles, not a strict downgrade. Scoped to goal-achieving
+        # acquisitions only (months != _NEVER): a goal-missing acquisition
+        # gets no special protection and is pruned/ranked normally — the
+        # achieving-before-missing hard rule in rank() already keeps it out
+        # of the recommendation regardless, so exempting it here would only
+        # add dead weight to the candidate set. Dominance among acquiring
+        # candidates (Magnus vs. a worse Magnus plan, say) is unaffected —
+        # an acquisition can't hide a genuinely dominated sibling.
+        if self.acquires and self.months != _NEVER and not other.acquires:
+            return False
         no_worse = (
             other.months <= self.months
             and other.miles >= self.miles
@@ -279,6 +303,7 @@ def _raw_dimensions(
         complexity_units=_complexity_units(strategy),
         wallet_spend_share=_wallet_spend_share(strategy, context),
         risk_penalty=_risk_penalty(strategy, outcome, context),
+        acquires=bool(strategy.cards_to_acquire),
     )
 
 

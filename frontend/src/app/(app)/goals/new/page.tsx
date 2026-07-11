@@ -13,8 +13,9 @@ export default function NewGoalPage() {
       <header>
         <h2 className="font-heading text-2xl text-foreground">Plan a new goal</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Pick the trip and your cards — the engine builds the strategy,
-          explainably, from verified award charts and transfer ratios.
+          Say the trip, tell us what you hold and spend — the engine builds
+          your route to the award seat from verified charts and transfer
+          ratios, and shows its work.
         </p>
       </header>
       <GoalSimulator />
