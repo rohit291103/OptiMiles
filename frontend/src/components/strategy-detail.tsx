@@ -1,9 +1,15 @@
 "use client";
 
 import { useId, useState } from "react";
-import { ArrowRight, Check, CreditCard } from "lucide-react";
+import { Check } from "lucide-react";
 
 import type { FinalRecommendation, RankedStrategy } from "@/lib/api";
+import {
+  CardsToAcquire,
+  SpendRoutingDetailed,
+  StrategyTiers,
+  type StrategyTier,
+} from "@/components/strategy-story";
 
 /**
  * The explainable detail behind a recommendation — the "never a black box"
@@ -11,17 +17,6 @@ import type { FinalRecommendation, RankedStrategy } from "@/lib/api";
  * (score breakdown, simulated ledger, spend routing), not LLM output. Card ids
  * are resolved to names via the catalog map the simulator already fetched.
  */
-
-const CATEGORY_LABELS: Record<string, string> = {
-  travel: "Travel",
-  dining: "Dining",
-  online: "Online",
-  groceries: "Groceries",
-  utilities: "Utilities",
-  fuel: "Fuel",
-  international: "International",
-  default: "Everything else",
-};
 
 const SCORE_LABELS: { key: keyof RankedStrategy["score_breakdown"]; label: string }[] = [
   { key: "goal_achievement", label: "Goal achievement" },
@@ -44,11 +39,36 @@ export function StrategyDetail({
 
   const nameOf = (id: string) => cardNames.get(id) ?? "Selected card";
 
+  const tiers: StrategyTier[] = [recommended, ...rec.alternatives].map((r) => ({
+    strategyId: r.strategy.strategy_id,
+    headline: r.headline_differentiator,
+    miles: r.simulation.miles_at_target_date,
+    fees: r.simulation.total_fees_inr,
+    cardsToAcquire: r.strategy.cards_to_acquire,
+    isRecommended: r.strategy.strategy_id === recommended.strategy.strategy_id,
+    coRecommended: r.co_recommended,
+  }));
+
   return (
     <div className="mt-6 space-y-6">
+      {rec.narration?.comparison_notes && (
+        <p className="max-w-2xl text-sm leading-relaxed text-foreground/85">
+          {rec.narration.comparison_notes}
+        </p>
+      )}
+      <StrategyTiers
+        tiers={tiers}
+        targetMiles={rec.requirement.miles_required_total}
+        nameOf={nameOf}
+      />
       <ScoreBreakdownBars breakdown={recommended.score_breakdown} score={recommended.score} />
       <ProgressChart strategy={recommended} />
-      <SpendAllocation strategy={recommended} nameOf={nameOf} />
+      <SpendRoutingDetailed
+        details={recommended.allocation_details}
+        fallbackAllocation={recommended.strategy.spend_allocation}
+        nameOf={nameOf}
+      />
+      <CardsToAcquire ids={recommended.strategy.cards_to_acquire} nameOf={nameOf} />
       {rec.narration?.action_items && rec.narration.action_items.length > 0 && (
         <ActionItems items={rec.narration.action_items} />
       )}
@@ -190,44 +210,6 @@ function ProgressChart({ strategy }: { strategy: RankedStrategy }) {
           </div>
         )}
       </div>
-    </section>
-  );
-}
-
-// ── Spend allocation (category → card) ─────────────────────────────────────
-
-function SpendAllocation({
-  strategy,
-  nameOf,
-}: {
-  strategy: RankedStrategy;
-  nameOf: (id: string) => string;
-}) {
-  const entries = Object.entries(strategy.strategy.spend_allocation);
-  if (entries.length === 0) return null;
-
-  return (
-    <section>
-      <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
-        Where to spend
-      </p>
-      <ul className="mt-3 space-y-2">
-        {entries.map(([category, cardId]) => (
-          <li
-            key={category}
-            className="flex items-center justify-between rounded-lg border border-hairline bg-background/40 px-3 py-2 text-sm"
-          >
-            <span className="text-muted-foreground">
-              {CATEGORY_LABELS[category] ?? category}
-            </span>
-            <span className="flex items-center gap-1.5 font-medium text-foreground">
-              <ArrowRight className="size-3.5 text-gold" />
-              <CreditCard className="size-3.5 text-gold" />
-              {nameOf(cardId)}
-            </span>
-          </li>
-        ))}
-      </ul>
     </section>
   );
 }

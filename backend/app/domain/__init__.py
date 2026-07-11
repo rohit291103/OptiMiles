@@ -51,7 +51,12 @@ from app.domain.ranking import RankedStrategy, ScoreBreakdown
 from app.domain.recommendation import FinalRecommendation
 from app.domain.resolution import GoalResolution, UnsupportedRoute
 from app.domain.simulation import MonthLedgerEntry, SimulationOutcome, TransferExecution
-from app.domain.strategy import CandidateStrategy, ExpectedMilestone, TransferPlanItem
+from app.domain.strategy import (
+    CandidateStrategy,
+    ExpectedMilestone,
+    StrategyAllocationDetail,
+    TransferPlanItem,
+)
 
 __all__ = [
     "ActionItem",
@@ -94,6 +99,7 @@ __all__ = [
     "SpendCategory",
     "SpendProfile",
     "SpendProfileItem",
+    "StrategyAllocationDetail",
     "StrategyArchetype",
     "TransferExecution",
     "TransferPartner",

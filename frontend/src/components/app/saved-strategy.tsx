@@ -1,9 +1,15 @@
 "use client";
 
 import { useId, useState } from "react";
-import { ArrowRight, Award, Check, CreditCard, Plus } from "lucide-react";
+import { ArrowRight, Award, Check } from "lucide-react";
 
 import type { SavedGoalDetail, SavedStrategy } from "@/lib/api";
+import {
+  CardsToAcquire,
+  SpendRoutingDetailed,
+  StrategyTiers,
+  type StrategyTier,
+} from "@/components/strategy-story";
 
 /**
  * Renders a *persisted* recommendation — the stored engine artifacts behind a
@@ -13,22 +19,33 @@ import type { SavedGoalDetail, SavedStrategy } from "@/lib/api";
  * fall back to a generic label if a catalog id has since been retired.
  */
 
-const CATEGORY_LABELS: Record<string, string> = {
-  travel: "Travel",
-  dining: "Dining",
-  online: "Online",
-  groceries: "Groceries",
-  utilities: "Utilities",
-  fuel: "Fuel",
-  international: "International",
-  default: "Everything else",
-};
+const SCORE_LABELS: {
+  key: keyof NonNullable<SavedStrategy["score_breakdown"]>;
+  label: string;
+}[] = [
+  { key: "goal_achievement", label: "Goal achievement" },
+  { key: "efficiency", label: "Efficiency" },
+  { key: "cost", label: "Cost" },
+  { key: "simplicity", label: "Simplicity" },
+  { key: "portfolio_utilization", label: "Uses your cards" },
+  { key: "risk", label: "Risk" },
+];
 
 export function SavedStrategyView({ detail }: { detail: SavedGoalDetail }) {
   const strategy = detail.strategy;
   const cardName = (id: string) => detail.card_names[id] ?? "Card no longer listed";
   const partnerName = (id: string) =>
     detail.partner_names[id] ?? "Transfer partner";
+
+  const tiers: StrategyTier[] = detail.strategy_options.map((o) => ({
+    strategyId: o.strategy_id,
+    headline: o.headline_differentiator,
+    miles: o.miles_at_target_date,
+    fees: o.total_fees_inr,
+    cardsToAcquire: o.cards_to_acquire,
+    isRecommended: o.is_recommended,
+    coRecommended: o.co_recommended,
+  }));
 
   return (
     <div className="space-y-8">
@@ -38,13 +55,27 @@ export function SavedStrategyView({ detail }: { detail: SavedGoalDetail }) {
         </p>
       )}
 
+      <StrategyTiers
+        tiers={tiers}
+        targetMiles={detail.target_miles}
+        nameOf={cardName}
+      />
+
       {strategy && (
         <>
-          <AccumulationChart strategy={strategy} />
-          <SpendRouting strategy={strategy} cardName={cardName} />
-          {strategy.cards_to_acquire.length > 0 && (
-            <CardsToAcquire ids={strategy.cards_to_acquire} cardName={cardName} />
+          {strategy.score_breakdown && (
+            <ScoreBreakdownBars
+              breakdown={strategy.score_breakdown}
+              score={strategy.optimization_score}
+            />
           )}
+          <AccumulationChart strategy={strategy} />
+          <SpendRoutingDetailed
+            details={strategy.allocation_details}
+            fallbackAllocation={strategy.spend_allocation}
+            nameOf={cardName}
+          />
+          <CardsToAcquire ids={strategy.cards_to_acquire} nameOf={cardName} />
           {strategy.transfer_plan.length > 0 && (
             <TransferPlan
               strategy={strategy}
@@ -71,6 +102,43 @@ export function SavedStrategyView({ detail }: { detail: SavedGoalDetail }) {
         </section>
       )}
     </div>
+  );
+}
+
+// ── Score breakdown (persisted 6-part composite) ───────────────────────────
+
+function ScoreBreakdownBars({
+  breakdown,
+  score,
+}: {
+  breakdown: NonNullable<SavedStrategy["score_breakdown"]>;
+  score: string | null;
+}) {
+  return (
+    <section>
+      <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
+        {score ? `Why this strategy scores ${Math.round(Number(score))}` : "Why this strategy"}
+      </p>
+      <ul className="mt-3 space-y-2">
+        {SCORE_LABELS.map(({ key, label }) => {
+          const value = Math.max(0, Math.min(100, Number(breakdown[key])));
+          return (
+            <li key={key} className="flex items-center gap-3">
+              <span className="w-32 shrink-0 text-sm text-muted-foreground">{label}</span>
+              <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-input/40">
+                <span
+                  className="block h-full rounded-full bg-gold transition-all duration-700"
+                  style={{ width: `${value}%` }}
+                />
+              </span>
+              <span className="w-8 shrink-0 text-right text-xs tabular-nums text-foreground">
+                {Math.round(value)}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 
@@ -168,72 +236,6 @@ function AccumulationChart({ strategy }: { strategy: SavedStrategy }) {
           </div>
         )}
       </div>
-    </section>
-  );
-}
-
-// ── Spend routing (category → card) ────────────────────────────────────────
-
-function SpendRouting({
-  strategy,
-  cardName,
-}: {
-  strategy: SavedStrategy;
-  cardName: (id: string) => string;
-}) {
-  const entries = Object.entries(strategy.spend_allocation);
-  if (entries.length === 0) return null;
-
-  return (
-    <section>
-      <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
-        Where to spend
-      </p>
-      <ul className="mt-3 space-y-2">
-        {entries.map(([category, cardId]) => (
-          <li
-            key={category}
-            className="flex items-center justify-between rounded-lg border border-hairline bg-background/40 px-3 py-2 text-sm"
-          >
-            <span className="text-muted-foreground">
-              {CATEGORY_LABELS[category] ?? category}
-            </span>
-            <span className="flex items-center gap-1.5 font-medium text-foreground">
-              <ArrowRight className="size-3.5 text-gold" />
-              <CreditCard className="size-3.5 text-gold" />
-              {cardName(cardId)}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-// ── Cards to acquire ───────────────────────────────────────────────────────
-
-function CardsToAcquire({
-  ids,
-  cardName,
-}: {
-  ids: string[];
-  cardName: (id: string) => string;
-}) {
-  return (
-    <section>
-      <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
-        Cards to add
-      </p>
-      <ul className="mt-3 flex flex-wrap gap-2">
-        {ids.map((id) => (
-          <li
-            key={id}
-            className="flex items-center gap-1.5 rounded-full border border-gold/40 bg-gold/10 px-3.5 py-1.5 text-xs font-medium text-gold"
-          >
-            <Plus className="size-3.5" /> {cardName(id)}
-          </li>
-        ))}
-      </ul>
     </section>
   );
 }

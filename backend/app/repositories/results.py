@@ -132,7 +132,10 @@ async def _write_result_row(
     result_id = uuid4()
 
     # JSONB payloads — the month-by-month ledger and plan, serialized in JSON
-    # mode so UUID/Decimal keys and values round-trip.
+    # mode so UUID/Decimal keys and values round-trip. The extra "story" keys
+    # (allocation_details, score_breakdown, headline, strategy_options) ride in
+    # this same free-form JSONB so a saved goal reconstructs everything the live
+    # simulator shows, with no schema migration.
     allocations = {
         "spend_allocation": {
             slug.value: str(cid) for slug, cid in strategy.spend_allocation.items()
@@ -140,6 +143,12 @@ async def _write_result_row(
         "cards_used": [str(c) for c in strategy.cards_used],
         "cards_to_acquire": [str(c) for c in strategy.cards_to_acquire],
         "ledger": [entry.model_dump(mode="json") for entry in outcome.ledger],
+        "allocation_details": [
+            detail.model_dump(mode="json") for detail in recommended.allocation_details
+        ],
+        "score_breakdown": recommended.score_breakdown.model_dump(mode="json"),
+        "headline_differentiator": recommended.headline_differentiator,
+        "strategy_options": _strategy_options(recommendation),
     }
     milestones = [m.model_dump(mode="json") for m in strategy.expected_milestones]
     transfers = [t.model_dump(mode="json") for t in strategy.transfer_plan]
@@ -244,6 +253,94 @@ async def _write_recommendation_row(
     return recommendation_id
 
 
+def _strategy_options(recommendation: FinalRecommendation) -> list[dict[str, object]]:
+    """The 'your cards → +1 card → +2' tier list: the recommended strategy plus
+    every alternative, each a compact summary (headline, miles, fees, cards to
+    add) — enough to render the comparison story, not the full simulations. The
+    recommended one is flagged and listed first; order otherwise follows rank."""
+    tiers: list[dict[str, object]] = []
+    ranked = []
+    if recommendation.recommended is not None:
+        ranked.append((recommendation.recommended, True))
+    ranked.extend((alt, False) for alt in recommendation.alternatives)
+    for option, is_recommended in ranked:
+        tiers.append(
+            {
+                "strategy_id": option.strategy.strategy_id,
+                "archetype": option.strategy.archetype.value,
+                "headline_differentiator": option.headline_differentiator,
+                "miles_at_target_date": option.simulation.miles_at_target_date,
+                "months_to_goal": option.simulation.months_to_goal,
+                "total_fees_inr": option.simulation.total_fees_inr,
+                "cards_used": [str(c) for c in option.strategy.cards_used],
+                "cards_to_acquire": [str(c) for c in option.strategy.cards_to_acquire],
+                "score": str(option.score),
+                "is_recommended": is_recommended,
+                "co_recommended": option.co_recommended,
+            }
+        )
+    return tiers
+
+
 def _json(value: object) -> str:
     """Serialize a JSON-safe structure for a `CAST(:x AS JSONB)` bind."""
     return json.dumps(value)
+
+
+# The FKs pointing at user_goals (migration 0001) are ON DELETE SET NULL from
+# spend_simulations/recommendation_outputs but NO ACTION from
+# simulation_results.goal_id — so a bare goal delete would either strand
+# lineage rows with NULL goal ids or be rejected outright. Deleting a goal
+# therefore removes the whole lineage explicitly, child-first:
+# recommendation_outputs → simulation_results → spend_simulations → the goal
+# row itself. (simulation_results would also cascade from its parent
+# spend_simulations row, but only when its goal_id matches that parent's — an
+# unenforced invariant of persist_recommendation, so it gets its own DELETE
+# rather than trusting the cascade.) Every statement binds the caller's
+# user_id as well as the goal id — simulation_results has no user_id column,
+# so it scopes through the ownership of the goal itself — and RLS (D-4) is
+# the second line of defence.
+_DELETE_LINEAGE_SQL = (
+    text(
+        """
+        DELETE FROM recommendation_outputs
+        WHERE goal_id = :goal_id AND user_id = :user_id
+        """
+    ),
+    text(
+        """
+        DELETE FROM simulation_results sr
+        USING user_goals g
+        WHERE sr.goal_id = g.id AND g.id = :goal_id AND g.user_id = :user_id
+        """
+    ),
+    text(
+        """
+        DELETE FROM spend_simulations
+        WHERE goal_id = :goal_id AND user_id = :user_id
+        """
+    ),
+    text(
+        """
+        DELETE FROM user_goals
+        WHERE id = :goal_id AND user_id = :user_id
+        """
+    ),
+)
+
+
+async def delete_goal_lineage(
+    conn: AsyncConnection, *, user_id: UUID, goal_id: UUID
+) -> bool:
+    """Delete one of `user_id`'s goals and its stored lineage.
+
+    Runs inside whatever transaction the caller opened (`engine.begin()`), so
+    the lineage never half-disappears. Returns True iff the goal row itself was
+    deleted; False means the goal doesn't exist or belongs to someone else
+    (deliberately indistinguishable, same as the reads in saved_goals.py).
+    """
+    params = {"user_id": user_id, "goal_id": goal_id}
+    for statement in _DELETE_LINEAGE_SQL[:-1]:
+        await conn.execute(statement, params)
+    result = await conn.execute(_DELETE_LINEAGE_SQL[-1], params)
+    return result.rowcount > 0

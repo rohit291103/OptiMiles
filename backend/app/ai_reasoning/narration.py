@@ -23,6 +23,7 @@ adjustment menu from the `FeasibilityVerdict`, same echo-checking.
 
 import logging
 import re
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
@@ -45,6 +46,19 @@ _TEMPLATE_VERSION = "template-fallback"
 _NUMBER_RE = re.compile(r"\d[\d,]*(?:\.\d+)?")
 
 
+class NarrationTier(BaseModel):
+    """One option in the 'your cards → +1 → +2' comparison, as finished facts
+    the narrator may cite. Numbers here are added to `allowed_numbers`."""
+
+    model_config = ConfigDict(frozen=True)
+
+    label: str  # the headline differentiator, e.g. "no new cards"
+    miles: int
+    total_fees_inr: int
+    acquire_names: tuple[str, ...]
+    is_recommended: bool
+
+
 class NarrationPayload(BaseModel):
     """The complete, finished fact set handed to the LLM — nothing else."""
 
@@ -63,6 +77,9 @@ class NarrationPayload(BaseModel):
     acquire_names: tuple[str, ...]
     assumptions: tuple[str, ...]
     adjustment_notes: tuple[str, ...]
+    comparison: tuple[NarrationTier, ...] = ()
+    """The recommended tier + alternatives, for telling the comparison story.
+    Empty when there is only one option. Every number here is echo-allowed."""
     allowed_numbers: frozenset[int]
     allowed_names: frozenset[str]
     catalog_card_names: frozenset[str] = frozenset()
@@ -103,6 +120,7 @@ def build_narration_payload(
     fees = 0
     differentiator = ""
     buffer_achieved = False
+    comparison: tuple[NarrationTier, ...] = ()
 
     if recommended is not None:
         strategy, outcome = recommended.strategy, recommended.simulation
@@ -125,6 +143,12 @@ def build_narration_payload(
         # echo — allow-list it so a faithful quote isn't flagged as invented.
         for note in assumptions:
             numbers.update(_integers_in(note))
+        # The comparison tiers (recommended first, then each alternative) — the
+        # story the narrator tells. Only build it when there IS a comparison.
+        if alternatives:
+            comparison = _build_tiers(recommended, alternatives, names_by_card)
+            for tier in comparison:
+                numbers.update({tier.miles, tier.total_fees_inr})
     else:
         # Infeasible: the answer is the adjustment menu.
         headline = verdict.best_case_miles
@@ -155,9 +179,37 @@ def build_narration_payload(
         acquire_names=acquire_names,
         assumptions=assumptions,
         adjustment_notes=adjustment_notes,
+        comparison=comparison,
         allowed_numbers=frozenset(numbers),
         allowed_names=allowed_names,
     )
+
+
+def _build_tiers(
+    recommended: RankedStrategy,
+    alternatives: tuple[RankedStrategy, ...],
+    names_by_card: dict[UUID, str],
+) -> tuple[NarrationTier, ...]:
+    """The comparison story: recommended tier first, then each alternative."""
+    tiers: list[NarrationTier] = []
+    for option, is_recommended in [
+        (recommended, True),
+        *((alt, False) for alt in alternatives),
+    ]:
+        tiers.append(
+            NarrationTier(
+                label=option.headline_differentiator,
+                miles=option.simulation.miles_at_target_date,
+                total_fees_inr=option.simulation.total_fees_inr,
+                acquire_names=tuple(
+                    names_by_card[c]
+                    for c in option.strategy.cards_to_acquire
+                    if c in names_by_card
+                ),
+                is_recommended=is_recommended,
+            )
+        )
+    return tuple(tiers)
 
 
 async def narrate(
@@ -258,6 +310,22 @@ def _prompt(payload: NarrationPayload) -> str:
             lines.append(f"Cards used: {', '.join(payload.card_names)}")
         if payload.acquire_names:
             lines.append(f"New card(s) to apply for: {', '.join(payload.acquire_names)}")
+        if len(payload.comparison) >= 2:
+            lines.append(
+                "Options to compare (tell this as a story — what their current "
+                "cards reach vs. what adding a card unlocks):"
+            )
+            for tier in payload.comparison:
+                add = (
+                    f"add {', '.join(tier.acquire_names)}"
+                    if tier.acquire_names
+                    else "no new cards"
+                )
+                mark = " [recommended]" if tier.is_recommended else ""
+                lines.append(
+                    f"  - {tier.label} ({add}): {tier.miles:,} miles, "
+                    f"₹{tier.total_fees_inr:,} fees{mark}"
+                )
     else:
         lines.append(f"Goal NOT reachable as stated; best case {payload.headline_miles:,} miles.")
         if payload.adjustment_notes:
@@ -311,6 +379,27 @@ def _template(payload: NarrationPayload) -> RecommendationNarration:
         summary=summary,
         reasoning=" ".join(reasoning_bits),
         action_items=actions,
-        comparison_notes=None,
+        comparison_notes=_comparison_notes(payload),
         model_version=_TEMPLATE_VERSION,
     )
+
+
+def _comparison_notes(payload: NarrationPayload) -> str | None:
+    """Deterministic tier story: 'your cards reach X; adding a card lifts you to
+    Y for ₹Z'. None when there is no comparison to draw (a single option)."""
+    if len(payload.comparison) < 2:
+        return None
+    parts: list[str] = []
+    for tier in payload.comparison:
+        fee_clause = (
+            "no annual fee"
+            if tier.total_fees_inr == 0
+            else f"₹{tier.total_fees_inr:,} in fees"
+        )
+        if tier.acquire_names:
+            lead = f"Adding {', '.join(tier.acquire_names)}"
+        else:
+            lead = "With your current cards"
+        marker = " (recommended)" if tier.is_recommended else ""
+        parts.append(f"{lead}: {tier.miles:,} miles for {fee_clause}{marker}.")
+    return " ".join(parts)

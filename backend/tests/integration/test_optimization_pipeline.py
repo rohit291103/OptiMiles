@@ -171,7 +171,9 @@ def test_full_chain_is_deterministic(snapshot: CatalogSnapshot) -> None:
         verdict = assess_feasibility(opportunities, context)
         candidates = generate_candidates(opportunities, verdict, context)
         pairs = tuple((c, simulate(c, context)) for c in candidates)
-        return rank(pairs, context, WEIGHTS)
+        # opportunities threaded through (as production does) so the
+        # allocation_details path is included in the determinism guarantee.
+        return rank(pairs, context, WEIGHTS, opportunities=opportunities)
 
     assert run() == run()
 

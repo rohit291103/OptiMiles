@@ -10,7 +10,7 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.domain.simulation import SimulationOutcome
-from app.domain.strategy import CandidateStrategy
+from app.domain.strategy import CandidateStrategy, StrategyAllocationDetail
 
 
 class ScoreBreakdown(BaseModel):
@@ -43,4 +43,10 @@ class RankedStrategy(BaseModel):
     )
     co_recommended: bool = Field(
         default=False, description="Near-tie at the top presented honestly as a co-recommendation"
+    )
+    allocation_details: tuple[StrategyAllocationDetail, ...] = Field(
+        default=(),
+        description="Per-category earn story (card/rate/points) for this "
+        "strategy's routing — presentation reshape of Stage-5 opportunities, "
+        "empty when the OpportunitySet was not supplied to rank()",
     )

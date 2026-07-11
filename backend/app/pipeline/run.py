@@ -177,8 +177,10 @@ async def run_from_context(
         candidates = generate_candidates(opportunities, verdict, context)
         # Stage 8 — Timeline simulation, once per candidate.
         pairs = tuple((candidate, simulate(candidate, context)) for candidate in candidates)
-        # Stage 9 — Ranking & selection (reconciled against simulation).
-        ranked = rank(pairs, context, weights)
+        # Stage 9 — Ranking & selection (reconciled against simulation);
+        # opportunities threaded through so each ranked strategy carries its
+        # per-category earn story (allocation_details) for the UI.
+        ranked = rank(pairs, context, weights, opportunities=opportunities)
         recommended = ranked[0] if ranked else None
 
     # Stage 10 — Explanation & narration (AI edge; template fallback).

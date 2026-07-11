@@ -22,12 +22,15 @@ from app.api.schemas import (
     RecommendationRequest,
     RecommendationResponse,
     SavedActionItem,
+    SavedAllocationDetail,
     SavedGoalDetail,
     SavedGoalsResponse,
     SavedGoalSummary,
     SavedLedgerEntry,
     SavedMilestone,
+    SavedScoreBreakdown,
     SavedStrategy,
+    SavedStrategyOption,
     SavedTransferPlanItem,
 )
 from app.config import Settings
@@ -44,7 +47,7 @@ from app.pipeline.run import (
     ScopeRefused,
     run_goal_pipeline,
 )
-from app.repositories.results import persist_recommendation
+from app.repositories.results import delete_goal_lineage, persist_recommendation
 from app.repositories.saved_goals import (
     SavedGoalDetailRow,
     get_saved_goal,
@@ -112,6 +115,22 @@ async def goal_detail(
     return detail
 
 
+@router.delete("/{goal_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_goal(
+    goal_id: UUID,
+    user_id: UUID = Depends(require_user),
+) -> None:
+    """Delete one of the caller's saved goals and its stored lineage.
+
+    The repo removes the whole persisted chain (recommendation → simulation →
+    goal) in one transaction, scoped to the verified caller throughout — an
+    unknown id and someone else's goal are the same 404, matching the reads."""
+    async with get_engine().begin() as conn:
+        deleted = await delete_goal_lineage(conn, user_id=user_id, goal_id=goal_id)
+    if not deleted:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Goal not found")
+
+
 def display_names(
     strategy: SavedStrategy, snapshot: CatalogSnapshot
 ) -> tuple[dict[str, str], dict[str, str]]:
@@ -143,8 +162,10 @@ def detail_from_row(row: SavedGoalDetailRow) -> SavedGoalDetail:
     """Persisted lineage row → response. Pure reshaping of stored JSONB into
     typed fields (plus a priority sort for action items); no engine calls."""
     strategy: SavedStrategy | None = None
+    strategy_options: tuple[SavedStrategyOption, ...] = ()
     if row.card_allocations is not None:
         allocations = row.card_allocations
+        breakdown_raw = allocations.get("score_breakdown")
         strategy = SavedStrategy(
             spend_allocation=allocations.get("spend_allocation", {}),
             cards_used=tuple(allocations.get("cards_used", [])),
@@ -165,6 +186,20 @@ def detail_from_row(row: SavedGoalDetailRow) -> SavedGoalDetail:
             transfer_plan=tuple(
                 SavedTransferPlanItem(**t) for t in (row.transfer_recommendation or [])
             ),
+            # Story fields — absent (empty/None) on goals saved before they were
+            # persisted; reconstructed exactly as stored, never recomputed.
+            allocation_details=tuple(
+                SavedAllocationDetail(**d)
+                for d in allocations.get("allocation_details", [])
+            ),
+            score_breakdown=(
+                SavedScoreBreakdown(**breakdown_raw) if breakdown_raw else None
+            ),
+            headline_differentiator=allocations.get("headline_differentiator"),
+        )
+        strategy_options = tuple(
+            SavedStrategyOption(**opt)
+            for opt in allocations.get("strategy_options", [])
         )
 
     action_items = tuple(
@@ -194,6 +229,7 @@ def detail_from_row(row: SavedGoalDetailRow) -> SavedGoalDetail:
         catalog_snapshot_version=row.catalog_snapshot_version,
         engine_version=row.engine_version,
         strategy=strategy,
+        strategy_options=strategy_options,
     )
 
 

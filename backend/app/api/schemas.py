@@ -170,6 +170,49 @@ class SavedTransferPlanItem(BaseModel):
     planned_month: int
 
 
+class SavedAllocationDetail(BaseModel):
+    """One category's persisted earn story (results.py card_allocations JSONB):
+    where it routes, the rate, and the projected monthly points — the 'why' the
+    saved-goal view shows, matching the live simulator's per-category rows."""
+
+    category_slug: str
+    card_id: str
+    monthly_spend_inr: int
+    earn_rate: Decimal
+    effective_miles_per_100inr: Decimal
+    monthly_points: int
+    notes: tuple[str, ...] = ()
+
+
+class SavedScoreBreakdown(BaseModel):
+    """The 6-part composite behind a saved recommendation (now persisted)."""
+
+    goal_achievement: Decimal
+    efficiency: Decimal
+    cost: Decimal
+    simplicity: Decimal
+    portfolio_utilization: Decimal
+    risk: Decimal
+
+
+class SavedStrategyOption(BaseModel):
+    """One tier of the 'your cards → +1 → +2' comparison, persisted compactly
+    (no full simulation) so the saved view can render the story, not just the
+    single winner. `is_recommended` marks the chosen tier."""
+
+    strategy_id: str
+    archetype: str
+    headline_differentiator: str
+    miles_at_target_date: int
+    months_to_goal: int | None = None
+    total_fees_inr: int
+    cards_used: tuple[str, ...] = ()
+    cards_to_acquire: tuple[str, ...] = ()
+    score: Decimal | None = None
+    is_recommended: bool = False
+    co_recommended: bool = False
+
+
 class SavedStrategy(BaseModel):
     """The recommended strategy as persisted (results.py's JSONB payloads,
     reconstructed — never recomputed). Card/partner ids are strings exactly as
@@ -183,6 +226,10 @@ class SavedStrategy(BaseModel):
     optimization_score: Decimal | None
     milestones: tuple[SavedMilestone, ...]
     transfer_plan: tuple[SavedTransferPlanItem, ...]
+    # Story fields (empty on goals saved before they were persisted).
+    allocation_details: tuple[SavedAllocationDetail, ...] = ()
+    score_breakdown: SavedScoreBreakdown | None = None
+    headline_differentiator: str | None = None
 
 
 class SavedActionItem(BaseModel):
@@ -219,6 +266,10 @@ class SavedGoalDetail(BaseModel):
     catalog_snapshot_version: str | None
     engine_version: str | None
     strategy: SavedStrategy | None
+    # The 'your cards → +1 → +2' comparison tiers (empty on older saves and on
+    # the infeasible path). Lives on the detail, not the strategy, because it
+    # spans strategies.
+    strategy_options: tuple[SavedStrategyOption, ...] = ()
     # Cosmetic id → display-name maps resolved from the *current* snapshot so
     # the client can label cards/partners without extra calls. Ids no longer in
     # the catalog are simply absent (client falls back to a generic label).

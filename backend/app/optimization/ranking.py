@@ -63,11 +63,16 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from app.domain import (
     CandidateStrategy,
     CurrencyTransferLink,
+    OpportunitySet,
     PlanningContext,
     RankedStrategy,
+    RewardOpportunity,
     ScoreBreakdown,
     SimulationOutcome,
+    SpendCategory,
+    StrategyAllocationDetail,
 )
+from app.optimization.explain import allocation_detail
 
 logger = logging.getLogger(__name__)
 
@@ -149,7 +154,14 @@ def rank(
     pairs: Sequence[tuple[CandidateStrategy, SimulationOutcome]],
     context: PlanningContext,
     weights: RankingWeights,
+    *,
+    opportunities: OpportunitySet | None = None,
 ) -> tuple[RankedStrategy, ...]:
+    """Rank the simulated candidates. When `opportunities` (the Stage-5 priced
+    search space) is supplied, each RankedStrategy also carries the per-category
+    earn story (`allocation_details`) for its routing — a presentation reshape,
+    never re-priced. Omitted (e.g. in focused unit tests) ⇒ no detail attached,
+    ranking is otherwise identical."""
     reconciled = [(reconcile_claim(strategy, outcome), outcome) for strategy, outcome in pairs]
     survivors = _prune(reconciled, context)
     if not survivors:
@@ -179,6 +191,7 @@ def rank(
         co_recommended = {achieving[0][0].strategy_id, achieving[1][0].strategy_id}
 
     headlines = _headlines(scored, context)
+    opportunity_index = _opportunity_index(opportunities)
     return tuple(
         RankedStrategy(
             strategy=strategy,
@@ -188,9 +201,43 @@ def rank(
             rank=position,
             headline_differentiator=headlines[strategy.strategy_id],
             co_recommended=strategy.strategy_id in co_recommended,
+            allocation_details=_details_for(strategy, opportunity_index, context),
         )
         for position, (strategy, outcome, breakdown, score, _) in enumerate(scored, start=1)
     )
+
+
+def _opportunity_index(
+    opportunities: OpportunitySet | None,
+) -> dict[tuple[UUID, SpendCategory], RewardOpportunity]:
+    """(card_id, category) → priced opportunity, for reattaching per-category
+    earn detail to a ranked strategy's routing. Empty when no set was given."""
+    if opportunities is None:
+        return {}
+    return {
+        (o.card_id, o.category_slug): o for o in opportunities.opportunities
+    }
+
+
+def _details_for(
+    strategy: CandidateStrategy,
+    opportunity_index: dict[tuple[UUID, SpendCategory], RewardOpportunity],
+    context: PlanningContext,
+) -> tuple[StrategyAllocationDetail, ...]:
+    """Rebuild the strategy's Assignment (category → priced opportunity) from
+    its spend_allocation, then reshape to per-category detail. A category whose
+    (card, category) path isn't in the index is skipped — the detail is a
+    best-effort story overlay, never a source of truth."""
+    if not opportunity_index:
+        return ()
+    assignment = {
+        category: opportunity_index[(card_id, category)]
+        for category, card_id in strategy.spend_allocation.items()
+        if (card_id, category) in opportunity_index
+    }
+    if not assignment:
+        return ()
+    return allocation_detail(assignment, context.spend_profile)
 
 
 # ── Raw dimensions (pruning + tie-breaking currency) ──────────────────────

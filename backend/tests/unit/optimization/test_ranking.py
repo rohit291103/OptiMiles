@@ -236,6 +236,43 @@ def test_headline_differentiators(snapshot: CatalogSnapshot, weights) -> None:  
     assert by_id == {"x": "fastest", "y": "no new cards"}
 
 
+# ── Per-category allocation detail (the story) ─────────────────────────────
+
+
+def test_allocation_details_absent_without_opportunities(
+    snapshot: CatalogSnapshot, weights
+) -> None:  # type: ignore[no-untyped-def]
+    """Backward-compatible: rank() without an OpportunitySet still ranks, and
+    each RankedStrategy simply carries no allocation detail."""
+    (ranked,) = rank((_pair_y(),), _context(snapshot), weights)
+    assert ranked.allocation_details == ()
+
+
+def test_allocation_details_attached_from_opportunities(
+    snapshot: CatalogSnapshot, weights
+) -> None:  # type: ignore[no-untyped-def]
+    """Given the real OpportunitySet, each ranked strategy gains per-category
+    earn detail resolved from the priced opportunities for its routing."""
+    from app.valuation.opportunities import enumerate_opportunities
+
+    context = _context(snapshot)
+    opportunities = enumerate_opportunities(context)
+    # Route both categories through Infinia (a wallet card with priced paths).
+    pair = _pair_y()
+    (ranked,) = rank((pair,), context, weights, opportunities=opportunities)
+
+    details = {d.category_slug: d for d in ranked.allocation_details}
+    assert set(details) == {SpendCategory.TRAVEL, SpendCategory.DINING}
+    travel = details[SpendCategory.TRAVEL]
+    assert travel.card_id == INFINIA
+    assert travel.monthly_spend_inr == 40_000  # from _context spend profile
+    # The rate is a real priced value (positive); the exact per-category math is
+    # golden-tested in test_explain.py, so here we only assert the detail was
+    # resolved from the actual opportunity, not fabricated.
+    assert travel.earn_rate > 0
+    assert travel.effective_miles_per_100inr > 0
+
+
 # ── Pruning ───────────────────────────────────────────────────────────────
 
 

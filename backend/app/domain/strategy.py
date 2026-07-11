@@ -5,6 +5,7 @@ LLM proposes, adjusts, or vetoes strategies. Partial strategies are invalid
 outputs; validation failures discard a candidate, never patch it silently.
 """
 
+from decimal import Decimal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -30,6 +31,32 @@ class ExpectedMilestone(BaseModel):
     card_id: UUID
     expected_month: int = Field(ge=0)
     bonus_points: int = Field(ge=0)
+
+
+class StrategyAllocationDetail(BaseModel):
+    """One category's earn story: where it routes and why that card wins it.
+
+    A presentation reshape of a strategy's `spend_allocation` joined to the
+    Stage-5 `RewardOpportunity` for that (card, category) — every number here
+    is a Valuation Engine output, not recomputed reward math. `monthly_points`
+    is the one display projection: `floor(monthly_spend × earn_rate / 100)`,
+    floored so the UI never overstates the earn rate it shows."""
+
+    model_config = ConfigDict(frozen=True)
+
+    category_slug: SpendCategory
+    card_id: UUID
+    monthly_spend_inr: int = Field(ge=0)
+    earn_rate: Decimal = Field(ge=0, description="Points per ₹100 in this category")
+    effective_miles_per_100inr: Decimal = Field(
+        ge=0, description="Target-program miles per ₹100 after ratio/caps/fees (Stage 5)"
+    )
+    monthly_points: int = Field(
+        ge=0, description="floor(monthly_spend × earn_rate / 100) — display projection"
+    )
+    notes: tuple[str, ...] = Field(
+        default=(), description="Valuation notes for this path (caps/exclusions)"
+    )
 
 
 class CandidateStrategy(BaseModel):

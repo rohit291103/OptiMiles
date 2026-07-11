@@ -72,6 +72,17 @@ export type CandidateStrategy = {
   spend_allocation: Record<string, string>;
 };
 
+/** Per-category earn detail — the "why" behind a routing (rates/points). */
+export type AllocationDetail = {
+  category_slug: string;
+  card_id: string;
+  monthly_spend_inr: number;
+  earn_rate: string;
+  effective_miles_per_100inr: string;
+  monthly_points: number;
+  notes: string[];
+};
+
 export type RankedStrategy = {
   strategy: CandidateStrategy;
   score: string;
@@ -79,6 +90,7 @@ export type RankedStrategy = {
   rank: number;
   headline_differentiator: string;
   co_recommended: boolean;
+  allocation_details: AllocationDetail[];
   simulation: {
     ledger: MonthLedgerEntry[];
     months_to_goal: number | null;
@@ -202,6 +214,30 @@ export type SavedTransferPlanItem = {
   planned_month: number;
 };
 
+export type SavedScoreBreakdown = {
+  goal_achievement: string;
+  efficiency: string;
+  cost: string;
+  simplicity: string;
+  portfolio_utilization: string;
+  risk: string;
+};
+
+/** One tier of the "your cards → +1 → +2" comparison (persisted compactly). */
+export type SavedStrategyOption = {
+  strategy_id: string;
+  archetype: string;
+  headline_differentiator: string;
+  miles_at_target_date: number;
+  months_to_goal: number | null;
+  total_fees_inr: number;
+  cards_used: string[];
+  cards_to_acquire: string[];
+  score: string | null;
+  is_recommended: boolean;
+  co_recommended: boolean;
+};
+
 export type SavedStrategy = {
   spend_allocation: Record<string, string>;
   cards_used: string[];
@@ -211,6 +247,9 @@ export type SavedStrategy = {
   optimization_score: string | null;
   milestones: SavedMilestone[];
   transfer_plan: SavedTransferPlanItem[];
+  allocation_details: AllocationDetail[];
+  score_breakdown: SavedScoreBreakdown | null;
+  headline_differentiator: string | null;
 };
 
 export type SavedGoalDetail = {
@@ -233,6 +272,7 @@ export type SavedGoalDetail = {
   catalog_snapshot_version: string | null;
   engine_version: string | null;
   strategy: SavedStrategy | null;
+  strategy_options: SavedStrategyOption[];
   card_names: Record<string, string>;
   partner_names: Record<string, string>;
 };
@@ -336,6 +376,31 @@ export async function fetchSavedGoal(
     throw new ApiError(`Couldn't load this goal (${response.status}).`, response.status);
   }
   return (await response.json()) as SavedGoalDetail;
+}
+
+/** Delete a saved goal (and its stored strategy) permanently. */
+export async function deleteSavedGoal(
+  goalId: string,
+  token: string,
+): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}/goals/${goalId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    throw new ApiError("Couldn't reach the strategy engine. Please try again.");
+  }
+  if (response.status === 401) {
+    throw new ApiError("Your session expired — please log in again.", 401);
+  }
+  if (response.status === 404) {
+    throw new ApiError("We couldn't find that goal.", 404);
+  }
+  if (!response.ok) {
+    throw new ApiError(`Couldn't delete this goal (${response.status}).`, response.status);
+  }
 }
 
 /** Supported cards for the wallet picker. */

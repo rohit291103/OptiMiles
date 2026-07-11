@@ -56,11 +56,7 @@ export default function GoalDetailPage() {
         <ArrowLeft className="size-4" /> Back to dashboard
       </Link>
 
-      {state.phase === "loading" && (
-        <p className="text-sm text-muted-foreground" role="status">
-          Loading your strategy…
-        </p>
-      )}
+      {state.phase === "loading" && <StrategySkeleton />}
 
       {state.phase === "error" && (
         <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4">
@@ -71,6 +67,35 @@ export default function GoalDetailPage() {
       )}
 
       {state.phase === "ready" && <GoalDetail detail={state.detail} />}
+    </div>
+  );
+}
+
+/** On-brand loading placeholder that mirrors the strategy layout: title,
+ * three stat tiles, chart block, and a couple of routing rows — so the page
+ * keeps its shape while the persisted artifacts load, instead of a bare line. */
+function StrategySkeleton() {
+  return (
+    <div className="animate-pulse space-y-8" role="status" aria-label="Loading your strategy">
+      <div className="space-y-3">
+        <div className="h-8 w-2/3 rounded-lg bg-card/70" />
+        <div className="h-4 w-1/2 rounded bg-card/50" />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="h-24 rounded-xl border border-hairline bg-card/40" />
+        ))}
+      </div>
+      <div className="space-y-3">
+        <div className="h-3 w-40 rounded bg-card/50" />
+        <div className="h-28 rounded-xl border border-hairline bg-card/30" />
+      </div>
+      <div className="space-y-2">
+        <div className="h-3 w-32 rounded bg-card/50" />
+        <div className="h-11 rounded-lg border border-hairline bg-card/30" />
+        <div className="h-11 rounded-lg border border-hairline bg-card/30" />
+      </div>
+      <span className="sr-only">Loading your strategy…</span>
     </div>
   );
 }

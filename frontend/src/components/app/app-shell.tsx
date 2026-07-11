@@ -83,7 +83,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-dvh bg-background">
       {/* ── Sidebar (desktop) ─────────────────────────────────────────── */}
-      <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-hairline bg-card/30 lg:flex">
+      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-hairline bg-card/30 lg:flex">
         <SidebarContent email={user.email ?? ""} pathname={pathname} />
       </aside>
 
@@ -109,7 +109,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* ── Main column ───────────────────────────────────────────────── */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-hairline bg-background/85 px-4 py-3 backdrop-blur-md sm:px-6">
+        <header className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-hairline bg-background/85 px-4 py-3.5 backdrop-blur-md sm:px-6">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -117,14 +117,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               onClick={() => setMobileNavOpen(true)}
               className="grid size-9 place-items-center rounded-lg border border-hairline text-foreground lg:hidden"
             >
-              <Menu className="size-4" />
+              <Menu className="size-5" />
             </button>
-            <h1 className="text-sm font-medium tracking-wide text-foreground">
+            <h1 className="font-heading text-lg tracking-wide text-foreground sm:text-xl">
               {pageTitle(pathname)}
             </h1>
           </div>
           {pathname !== "/goals/new" && (
-            <Button asChild size="sm" className="bg-gold text-gold-foreground hover:bg-gold/90">
+            <Button asChild className="bg-gold text-gold-foreground hover:bg-gold/90">
               <Link href="/goals/new">
                 <Plus className="size-4" /> New goal
               </Link>
@@ -177,13 +177,13 @@ function SidebarContent({
               onClick={onNavigate}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
+                "flex items-center gap-3 rounded-lg px-3 py-3 text-[15px] transition-colors",
                 active
                   ? "bg-gold/10 font-medium text-gold"
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground",
               )}
             >
-              <Icon className="size-4 shrink-0" />
+              <Icon className="size-[18px] shrink-0" />
               {label}
             </Link>
           );
@@ -195,7 +195,7 @@ function SidebarContent({
           <span className="grid size-8 shrink-0 place-items-center rounded-full bg-gold/15 text-xs font-semibold uppercase text-gold ring-1 ring-gold/30">
             {email.slice(0, 1) || "?"}
           </span>
-          <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={email}>
+          <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground" title={email}>
             {email}
           </span>
           <button

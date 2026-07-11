@@ -1,18 +1,36 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Calendar, Plane, Plus, Target, TrendingUp } from "lucide-react";
+import {
+  ArrowRight,
+  Calendar,
+  Download,
+  Eye,
+  MoreVertical,
+  Plane,
+  Plus,
+  Target,
+  Trash2,
+  TrendingUp,
+} from "lucide-react";
 
 import { getAccessToken } from "@/lib/supabase";
-import { fetchSavedGoals, type SavedGoal } from "@/lib/api";
+import {
+  deleteSavedGoal,
+  fetchSavedGoal,
+  fetchSavedGoals,
+  type SavedGoal,
+} from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 /**
  * The dashboard home — the signed-in landing page. Reads only persisted
- * engine artifacts (never recomputes): a focus strip for the newest goal,
- * honest stat tiles across all saved goals, and a grid of goal cards that
- * each open into their stored strategy at /goals/[id].
+ * engine artifacts (never recomputes): stat tiles across all saved goals up
+ * top, a focus strip for the newest goal beneath them, and a grid of every
+ * goal, each opening into its stored strategy at /goals/[id] and carrying a
+ * per-goal action menu (view / download / delete).
  */
 
 type LoadState =
@@ -44,13 +62,7 @@ export default function DashboardPage() {
     };
   }, []);
 
-  if (state.phase === "loading") {
-    return (
-      <p className="text-sm text-muted-foreground" role="status">
-        Loading your goals…
-      </p>
-    );
-  }
+  if (state.phase === "loading") return <DashboardSkeleton />;
 
   if (state.phase === "error") {
     return (
@@ -65,24 +77,115 @@ export default function DashboardPage() {
   const goals = state.goals;
   if (goals.length === 0) return <EmptyDashboard />;
 
-  const [focus, ...rest] = goals;
+  const focus = goals[0];
+  const removeGoal = (goalId: string) =>
+    setState((s) =>
+      s.phase === "ready"
+        ? { phase: "ready", goals: s.goals.filter((g) => g.goal_id !== goalId) }
+        : s,
+    );
 
   return (
     <div className="space-y-8">
-      <FocusGoal goal={focus} />
       <StatTiles goals={goals} />
-      {rest.length > 0 && (
-        <section>
-          <h2 className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
-            All goals
-          </h2>
-          <div className="mt-3 grid gap-4 sm:grid-cols-2">
-            {rest.map((goal) => (
-              <GoalCard key={goal.goal_id} goal={goal} />
-            ))}
-          </div>
-        </section>
-      )}
+      <FocusGoal goal={focus} />
+      <section>
+        <h2 className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
+          All goals
+        </h2>
+        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {goals.map((goal) => (
+            <GoalCard key={goal.goal_id} goal={goal} onDeleted={removeGoal} />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+// ── Loading skeleton ───────────────────────────────────────────────────────
+
+/** Mirrors the dashboard layout (stat row, focus hero, goal grid) so the page
+ * holds its shape while goals load — on-brand, not a bare loading line. */
+function DashboardSkeleton() {
+  return (
+    <div className="animate-pulse space-y-8" role="status" aria-label="Loading your goals">
+      <div className="grid gap-4 sm:grid-cols-3">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="h-24 rounded-xl border border-hairline bg-card/40" />
+        ))}
+      </div>
+      <div className="h-52 rounded-2xl border border-gold/20 bg-card/40" />
+      <div className="space-y-3">
+        <div className="h-3 w-24 rounded bg-card/50" />
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-40 rounded-xl border border-hairline bg-card/30" />
+          ))}
+        </div>
+      </div>
+      <span className="sr-only">Loading your goals…</span>
+    </div>
+  );
+}
+
+// ── Stat tiles: honest aggregates over persisted goals ─────────────────────
+
+function StatTiles({ goals }: { goals: SavedGoal[] }) {
+  const totalMiles = goals.reduce((sum, g) => sum + g.target_miles, 0);
+  const nearest = goals
+    .map((g) => g.target_date)
+    .filter((d): d is string => d !== null)
+    .sort()[0];
+
+  return (
+    <section className="grid gap-4 sm:grid-cols-3">
+      <StatTile
+        icon={<Target className="size-4" />}
+        label="Saved goals"
+        value={String(goals.length)}
+        unit={goals.length === 1 ? "goal" : "goals"}
+      />
+      <StatTile
+        icon={<TrendingUp className="size-4" />}
+        label="Total miles targeted"
+        value={totalMiles.toLocaleString("en-IN")}
+        unit="miles"
+      />
+      <StatTile
+        icon={<Calendar className="size-4" />}
+        label="Nearest target date"
+        value={nearest ? formatDate(nearest) : "—"}
+      />
+    </section>
+  );
+}
+
+function StatTile({
+  icon,
+  label,
+  value,
+  unit,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  unit?: string;
+}) {
+  return (
+    <div className="rounded-xl border border-hairline bg-card/50 p-5">
+      <p className="flex items-center gap-1.5 text-xs uppercase tracking-[0.12em] text-muted-foreground">
+        <span className="text-gold">{icon}</span>
+        {label}
+      </p>
+      <p className="mt-2 font-heading text-2xl tabular-nums text-foreground sm:text-3xl">
+        {value}
+        {unit && (
+          <span className="ml-1.5 align-baseline font-sans text-sm text-muted-foreground">
+            {unit}
+          </span>
+        )}
+      </p>
     </div>
   );
 }
@@ -148,72 +251,34 @@ function FocusGoal({ goal }: { goal: SavedGoal }) {
   );
 }
 
-// ── Stat tiles: honest aggregates over persisted goals ─────────────────────
-
-function StatTiles({ goals }: { goals: SavedGoal[] }) {
-  const totalMiles = goals.reduce((sum, g) => sum + g.target_miles, 0);
-  const nearest = goals
-    .map((g) => g.target_date)
-    .filter((d): d is string => d !== null)
-    .sort()[0];
-
-  return (
-    <section className="grid gap-4 sm:grid-cols-3">
-      <StatTile
-        icon={<Target className="size-4" />}
-        label="Saved goals"
-        value={String(goals.length)}
-      />
-      <StatTile
-        icon={<TrendingUp className="size-4" />}
-        label="Total miles targeted"
-        value={totalMiles.toLocaleString("en-IN")}
-      />
-      <StatTile
-        icon={<Calendar className="size-4" />}
-        label="Nearest target date"
-        value={nearest ? formatDate(nearest) : "—"}
-      />
-    </section>
-  );
-}
-
-function StatTile({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-xl border border-hairline bg-card/50 p-4">
-      <p className="flex items-center gap-1.5 text-xs uppercase tracking-[0.12em] text-muted-foreground">
-        <span className="text-gold">{icon}</span>
-        {label}
-      </p>
-      <p className="mt-1.5 font-heading text-xl text-foreground">{value}</p>
-    </div>
-  );
-}
-
 // ── Goal grid cards ────────────────────────────────────────────────────────
 
-function GoalCard({ goal }: { goal: SavedGoal }) {
+function GoalCard({
+  goal,
+  onDeleted,
+}: {
+  goal: SavedGoal;
+  onDeleted: (goalId: string) => void;
+}) {
   const confidence =
     goal.confidence_score !== null ? Math.round(goal.confidence_score * 100) : null;
 
   return (
-    <Link
-      href={`/goals/${goal.goal_id}`}
-      className="group rounded-xl border border-hairline bg-card/50 p-5 transition-colors hover:border-gold/40"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <h3 className="min-w-0 truncate font-medium text-foreground">{goal.goal_name}</h3>
+    <div className="group relative rounded-xl border border-hairline bg-card/50 p-5 transition-colors hover:border-gold/40">
+      <div className="flex items-start justify-between gap-2">
+        {/* Stretched link: the whole card navigates; the menu sits above it. */}
+        <h3 className="min-w-0 flex-1 truncate font-medium text-foreground">
+          <Link
+            href={`/goals/${goal.goal_id}`}
+            className="after:absolute after:inset-0 after:rounded-xl"
+          >
+            {goal.goal_name}
+          </Link>
+        </h3>
         <span className="shrink-0 rounded-full border border-hairline px-2 py-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">
           {goal.status}
         </span>
+        <GoalMenu goal={goal} onDeleted={onDeleted} />
       </div>
       <p className="mt-1 text-sm text-muted-foreground">
         {[
@@ -236,7 +301,165 @@ function GoalCard({ goal }: { goal: SavedGoal }) {
           View strategy <ArrowRight className="size-3.5" />
         </span>
       </div>
-    </Link>
+    </div>
+  );
+}
+
+// ── Per-goal action menu (view / download / delete) ────────────────────────
+
+type MenuState =
+  | { phase: "idle" }
+  | { phase: "confirming-delete" }
+  | { phase: "busy"; action: "download" | "delete" }
+  | { phase: "error"; message: string };
+
+function GoalMenu({
+  goal,
+  onDeleted,
+}: {
+  goal: SavedGoal;
+  onDeleted: (goalId: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [state, setMenuState] = useState<MenuState>({ phase: "idle" });
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Close on outside click / Escape. Listeners only while open.
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setMenuState({ phase: "idle" });
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        setMenuState({ phase: "idle" });
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  const busy = state.phase === "busy";
+
+  const download = async () => {
+    setMenuState({ phase: "busy", action: "download" });
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error("Your session expired — please log in again.");
+      const detail = await fetchSavedGoal(goal.goal_id, token);
+      const blob = new Blob([JSON.stringify(detail, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `optimiles-${slugify(goal.goal_name)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setOpen(false);
+      setMenuState({ phase: "idle" });
+    } catch (e) {
+      setMenuState({
+        phase: "error",
+        message: e instanceof Error ? e.message : "Download failed.",
+      });
+    }
+  };
+
+  const confirmDelete = async () => {
+    setMenuState({ phase: "busy", action: "delete" });
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error("Your session expired — please log in again.");
+      await deleteSavedGoal(goal.goal_id, token);
+      onDeleted(goal.goal_id);
+    } catch (e) {
+      setMenuState({
+        phase: "error",
+        message: e instanceof Error ? e.message : "Delete failed.",
+      });
+    }
+  };
+
+  return (
+    <div ref={rootRef} className="relative z-10 -mr-1.5 -mt-1 shrink-0">
+      <button
+        type="button"
+        aria-label={`Actions for ${goal.goal_name}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => {
+          setOpen((o) => !o);
+          setMenuState({ phase: "idle" });
+        }}
+        className="grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+      >
+        <MoreVertical className="size-4" />
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-9 z-20 w-52 overflow-hidden rounded-xl border border-hairline bg-card p-1 shadow-xl shadow-black/40"
+        >
+          <Link
+            href={`/goals/${goal.goal_id}`}
+            role="menuitem"
+            className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-secondary"
+          >
+            <Eye className="size-4 text-muted-foreground" /> View strategy
+          </Link>
+          <button
+            type="button"
+            role="menuitem"
+            disabled={busy}
+            onClick={download}
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-secondary disabled:opacity-50"
+          >
+            <Download className="size-4 text-muted-foreground" />
+            {state.phase === "busy" && state.action === "download"
+              ? "Preparing…"
+              : "Download strategy"}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            disabled={busy}
+            onClick={() =>
+              state.phase === "confirming-delete"
+                ? confirmDelete()
+                : setMenuState({ phase: "confirming-delete" })
+            }
+            className={cn(
+              "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors disabled:opacity-50",
+              state.phase === "confirming-delete"
+                ? "bg-destructive/15 font-medium text-destructive hover:bg-destructive/25"
+                : "text-destructive hover:bg-destructive/10",
+            )}
+          >
+            <Trash2 className="size-4" />
+            {state.phase === "busy" && state.action === "delete"
+              ? "Deleting…"
+              : state.phase === "confirming-delete"
+                ? "Confirm delete"
+                : "Delete goal"}
+          </button>
+          {state.phase === "error" && (
+            <p className="px-3 py-2 text-xs text-destructive" role="alert">
+              {state.message}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -282,6 +505,15 @@ function formatDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function slugify(name: string): string {
+  return (
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "goal"
+  );
 }
 
 /** Whole months from today until the goal's target date (display only). */

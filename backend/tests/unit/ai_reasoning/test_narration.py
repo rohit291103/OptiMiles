@@ -163,6 +163,78 @@ async def test_llm_failure_falls_back_to_template(snapshot: CatalogSnapshot) -> 
     assert narration.model_version == "template-fallback"
 
 
+# ── Tier comparison ("your cards → +1 → +2" story) ─────────────────────────
+
+
+def _alternative(context: PlanningContext) -> RankedStrategy:
+    """A cheaper, fewer-miles alternative — the 'no new cards' tier."""
+    strategy = CandidateStrategy(
+        strategy_id="status_quo_optimized-1",
+        archetype=StrategyArchetype.STATUS_QUO_OPTIMIZED,
+        cards_used=(INFINIA,),
+        cards_to_acquire=(),
+        spend_allocation={SpendCategory.TRAVEL: INFINIA, SpendCategory.DINING: INFINIA},
+        transfer_plan=(
+            TransferPlanItem(
+                from_card_id=INFINIA, to_partner_id=KRISFLYER, points=51_282, planned_month=6
+            ),
+        ),
+        claimed_total_miles=51_282,
+    )
+    outcome = SimulationOutcome(
+        strategy_id="status_quo_optimized-1",
+        ledger=(),
+        months_to_goal=7,
+        miles_at_target_date=51_282,
+        total_fees_inr=0,
+        buffer_achieved=False,
+    )
+    return RankedStrategy(
+        strategy=strategy,
+        simulation=outcome,
+        score=Decimal("50.00"),
+        score_breakdown=ScoreBreakdown(
+            goal_achievement=Decimal("21.25"),
+            efficiency=Decimal("0"),
+            cost=Decimal("100"),
+            simplicity=Decimal("100"),
+            portfolio_utilization=Decimal("100"),
+            risk=Decimal("90"),
+        ),
+        rank=2,
+        headline_differentiator="no new cards",
+    )
+
+
+async def test_template_narrates_the_tier_comparison(snapshot: CatalogSnapshot) -> None:
+    """With an alternative present, the template fallback populates
+    comparison_notes (previously always None) with the tier story, and the
+    alternative's miles are echo-allowed (not flagged as invented)."""
+    context = _context(snapshot)
+    narration = await narrate(
+        _ranked(context),
+        _verdict(context),
+        context,
+        alternatives=(_alternative(context),),
+        model=None,
+    )
+    assert narration.comparison_notes is not None
+    # The alternative's headline miles appear in the comparison prose.
+    assert "51,282" in narration.comparison_notes
+
+
+async def test_alternative_numbers_are_echo_allowed(snapshot: CatalogSnapshot) -> None:
+    """A faithful LLM draft may cite an alternative's miles/fees — the payload
+    allow-lists them, so the echo-guard does not fall back to template."""
+    from app.ai_reasoning.narration import build_narration_payload
+
+    context = _context(snapshot)
+    payload = build_narration_payload(
+        _ranked(context), _verdict(context), context, (_alternative(context),)
+    )
+    assert 51_282 in payload.allowed_numbers  # alternative headline miles
+
+
 # ── Happy path + number-echo validation ───────────────────────────────────
 
 

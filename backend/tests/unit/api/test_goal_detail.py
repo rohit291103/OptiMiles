@@ -61,6 +61,63 @@ def _row(**overrides: object) -> SavedGoalDetailRow:
             "spend_allocation": {"travel": CARD_ID, "dining": CARD_ID},
             "cards_used": [CARD_ID],
             "cards_to_acquire": [],
+            "allocation_details": [
+                {
+                    "category_slug": "travel",
+                    "card_id": CARD_ID,
+                    "monthly_spend_inr": 60_000,
+                    "earn_rate": "5.0",
+                    "effective_miles_per_100inr": "4.0",
+                    "monthly_points": 3000,
+                    "notes": ["Cap ₹1L/mo"],
+                },
+                {
+                    "category_slug": "dining",
+                    "card_id": CARD_ID,
+                    "monthly_spend_inr": 40_000,
+                    "earn_rate": "5.0",
+                    "effective_miles_per_100inr": "4.0",
+                    "monthly_points": 2000,
+                    "notes": [],
+                },
+            ],
+            "score_breakdown": {
+                "goal_achievement": "21.25",
+                "efficiency": "100",
+                "cost": "100",
+                "simplicity": "55",
+                "portfolio_utilization": "0",
+                "risk": "90",
+            },
+            "headline_differentiator": "balanced",
+            "strategy_options": [
+                {
+                    "strategy_id": "one_new_card-1",
+                    "archetype": "one_new_card",
+                    "headline_differentiator": "balanced",
+                    "miles_at_target_date": 73_920,
+                    "months_to_goal": 7,
+                    "total_fees_inr": 30_235,
+                    "cards_used": [CARD_ID],
+                    "cards_to_acquire": [CARD_ID],
+                    "score": "62.10",
+                    "is_recommended": True,
+                    "co_recommended": False,
+                },
+                {
+                    "strategy_id": "one_new_card-2",
+                    "archetype": "one_new_card",
+                    "headline_differentiator": "lowest fees",
+                    "miles_at_target_date": 51_282,
+                    "months_to_goal": 7,
+                    "total_fees_inr": 10_000,
+                    "cards_used": [CARD_ID],
+                    "cards_to_acquire": [CARD_ID],
+                    "score": "55.00",
+                    "is_recommended": False,
+                    "co_recommended": False,
+                },
+            ],
             "ledger": [
                 {
                     "month": 0,
@@ -139,6 +196,54 @@ def test_reconstructs_strategy_from_jsonb_payloads() -> None:
     assert strategy.milestones[0].expected_month == 3
     assert strategy.transfer_plan[0].points == 90_000
     assert strategy.transfer_plan[0].planned_month == 7
+
+
+def test_reconstructs_the_persisted_story() -> None:
+    """The per-category detail, score breakdown, and strategy tiers persisted
+    in card_allocations surface on the response (parity with live simulator)."""
+    detail = detail_from_row(_row())
+    assert detail.strategy is not None
+    strategy = detail.strategy
+
+    # Per-category earn detail, exact values from the stored JSONB.
+    assert len(strategy.allocation_details) == 2
+    travel = next(d for d in strategy.allocation_details if d.category_slug == "travel")
+    assert travel.monthly_points == 3000
+    assert travel.earn_rate == Decimal("5.0")
+    assert travel.effective_miles_per_100inr == Decimal("4.0")
+    assert travel.notes == ("Cap ₹1L/mo",)
+
+    # The 6-part score breakdown.
+    assert strategy.score_breakdown is not None
+    assert strategy.score_breakdown.goal_achievement == Decimal("21.25")
+    assert strategy.score_breakdown.risk == Decimal("90")
+    assert strategy.headline_differentiator == "balanced"
+
+    # The comparison tiers, recommended first and flagged.
+    assert len(detail.strategy_options) == 2
+    assert detail.strategy_options[0].is_recommended is True
+    assert detail.strategy_options[0].miles_at_target_date == 73_920
+    assert detail.strategy_options[1].is_recommended is False
+    assert detail.strategy_options[1].total_fees_inr == 10_000
+
+
+def test_story_fields_absent_on_older_saves() -> None:
+    """A goal saved before the story fields existed (no keys in the JSONB) must
+    still reconstruct — the story fields default empty, nothing crashes."""
+    detail = detail_from_row(
+        _row(
+            card_allocations={
+                "spend_allocation": {"travel": CARD_ID},
+                "cards_used": [CARD_ID],
+                "cards_to_acquire": [],
+                "ledger": [],
+            }
+        )
+    )
+    assert detail.strategy is not None
+    assert detail.strategy.allocation_details == ()
+    assert detail.strategy.score_breakdown is None
+    assert detail.strategy_options == ()
 
 
 def test_action_items_sorted_by_priority() -> None:
