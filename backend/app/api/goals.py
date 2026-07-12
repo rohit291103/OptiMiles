@@ -108,7 +108,9 @@ async def goal_detail(
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Goal not found")
     detail = detail_from_row(row)
     if detail.strategy is not None:
-        card_names, partner_names = display_names(detail.strategy, snapshot)
+        card_names, partner_names = display_names(
+            detail.strategy, detail.strategy_options, snapshot
+        )
         detail = detail.model_copy(
             update={"card_names": card_names, "partner_names": partner_names}
         )
@@ -132,17 +134,24 @@ async def delete_goal(
 
 
 def display_names(
-    strategy: SavedStrategy, snapshot: CatalogSnapshot
+    strategy: SavedStrategy,
+    options: tuple[SavedStrategyOption, ...],
+    snapshot: CatalogSnapshot,
 ) -> tuple[dict[str, str], dict[str, str]]:
-    """Resolve the card/partner ids a saved strategy references to display
-    names from the current snapshot. Purely cosmetic — retired ids are omitted
-    (the client falls back to a generic label), never guessed."""
+    """Resolve every card/partner id the saved detail references — the
+    recommended strategy AND each comparison tier's cards (an alternative's
+    acquisition must label correctly too, not fall back to a generic name) —
+    to display names from the current snapshot. Purely cosmetic — retired ids
+    are omitted (the client falls back to a generic label), never guessed."""
     card_ids = {
         *strategy.cards_used,
         *strategy.cards_to_acquire,
         *strategy.spend_allocation.values(),
         *(str(m.card_id) for m in strategy.milestones),
         *(str(t.from_card_id) for t in strategy.transfer_plan),
+        *(str(d.runner_up_card_id) for d in strategy.allocation_details if d.runner_up_card_id),
+        *(card_id for option in options for card_id in option.cards_used),
+        *(card_id for option in options for card_id in option.cards_to_acquire),
     }
     partner_ids = {str(t.to_partner_id) for t in strategy.transfer_plan}
     card_names = {

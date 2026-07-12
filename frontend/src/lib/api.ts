@@ -88,7 +88,9 @@ export type CandidateStrategy = {
   expected_milestones: ExpectedMilestone[];
 };
 
-/** Per-category earn detail — the "why" behind a routing (rates/points). */
+/** Per-category earn detail — the "why" behind a routing (rates/points).
+ * The story fields (currency/ratio/label/runner-up) are optional: absent on
+ * goals saved before they were persisted. */
 export type AllocationDetail = {
   category_slug: string;
   card_id: string;
@@ -96,7 +98,21 @@ export type AllocationDetail = {
   earn_rate: string;
   effective_miles_per_100inr: string;
   monthly_points: number;
+  /** floor(spend × effective miles per ₹100 / 100) — the worked example. */
+  monthly_miles?: number;
   notes: string[];
+  /** The points currency this card earns, e.g. "EDGE Miles". */
+  currency_name?: string | null;
+  /** Transfer ratio to the target program (from:to), e.g. 1:2. */
+  transfer_ratio_from?: number | null;
+  transfer_ratio_to?: number | null;
+  /** Catalog label of the accelerated rule that priced this row — how to
+   * actually get the rate (e.g. a bank travel portal). */
+  category_label?: string | null;
+  /** Best OTHER card available in this plan for this category — the
+   * "why not my other card" comparison. */
+  runner_up_card_id?: string | null;
+  runner_up_miles_per_100inr?: string | null;
 };
 
 export type RankedStrategy = {
@@ -112,6 +128,11 @@ export type RankedStrategy = {
     months_to_goal: number | null;
     miles_at_target_date: number;
     total_fees_inr: number;
+    /** New-card joining fees only — what the UI headlines as "fees". */
+    card_fees_inr: number;
+    /** Bank program fees paid at transfer time (e.g. Axis ₹235/transfer) —
+     * surfaced once in the transfer step, never in the headline. */
+    transfer_fees_inr: number;
     buffer_achieved: boolean;
     misses_goal: boolean;
   };
@@ -247,6 +268,9 @@ export type SavedStrategyOption = {
   miles_at_target_date: number;
   months_to_goal: number | null;
   total_fees_inr: number;
+  /** Fee split — absent on older saves; fall back to total_fees_inr. */
+  card_fees_inr?: number | null;
+  transfer_fees_inr?: number | null;
   cards_used: string[];
   cards_to_acquire: string[];
   score: string | null;

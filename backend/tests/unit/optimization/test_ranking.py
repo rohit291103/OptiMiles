@@ -33,6 +33,8 @@ from app.domain import (
     GoalResolution,
     ParsedGoalIntent,
     PlanningContext,
+    RankedStrategy,
+    ScoreBreakdown,
     SimulationOutcome,
     SpendCategory,
     SpendProfile,
@@ -45,7 +47,12 @@ from app.domain import (
 from app.knowledge.goal_resolution import resolve_goal
 from app.knowledge.requirements import estimate_requirement
 from app.knowledge.seed_catalog import seed_id
-from app.optimization.ranking import load_ranking_weights, rank, reconcile_claim
+from app.optimization.ranking import (
+    load_ranking_weights,
+    rank,
+    reconcile_claim,
+    select_route_options,
+)
 
 TODAY = date(2026, 7, 4)
 WEIGHTS_PATH = Path("config/ranking-weights-v1.yaml")
@@ -273,6 +280,30 @@ def test_allocation_details_attached_from_opportunities(
     assert travel.effective_miles_per_100inr > 0
 
 
+def test_allocation_details_enriched_with_story_fields(
+    snapshot: CatalogSnapshot, weights
+) -> None:  # type: ignore[no-untyped-def]
+    """rank() threads the story enrichment: currency names from the snapshot,
+    transfer ratios from the priced path, and the runner-up comparison scoped
+    to the plan's own cards (wallet Infinia + acquired Burgundy)."""
+    from app.valuation.opportunities import enumerate_opportunities
+
+    context = _context(snapshot)
+    opportunities = enumerate_opportunities(context)
+    (ranked,) = rank((_pair_x(),), context, weights, opportunities=opportunities)
+
+    details = {d.category_slug: d for d in ranked.allocation_details}
+    travel, dining = details[SpendCategory.TRAVEL], details[SpendCategory.DINING]
+    # Travel routes to Burgundy; the only other card in this plan is Infinia.
+    assert travel.card_id == BURGUNDY
+    assert travel.runner_up_card_id == INFINIA
+    assert travel.runner_up_miles_per_100inr is not None
+    assert travel.currency_name is not None
+    assert travel.transfer_ratio_from is not None
+    # Dining routes to Infinia; its runner-up is the acquired Burgundy.
+    assert dining.runner_up_card_id == BURGUNDY
+
+
 # ── Pruning ───────────────────────────────────────────────────────────────
 
 
@@ -438,3 +469,111 @@ def test_determinism(snapshot: CatalogSnapshot, weights) -> None:  # type: ignor
     assert rank((_pair_x(), _pair_y()), context, weights) == rank(
         (_pair_x(), _pair_y()), context, weights
     )
+
+
+# ── Route-option selection (the ≤3 distinct tiers the package presents) ────
+
+
+def _ranked_option(
+    strategy_id: str,
+    *,
+    position: int,
+    acquire: tuple[UUID, ...] = (),
+    miles: int = 100_000,
+) -> "RankedStrategy":
+    """Minimal RankedStrategy for selection tests — selection reads only rank
+    order and cards_to_acquire, so the scoring fields are constants."""
+    strategy = _strategy(
+        strategy_id,
+        allocation={SpendCategory.TRAVEL: INFINIA, SpendCategory.DINING: INFINIA},
+        acquire=acquire,
+    )
+    outcome = _outcome(strategy_id, months=5, miles=miles)
+    return RankedStrategy(
+        strategy=strategy,
+        simulation=outcome,
+        score=Decimal("50"),
+        score_breakdown=ScoreBreakdown(
+            goal_achievement=Decimal(50),
+            efficiency=Decimal(50),
+            cost=Decimal(50),
+            simplicity=Decimal(50),
+            portfolio_utilization=Decimal(50),
+            risk=Decimal(50),
+        ),
+        rank=position,
+        headline_differentiator="balanced",
+    )
+
+
+def test_select_route_options_collapses_same_acquisition_sets() -> None:
+    """Two DCB variants and three Magnus variants are one route each to the
+    user: the best-ranked plan per distinct acquisition set survives, in rank
+    order — recommended first, then 'your current cards', then the next
+    genuinely different acquisition."""
+    dcb, magnus = uuid4(), uuid4()
+    ranked = (
+        _ranked_option("dcb-a", position=1, acquire=(dcb,)),
+        _ranked_option("dcb-b", position=2, acquire=(dcb,)),
+        _ranked_option("status-quo", position=3),
+        _ranked_option("magnus-a", position=4, acquire=(magnus,)),
+        _ranked_option("magnus-b", position=5, acquire=(magnus,)),
+        _ranked_option("magnus-c", position=6, acquire=(magnus,)),
+    )
+    selected = select_route_options(ranked)
+    assert [r.strategy.strategy_id for r in selected] == ["dcb-a", "status-quo", "magnus-a"]
+
+
+def test_select_route_options_caps_at_three() -> None:
+    """Even with four distinct acquisition sets, only the top three routes are
+    presented — more options is noise, not honesty."""
+    a, b, c = uuid4(), uuid4(), uuid4()
+    ranked = (
+        _ranked_option("none", position=1),
+        _ranked_option("a", position=2, acquire=(a,)),
+        _ranked_option("b", position=3, acquire=(b,)),
+        _ranked_option("c", position=4, acquire=(c,)),
+    )
+    selected = select_route_options(ranked)
+    assert [r.strategy.strategy_id for r in selected] == ["none", "a", "b"]
+
+
+def test_select_route_options_passes_small_sets_through() -> None:
+    one = (_ranked_option("only", position=1),)
+    assert select_route_options(one) == one
+    assert select_route_options(()) == ()
+
+
+def test_select_route_options_never_lets_a_missing_route_displace_an_achieving_one() -> None:
+    """rank() sorts achieving candidates above goal-missing ones, so with 3+
+    distinct achieving acquisition sets the cap is filled before any missing
+    route is reached — a goal-missing plan with a novel acquisition can never
+    crowd out a genuine achieving alternative."""
+    a, b, miss = uuid4(), uuid4(), uuid4()
+    missing = _ranked_option("missing", position=4, acquire=(miss,))
+    missing = missing.model_copy(
+        update={
+            "simulation": _outcome("missing", months=None, miles=10_000, misses=True),
+        }
+    )
+    ranked = (
+        _ranked_option("none", position=1),
+        _ranked_option("a", position=2, acquire=(a,)),
+        _ranked_option("b", position=3, acquire=(b,)),
+        missing,
+    )
+    selected = select_route_options(ranked)
+    assert [r.strategy.strategy_id for r in selected] == ["none", "a", "b"]
+
+
+def test_select_route_options_treats_multi_card_sets_as_sets() -> None:
+    """Acquisition-set identity ignores tuple order — (A, B) and (B, A) are the
+    same route."""
+    a, b = uuid4(), uuid4()
+    ranked = (
+        _ranked_option("ab", position=1, acquire=(a, b)),
+        _ranked_option("ba", position=2, acquire=(b, a)),
+        _ranked_option("none", position=3),
+    )
+    selected = select_route_options(ranked)
+    assert [r.strategy.strategy_id for r in selected] == ["ab", "none"]

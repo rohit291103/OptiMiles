@@ -54,7 +54,9 @@ class NarrationTier(BaseModel):
 
     label: str  # the headline differentiator, e.g. "no new cards"
     miles: int
-    total_fees_inr: int
+    card_fees_inr: int
+    """New-card joining fees only — transfer/program micro-fees are surfaced
+    in the plan's transfer step, never in the narrated fee figure."""
     acquire_names: tuple[str, ...]
     is_recommended: bool
 
@@ -70,7 +72,7 @@ class NarrationPayload(BaseModel):
     headline_miles: int
     months_to_goal: int | None
     horizon_months: int
-    total_fees_inr: int
+    card_fees_inr: int
     buffer_achieved: bool
     differentiator: str
     card_names: tuple[str, ...]
@@ -126,7 +128,7 @@ def build_narration_payload(
         strategy, outcome = recommended.strategy, recommended.simulation
         headline = outcome.miles_at_target_date
         months = outcome.months_to_goal
-        fees = outcome.total_fees_inr
+        fees = outcome.card_fees_inr
         buffer_achieved = outcome.buffer_achieved
         differentiator = recommended.headline_differentiator
         card_names = tuple(names_by_card[c] for c in strategy.cards_used if c in names_by_card)
@@ -148,7 +150,7 @@ def build_narration_payload(
         if alternatives:
             comparison = _build_tiers(recommended, alternatives, names_by_card)
             for tier in comparison:
-                numbers.update({tier.miles, tier.total_fees_inr})
+                numbers.update({tier.miles, tier.card_fees_inr})
     else:
         # Infeasible: the answer is the adjustment menu.
         headline = verdict.best_case_miles
@@ -172,7 +174,7 @@ def build_narration_payload(
         headline_miles=headline,
         months_to_goal=months,
         horizon_months=context.horizon_months,
-        total_fees_inr=fees,
+        card_fees_inr=fees,
         buffer_achieved=buffer_achieved,
         differentiator=differentiator,
         card_names=card_names,
@@ -200,7 +202,7 @@ def _build_tiers(
             NarrationTier(
                 label=option.headline_differentiator,
                 miles=option.simulation.miles_at_target_date,
-                total_fees_inr=option.simulation.total_fees_inr,
+                card_fees_inr=option.simulation.card_fees_inr,
                 acquire_names=tuple(
                     names_by_card[c]
                     for c in option.strategy.cards_to_acquire
@@ -303,7 +305,7 @@ def _prompt(payload: NarrationPayload) -> str:
                 f"Goal reached in month {payload.months_to_goal} of "
                 f"{payload.horizon_months} (0-indexed)"
             )
-        lines.append(f"Total fees: ₹{payload.total_fees_inr:,}")
+        lines.append(f"New-card fees: ₹{payload.card_fees_inr:,}")
         lines.append(f"Buffer achieved: {payload.buffer_achieved}")
         lines.append(f"Why it wins: {payload.differentiator}")
         if payload.card_names:
@@ -324,7 +326,7 @@ def _prompt(payload: NarrationPayload) -> str:
                 mark = " [recommended]" if tier.is_recommended else ""
                 lines.append(
                     f"  - {tier.label} ({add}): {tier.miles:,} miles, "
-                    f"₹{tier.total_fees_inr:,} fees{mark}"
+                    f"₹{tier.card_fees_inr:,} card fees{mark}"
                 )
     else:
         lines.append(f"Goal NOT reachable as stated; best case {payload.headline_miles:,} miles.")
@@ -354,7 +356,7 @@ def _template(payload: NarrationPayload) -> RecommendationNarration:
             reasoning_bits.append(f"Cards used: {', '.join(payload.card_names)}.")
         if payload.acquire_names:
             reasoning_bits.append(f"Apply for: {', '.join(payload.acquire_names)}.")
-        reasoning_bits.append(f"Total fees ₹{payload.total_fees_inr:,}.")
+        reasoning_bits.append(f"New-card fees ₹{payload.card_fees_inr:,}.")
         if payload.assumptions:
             reasoning_bits.append(" ".join(payload.assumptions) + ".")
         actions = tuple(
@@ -392,9 +394,9 @@ def _comparison_notes(payload: NarrationPayload) -> str | None:
     parts: list[str] = []
     for tier in payload.comparison:
         fee_clause = (
-            "no annual fee"
-            if tier.total_fees_inr == 0
-            else f"₹{tier.total_fees_inr:,} in fees"
+            "no new card fees"
+            if tier.card_fees_inr == 0
+            else f"₹{tier.card_fees_inr:,} in card fees"
         )
         if tier.acquire_names:
             lead = f"Adding {', '.join(tier.acquire_names)}"

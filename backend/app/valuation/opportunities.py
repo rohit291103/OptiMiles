@@ -106,11 +106,10 @@ def enumerate_opportunities(context: PlanningContext) -> OpportunitySet:
                     f"annual transfer cap: max {link.max_transfer_points:,} points/year "
                     "through this link"
                 )
-            if link.transfer_fee_inr > 0:
-                notes.append(
-                    f"₹{link.transfer_fee_inr:,} fee per transfer (counted in plan "
-                    "fees, not folded into this rate)"
-                )
+            # No per-category note for the link's transfer fee: it is already
+            # explicit on `transfer_path` and summed into the simulation's
+            # `transfer_fees_inr`, which the UI surfaces exactly once in the
+            # transfer step — repeating it on every category row was noise.
 
             opportunities.append(
                 RewardOpportunity(

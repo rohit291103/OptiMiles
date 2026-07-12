@@ -21,7 +21,10 @@ function toTier(r: RankedStrategy, recommendedId: string): PlanTier {
   return {
     strategyId: r.strategy.strategy_id,
     miles: r.simulation.miles_at_target_date,
-    fees: r.simulation.total_fees_inr,
+    // "Fees" to the user = what the new card costs; bank transfer micro-fees
+    // are shown once in the transfer step, not folded into the headline.
+    fees: r.simulation.card_fees_inr,
+    transferFees: r.simulation.transfer_fees_inr,
     monthsToGoal: r.simulation.months_to_goal,
     cardsToAcquire: r.strategy.cards_to_acquire,
     isRecommended: r.strategy.strategy_id === recommendedId,
@@ -84,7 +87,7 @@ export function StrategyDetail({
         projectedMiles={recommended.simulation.miles_at_target_date}
         goalMonth={recommended.simulation.months_to_goal}
         horizonMonths={horizonMonths}
-        newFees={recommended.simulation.total_fees_inr}
+        newFees={recommended.simulation.card_fees_inr}
         cardsToAcquireNames={recommended.strategy.cards_to_acquire.map(nameOf)}
         programName={programName}
         narrationSummary={rec.narration?.summary}

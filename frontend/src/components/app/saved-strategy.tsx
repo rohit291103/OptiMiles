@@ -34,7 +34,10 @@ export function SavedStrategyView({ detail }: { detail: SavedGoalDetail }) {
   const tiers: PlanTier[] = detail.strategy_options.map((o) => ({
     strategyId: o.strategy_id,
     miles: o.miles_at_target_date,
-    fees: o.total_fees_inr,
+    // Card fees when the save carries the split; older saves fall back to the
+    // stored total (which folded transfer fees in).
+    fees: o.card_fees_inr ?? o.total_fees_inr,
+    transferFees: o.transfer_fees_inr ?? 0,
     monthsToGoal: o.months_to_goal,
     cardsToAcquire: o.cards_to_acquire,
     isRecommended: o.is_recommended,
@@ -73,6 +76,7 @@ export function SavedStrategyView({ detail }: { detail: SavedGoalDetail }) {
       strategyId: "saved",
       miles: strategy.ledger.at(-1)?.cumulative_target_miles ?? 0,
       fees: 0,
+      transferFees: 0,
       monthsToGoal: strategy.months_to_goal,
       cardsToAcquire: strategy.cards_to_acquire,
       isRecommended: true,

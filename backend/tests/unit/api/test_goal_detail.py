@@ -303,9 +303,48 @@ def test_display_names_resolve_from_snapshot(snapshot: CatalogSnapshot) -> None:
         )
     )
     assert detail.strategy is not None
-    card_names, partner_names = display_names(detail.strategy, snapshot)
+    card_names, partner_names = display_names(
+        detail.strategy, detail.strategy_options, snapshot
+    )
     assert card_names[infinia] == "Infinia Metal"
     assert "KrisFlyer" in partner_names[krisflyer]
+
+
+def test_display_names_cover_alternative_tiers(snapshot: CatalogSnapshot) -> None:
+    """A comparison tier's acquisition (e.g. Magnus in an alternative route)
+    must resolve to its real name too — previously only the recommended
+    strategy's ids were mapped, so every alternative tab showed the generic
+    'Card no longer listed' fallback."""
+    infinia = str(seed_id("card", "hdfc-infinia"))
+    burgundy = str(seed_id("card", "axis-magnus-burgundy"))
+    detail = detail_from_row(
+        _row(
+            card_allocations={
+                "spend_allocation": {"travel": infinia},
+                "cards_used": [infinia],
+                "cards_to_acquire": [],
+                "ledger": [],
+                "strategy_options": [
+                    {
+                        "strategy_id": "one_new_card-1",
+                        "archetype": "one_new_card",
+                        "headline_differentiator": "fastest",
+                        "miles_at_target_date": 100_000,
+                        "months_to_goal": 5,
+                        "total_fees_inr": 30_000,
+                        "cards_used": [infinia, burgundy],
+                        "cards_to_acquire": [burgundy],
+                        "is_recommended": False,
+                    }
+                ],
+            },
+            transfer_recommendation=[],
+            milestone_projections=[],
+        )
+    )
+    assert detail.strategy is not None
+    card_names, _ = display_names(detail.strategy, detail.strategy_options, snapshot)
+    assert card_names[burgundy] == "Magnus for Burgundy"
 
 
 def test_display_names_skip_unknown_ids(snapshot: CatalogSnapshot) -> None:
@@ -313,7 +352,9 @@ def test_display_names_skip_unknown_ids(snapshot: CatalogSnapshot) -> None:
     are omitted from the maps (client falls back), never invented."""
     detail = detail_from_row(_row())  # random uuids, not in the seed catalog
     assert detail.strategy is not None
-    card_names, partner_names = display_names(detail.strategy, snapshot)
+    card_names, partner_names = display_names(
+        detail.strategy, detail.strategy_options, snapshot
+    )
     assert card_names == {}
     assert partner_names == {}
 

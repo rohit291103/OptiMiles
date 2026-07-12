@@ -71,9 +71,11 @@ place; only the cumulative annual-cap bookkeeping is simulation state):
 Aggregates: `months_to_goal` = first month with cumulative target-program
 miles ≥ `miles_required_total` (buffer excluded; `buffer_achieved` compares
 the target-date balance against required + buffer separately);
-`total_fees_inr` = joining fees of acquired cards + transfer fees paid
+`card_fees_inr` = joining fees of acquired cards (the price of the route);
+`transfer_fees_inr` = program fees paid at transfer time (e.g. Axis ₹235);
+`total_fees_inr` = their sum, the figure Ranking's cost dimension scores
 (wallet cards' annual fees are sunk costs of the status quo, not of this
-strategy — Ranking's cost dimension prices card fees from the strategy).
+strategy).
 """
 
 from decimal import ROUND_DOWN, Decimal
@@ -144,7 +146,8 @@ def simulate(strategy: CandidateStrategy, context: PlanningContext) -> Simulatio
     fired_once: set[UUID] = set()  # annual/one_time spend bonuses + welcome bonuses
     link_points_sent: dict[UUID, int] = {}  # link id → cumulative (annual cap, applied once)
     pending_arrivals: dict[int, int] = {}  # arrival month → target-program miles
-    total_fees = sum(cards_by_id[c].joining_fee_inr for c in strategy.cards_to_acquire)
+    card_fees = sum(cards_by_id[c].joining_fee_inr for c in strategy.cards_to_acquire)
+    transfer_fees = 0
     cumulative_target_miles = 0
     ledger: list[MonthLedgerEntry] = []
     months_to_goal: int | None = None
@@ -267,7 +270,7 @@ def simulate(strategy: CandidateStrategy, context: PlanningContext) -> Simulatio
                 continue
             balances[planned.from_card_id] -= points_sent
             link_points_sent[link.id] = link_points_sent.get(link.id, 0) + points_sent
-            total_fees += link.transfer_fee_inr
+            transfer_fees += link.transfer_fee_inr
             # Initiated at month end ⇒ any processing days spill forward.
             arrival = month + -(-link.processing_days_max // 30)
             executions.append(
@@ -308,7 +311,9 @@ def simulate(strategy: CandidateStrategy, context: PlanningContext) -> Simulatio
         ledger=tuple(ledger),
         months_to_goal=months_to_goal,
         miles_at_target_date=cumulative_target_miles,
-        total_fees_inr=total_fees,
+        total_fees_inr=card_fees + transfer_fees,
+        card_fees_inr=card_fees,
+        transfer_fees_inr=transfer_fees,
         buffer_achieved=(
             cumulative_target_miles >= requirement.miles_required_total + requirement.buffer_miles
         ),

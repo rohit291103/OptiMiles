@@ -181,7 +181,16 @@ class SavedAllocationDetail(BaseModel):
     earn_rate: Decimal
     effective_miles_per_100inr: Decimal
     monthly_points: int
+    monthly_miles: int = 0
     notes: tuple[str, ...] = ()
+    # Reward-system story fields (None/absent on goals saved before they
+    # were persisted) — mirrors StrategyAllocationDetail's enrichment.
+    currency_name: str | None = None
+    transfer_ratio_from: int | None = None
+    transfer_ratio_to: int | None = None
+    category_label: str | None = None
+    runner_up_card_id: str | None = None
+    runner_up_miles_per_100inr: Decimal | None = None
 
 
 class SavedScoreBreakdown(BaseModel):
@@ -206,6 +215,9 @@ class SavedStrategyOption(BaseModel):
     miles_at_target_date: int
     months_to_goal: int | None = None
     total_fees_inr: int
+    # Fee split (absent on older saves — clients fall back to the total).
+    card_fees_inr: int | None = None
+    transfer_fees_inr: int | None = None
     cards_used: tuple[str, ...] = ()
     cards_to_acquire: tuple[str, ...] = ()
     score: Decimal | None = None

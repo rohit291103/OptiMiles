@@ -199,6 +199,7 @@ def rank(
 
     headlines = _headlines(scored, context)
     opportunity_index = _opportunity_index(opportunities)
+    story = _story_inputs(opportunities, context)
     return tuple(
         RankedStrategy(
             strategy=strategy,
@@ -208,10 +209,36 @@ def rank(
             rank=position,
             headline_differentiator=headlines[strategy.strategy_id],
             co_recommended=strategy.strategy_id in co_recommended,
-            allocation_details=_details_for(strategy, opportunity_index, context),
+            allocation_details=_details_for(strategy, opportunity_index, context, story),
         )
         for position, (strategy, outcome, breakdown, score, _) in enumerate(scored, start=1)
     )
+
+
+def select_route_options(
+    ranked: tuple[RankedStrategy, ...], *, max_options: int = 3
+) -> tuple[RankedStrategy, ...]:
+    """The ≤3 genuinely different routes the package presents (Stage 9's
+    'Select', applied to presentation): several archetypes converging on the
+    same acquisition set are ONE route to the user — keep the best-ranked plan
+    per distinct set of cards-to-acquire, in rank order, capped at
+    `max_options`. Ranking order already puts the recommended plan first and
+    goal-achieving plans above goal-missing ones, so the survivors are the
+    recommended route plus the strongest distinct alternatives. Each survivor
+    keeps its ORIGINAL `rank` (1, 3, 4 after a collapse, say) — the field
+    records Stage-9 position, not display order; consumers iterate the tuple
+    positionally."""
+    selected: list[RankedStrategy] = []
+    seen_sets: set[frozenset[UUID]] = set()
+    for option in ranked:
+        acquisition_set = frozenset(option.strategy.cards_to_acquire)
+        if acquisition_set in seen_sets:
+            continue
+        seen_sets.add(acquisition_set)
+        selected.append(option)
+        if len(selected) == max_options:
+            break
+    return tuple(selected)
 
 
 def _opportunity_index(
@@ -226,15 +253,51 @@ def _opportunity_index(
     }
 
 
+class _StoryInputs(BaseModel):
+    """Snapshot-derived naming for the allocation story — resolved once per
+    rank() call, purely cosmetic (labels, not values)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    all_opportunities: tuple[RewardOpportunity, ...]
+    currency_names: dict[UUID, str]
+    category_labels: dict[tuple[UUID, SpendCategory], str]
+
+
+def _story_inputs(
+    opportunities: OpportunitySet | None, context: PlanningContext
+) -> _StoryInputs:
+    if opportunities is None:
+        return _StoryInputs(all_opportunities=(), currency_names={}, category_labels={})
+    snapshot = context.snapshot
+    currency_by_id = {currency.id: currency.currency_name for currency in snapshot.currencies}
+    return _StoryInputs(
+        all_opportunities=opportunities.opportunities,
+        currency_names={
+            card.id: currency_by_id[card.reward_currency_id]
+            for card in snapshot.cards
+            if card.reward_currency_id in currency_by_id
+        },
+        category_labels={
+            (rule.card_id, rule.category_slug): rule.category_label
+            for rule in snapshot.category_rules
+            if rule.category_slug != SpendCategory.DEFAULT
+        },
+    )
+
+
 def _details_for(
     strategy: CandidateStrategy,
     opportunity_index: dict[tuple[UUID, SpendCategory], RewardOpportunity],
     context: PlanningContext,
+    story: _StoryInputs,
 ) -> tuple[StrategyAllocationDetail, ...]:
     """Rebuild the strategy's Assignment (category → priced opportunity) from
     its spend_allocation, then reshape to per-category detail. A category whose
     (card, category) path isn't in the index is skipped — the detail is a
-    best-effort story overlay, never a source of truth."""
+    best-effort story overlay, never a source of truth. The runner-up
+    comparison is scoped to the plan's own cards: wallet + this strategy's
+    acquisitions."""
     if not opportunity_index:
         return ()
     assignment = {
@@ -244,7 +307,17 @@ def _details_for(
     }
     if not assignment:
         return ()
-    return allocation_detail(assignment, context.spend_profile)
+    available = frozenset(
+        {w.card_id for w in context.wallet} | set(strategy.cards_to_acquire)
+    )
+    return allocation_detail(
+        assignment,
+        context.spend_profile,
+        all_opportunities=story.all_opportunities,
+        available_card_ids=available,
+        currency_names=story.currency_names,
+        category_labels=story.category_labels,
+    )
 
 
 # ── Raw dimensions (pruning + tie-breaking currency) ──────────────────────

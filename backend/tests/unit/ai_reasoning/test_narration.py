@@ -95,6 +95,8 @@ def _ranked(context: PlanningContext) -> RankedStrategy:
         months_to_goal=7,
         miles_at_target_date=97_280,
         total_fees_inr=30_235,
+        card_fees_inr=30_000,
+        transfer_fees_inr=235,
         buffer_achieved=True,
     )
     return RankedStrategy(
@@ -128,7 +130,7 @@ def _good_narration(model_version: str = "test-model") -> RecommendationNarratio
         summary="Reaches 97,280 KrisFlyer miles by month 7, one month ahead of target.",
         reasoning=(
             "Routing travel and dining to the Magnus Burgundy earns fastest; "
-            "your Infinia balance of 20,000 points transfers too. Total fees ₹30,235."
+            "your Infinia balance of 20,000 points transfers too. New-card fees ₹30,000."
         ),
         action_items=(
             ActionItem(priority=1, action="Apply for the Magnus Burgundy", card_id=BURGUNDY),
@@ -411,8 +413,12 @@ def test_payload_contains_no_forbidden_internals(snapshot: CatalogSnapshot) -> N
 
 
 def test_allowed_numbers_include_headline_and_fees(snapshot: CatalogSnapshot) -> None:
+    """The narrated fee figure is the card fee (₹30,000), not the total with
+    transfer micro-fees folded in (₹30,235) — the user reads fees as 'what the
+    new card costs me'; bank transfer charges live in the plan's transfer step."""
     context = _context(snapshot)
     payload = build_narration_payload(_ranked(context), _verdict(context), context, ())
     assert 97_280 in payload.allowed_numbers
-    assert 30_235 in payload.allowed_numbers
+    assert 30_000 in payload.allowed_numbers
+    assert 30_235 not in payload.allowed_numbers
     assert 20_000 in payload.allowed_numbers  # the transferred Infinia balance

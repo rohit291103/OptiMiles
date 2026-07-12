@@ -272,6 +272,8 @@ def _strategy_options(recommendation: FinalRecommendation) -> list[dict[str, obj
                 "miles_at_target_date": option.simulation.miles_at_target_date,
                 "months_to_goal": option.simulation.months_to_goal,
                 "total_fees_inr": option.simulation.total_fees_inr,
+                "card_fees_inr": option.simulation.card_fees_inr,
+                "transfer_fees_inr": option.simulation.transfer_fees_inr,
                 "cards_used": [str(c) for c in option.strategy.cards_used],
                 "cards_to_acquire": [str(c) for c in option.strategy.cards_to_acquire],
                 "score": str(option.score),

@@ -54,8 +54,39 @@ class StrategyAllocationDetail(BaseModel):
     monthly_points: int = Field(
         ge=0, description="floor(monthly_spend × earn_rate / 100) — display projection"
     )
+    monthly_miles: int = Field(
+        default=0,
+        ge=0,
+        description="floor(monthly_spend × effective_miles_per_100inr / 100) — the "
+        "worked example in target-program miles; display projection, same "
+        "not-summable caveat as monthly_points",
+    )
     notes: tuple[str, ...] = Field(
         default=(), description="Valuation notes for this path (caps/exclusions)"
+    )
+    # ── Reward-system story (optional enrichment; None on older artifacts) ──
+    currency_name: str | None = Field(
+        default=None, description="The points currency this card earns (e.g. 'EDGE Miles')"
+    )
+    transfer_ratio_from: int | None = Field(
+        default=None, description="Currency points consumed per transfer block (Stage-5 path)"
+    )
+    transfer_ratio_to: int | None = Field(
+        default=None, description="Target-program miles credited per transfer block"
+    )
+    category_label: str | None = Field(
+        default=None,
+        description="The catalog's label for the accelerated rule that priced this "
+        "row (how to actually get the rate, e.g. a portal); None when the "
+        "default rate applied",
+    )
+    runner_up_card_id: UUID | None = Field(
+        default=None,
+        description="Best OTHER card available in this plan for the category — "
+        "the 'why not my other card' comparison; None when there is none",
+    )
+    runner_up_miles_per_100inr: Decimal | None = Field(
+        default=None, description="That runner-up's effective miles per ₹100 (Stage-5 value)"
     )
 
 

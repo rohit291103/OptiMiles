@@ -100,7 +100,8 @@ export function VerdictHero({
     cardsToAcquireNames.length === 0
       ? "with the cards you already hold"
       : `after adding ${cardsToAcquireNames.join(" and ")}`;
-  const cost = newFees === 0 ? "₹0 in new fees" : `${inr(newFees)} in fees`;
+  const cost =
+    newFees === 0 ? "₹0 in new card fees" : `${inr(newFees)} in card fees`;
 
   return (
     <section
@@ -126,7 +127,11 @@ export function VerdictHero({
           there {how}, for {cost}.
         </p>
       )}
-      {narrationSummary && (
+      {/* When the plan is feasible the headline above already states the
+          answer with the same numbers — repeating the narration summary read
+          as a stylistic inconsistency, not information. It only adds value on
+          the infeasible path (the adjustment story). */}
+      {!feasible && narrationSummary && (
         <p className="mt-3 max-w-2xl border-t border-hairline/60 pt-3 text-sm leading-relaxed text-foreground/85">
           {narrationSummary}
         </p>
@@ -150,7 +155,12 @@ export type PlanTierDetail = {
 export type PlanTier = {
   strategyId: string;
   miles: number;
+  /** New-card joining fees — the number the user reads as "what this route
+   * costs me". Transfer/program micro-fees live in `transferFees`. */
   fees: number;
+  /** Bank program fees paid at transfer time across the plan (e.g. Axis
+   * ₹235/transfer) — mentioned once in the transfer step, never headlined. */
+  transferFees: number;
   monthsToGoal: number | null;
   cardsToAcquire: string[];
   isRecommended: boolean;
@@ -293,7 +303,7 @@ export function StrategyPlanTabs({
                         : "Reaches your goal"
                       : `${fmt(targetMiles - tier.miles)} short of your goal`}
                     {" · "}
-                    {tier.fees === 0 ? "₹0 new fees" : `${inr(tier.fees)} fees`}
+                    {tier.fees === 0 ? "₹0 card fees" : `${inr(tier.fees)} card fees`}
                   </span>
                 </button>
               );
@@ -366,7 +376,7 @@ function CompactTierPanel({
             </span>{" "}
             and projects {fmt(tier.miles)} miles
             {tier.monthsToGoal !== null ? ` by month ${tier.monthsToGoal}` : ""}, for{" "}
-            {tier.fees === 0 ? "no new fees" : `${inr(tier.fees)} in fees`}.
+            {tier.fees === 0 ? "no new card fees" : `${inr(tier.fees)} in card fees`}.
           </>
         ) : (
           <>
@@ -473,6 +483,15 @@ function PlanSteps({
           <p className="text-xs text-muted-foreground">
             Transfers aren&apos;t instant — partners take days to land the miles. The
             months above already account for each partner&apos;s processing time.
+            {tier.transferFees > 0 && (
+              <>
+                {" "}
+                The bank charges a small program fee for these transfers (
+                {inr(tier.transferFees)}
+                {" across this plan), billed at transfer time — it's not part "}
+                of the card fees shown above.
+              </>
+            )}
           </p>
         </div>
       ),
@@ -536,9 +555,33 @@ function PlanSteps({
   );
 }
 
-/** Step "route your spend": per-card groups with the why visible inline —
- * rate, monthly points, and the valuation notes (caps/exclusions/portal
- * rates) printed under the row instead of hidden behind a chevron. */
+/** One row's runner-up comparison, in plain language — the deterministic
+ * answer to "why is my other card ignored here?". Pure comparison of two
+ * engine numbers (effective miles/₹100), no reward math. */
+function runnerUpSentence(r: AllocationDetail, nameOf: (id: string) => string): string | null {
+  if (!r.runner_up_card_id || r.runner_up_miles_per_100inr == null) return null;
+  const chosen = Number(r.effective_miles_per_100inr);
+  const other = Number(r.runner_up_miles_per_100inr);
+  const otherName = nameOf(r.runner_up_card_id);
+  if (other < chosen) {
+    return `Best card for this — ${otherName} would net ${other} miles/₹100 here vs ${chosen} on this card.`;
+  }
+  if (other === chosen) {
+    return `Ties with ${otherName} (${other} miles/₹100) — either card works for this category.`;
+  }
+  // Don't invent a specific cause (caps? milestones? route shape?) — the row
+  // doesn't carry attribution, so name the trade-off without asserting why.
+  return `${otherName} rates higher per ₹100 here (${other} vs ${chosen} miles/₹100) — a trade-off this route accepts; caps, milestone bonuses and the route's own goal all shape the split.`;
+}
+
+const DEFAULT_RATE_NOTE = "earns at the card's default rate";
+
+/** Step "route your spend": per-card groups that tell the full earn story —
+ * the card's reward system (currency + transfer ratio), each category's rate
+ * chain (points rate → effective miles/₹100), a worked monthly example, how
+ * to get an accelerated rate (the catalog's rule label, e.g. a portal), and
+ * the runner-up comparison. Card-wide notes (caps, transfer fees) are hoisted
+ * to one line per card instead of repeating on every row. */
 function SpendStep({
   details,
   fallbackAllocation,
@@ -598,53 +641,121 @@ function SpendStep({
         Each card earns its own points on these categories — step{" "}
         {transferStepNumber} turns them into {programName} miles.
       </p>
-      {[...byCard.entries()].map(([cardId, rows]) => (
-        <div
-          key={cardId}
-          className="overflow-hidden rounded-xl border border-hairline bg-background/40"
-        >
-          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-hairline/70 px-3.5 py-2.5">
-            <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-foreground">
-              <CreditCard className="size-4 shrink-0 text-gold" />
-              <span className="min-w-0 wrap-break-word">{nameOf(cardId)}</span>
-            </span>
-            <span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">
-              ~{fmt(cardMonthlyPoints(rows))} pts/mo
-            </span>
-          </div>
-          <ul className="divide-y divide-hairline/50">
-            {rows.map((r) => (
-              <li key={r.category_slug} className="px-3.5 py-2.5 text-sm">
-                {/* Wraps on narrow screens — the category + ₹ amount is the
-                    primary info and must never truncate away. */}
-                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                  <span className="min-w-0 text-foreground">
-                    {categoryLabel(r.category_slug)}
-                    <span className="ml-2 whitespace-nowrap text-xs text-muted-foreground">
-                      {inr(r.monthly_spend_inr)}/mo
-                    </span>
-                  </span>
-                  <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs tabular-nums">
-                    <span className="whitespace-nowrap text-gold">
-                      {Number(r.earn_rate)}× per ₹100
-                    </span>
-                    <span className="whitespace-nowrap text-foreground">
-                      {fmt(r.monthly_points)} pts/mo
-                    </span>
-                  </span>
-                </div>
-                {r.notes.length > 0 && (
-                  <ul className="mt-1.5 space-y-0.5 text-xs leading-relaxed text-muted-foreground">
-                    {r.notes.map((note, i) => (
+      {[...byCard.entries()].map(([cardId, rows]) => {
+        // Card-level facts are identical on every row of the card — hoist
+        // them so they read once, not per category.
+        const story = rows.find((r) => r.currency_name || r.transfer_ratio_from);
+        const shared = (rows[0]?.notes ?? []).filter(
+          (note) => rows.length > 1 && rows.every((r) => r.notes.includes(note)),
+        );
+        const allDefaultRate =
+          rows.length > 1 && rows.every((r) => r.notes.some((n) => n.startsWith(DEFAULT_RATE_NOTE)));
+        return (
+          <div
+            key={cardId}
+            className="overflow-hidden rounded-xl border border-hairline bg-background/40"
+          >
+            <div className="border-b border-hairline/70 px-3.5 py-2.5">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-foreground">
+                  <CreditCard className="size-4 shrink-0 text-gold" />
+                  <span className="min-w-0 wrap-break-word">{nameOf(cardId)}</span>
+                </span>
+                <span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">
+                  ~{fmt(cardMonthlyPoints(rows))} pts/mo
+                </span>
+              </div>
+              {story && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {story.currency_name ? `Earns ${story.currency_name}` : "Earns points"}
+                  {story.transfer_ratio_from != null && story.transfer_ratio_to != null && (
+                    <>
+                      {" · "}transfers to {programName} at{" "}
+                      <span className="tabular-nums text-foreground/80">
+                        {story.transfer_ratio_from}:{story.transfer_ratio_to}
+                      </span>
+                    </>
+                  )}
+                </p>
+              )}
+            </div>
+            <ul className="divide-y divide-hairline/50">
+              {rows.map((r) => {
+                const comparison = runnerUpSentence(r, nameOf);
+                const rowNotes = r.notes.filter(
+                  (note) =>
+                    !shared.includes(note) &&
+                    !(allDefaultRate && note.startsWith(DEFAULT_RATE_NOTE)),
+                );
+                return (
+                  <li key={r.category_slug} className="px-3.5 py-2.5 text-sm">
+                    {/* Wraps on narrow screens — the category + ₹ amount is the
+                        primary info and must never truncate away. */}
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                      <span className="min-w-0 text-foreground">
+                        {categoryLabel(r.category_slug)}
+                        <span className="ml-2 whitespace-nowrap text-xs text-muted-foreground">
+                          {inr(r.monthly_spend_inr)}/mo
+                        </span>
+                      </span>
+                      <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs tabular-nums">
+                        <span className="whitespace-nowrap text-gold">
+                          {Number(r.earn_rate)} pts per ₹100
+                        </span>
+                        <span className="whitespace-nowrap text-foreground">
+                          → {Number(r.effective_miles_per_100inr)} miles/₹100
+                        </span>
+                      </span>
+                    </div>
+                    {/* The worked example: spend → points → program miles. */}
+                    <p className="mt-1 text-xs tabular-nums text-muted-foreground">
+                      {inr(r.monthly_spend_inr)} × {Number(r.earn_rate)}/₹100 ={" "}
+                      {fmt(r.monthly_points)} pts
+                      {r.monthly_miles != null && r.monthly_miles > 0 && (
+                        <> → ~{fmt(r.monthly_miles)} {programName} miles a month</>
+                      )}
+                    </p>
+                    {r.category_label && (
+                      <p className="mt-1 text-xs leading-relaxed text-gold/90">
+                        To get this rate: {r.category_label}
+                      </p>
+                    )}
+                    {comparison && (
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        {comparison}
+                      </p>
+                    )}
+                    {rowNotes.length > 0 && (
+                      <ul className="mt-1 space-y-0.5 text-xs leading-relaxed text-muted-foreground/80">
+                        {rowNotes.map((note, i) => (
+                          <li key={i}>{note}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+            {(shared.length > 0 || allDefaultRate) && (
+              <div className="border-t border-hairline/70 px-3.5 py-2">
+                <ul className="space-y-0.5 text-xs leading-relaxed text-muted-foreground/80">
+                  {allDefaultRate && (
+                    <li>
+                      These categories all earn the card&apos;s flat default rate —
+                      no accelerated category applies.
+                    </li>
+                  )}
+                  {shared
+                    .filter((note) => !note.startsWith(DEFAULT_RATE_NOTE))
+                    .map((note, i) => (
                       <li key={i}>{note}</li>
                     ))}
-                  </ul>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        );
+      })}
       {milestones.length > 0 && (
         <div className="rounded-xl border border-hairline bg-background/40 px-3.5 py-3">
           <p className="flex items-center gap-1.5 text-xs font-medium text-foreground">

@@ -51,7 +51,7 @@ from app.domain import (
 from app.knowledge.goal_resolution import resolve_goal
 from app.knowledge.requirements import estimate_requirement
 from app.optimization.feasibility import assess_feasibility
-from app.optimization.ranking import RankingWeights, rank
+from app.optimization.ranking import RankingWeights, rank, select_route_options
 from app.optimization.strategies import generate_candidates
 from app.pipeline.assemble import assemble_recommendation
 from app.pipeline.context import assemble_context
@@ -170,7 +170,7 @@ async def run_from_context(
     # Stage 6 — Feasibility gate. Infeasible short-circuits Stages 7–9.
     verdict = assess_feasibility(opportunities, context)
 
-    ranked: tuple[RankedStrategy, ...] = ()
+    presented: tuple[RankedStrategy, ...] = ()
     recommended: RankedStrategy | None = None
     if verdict.feasible:
         # Stage 7 — Candidate generation (validated at exit).
@@ -179,21 +179,25 @@ async def run_from_context(
         pairs = tuple((candidate, simulate(candidate, context)) for candidate in candidates)
         # Stage 9 — Ranking & selection (reconciled against simulation);
         # opportunities threaded through so each ranked strategy carries its
-        # per-category earn story (allocation_details) for the UI.
+        # per-category earn story (allocation_details) for the UI. The package
+        # presents at most 3 genuinely different routes — one per distinct
+        # acquisition set (archetype variants of the same acquisition collapse
+        # to the best-ranked plan).
         ranked = rank(pairs, context, weights, opportunities=opportunities)
-        recommended = ranked[0] if ranked else None
+        presented = select_route_options(ranked)
+        recommended = presented[0] if presented else None
 
     # Stage 10 — Explanation & narration (AI edge; template fallback).
     narration = await narrate(
         recommended,
         verdict,
         context,
-        alternatives=ranked[1:] if len(ranked) > 1 else (),
+        alternatives=presented[1:] if len(presented) > 1 else (),
         model=model,
     )
 
     # Stage 11 — Assembly (lineage stamped).
-    return assemble_recommendation(context, verdict, ranked, narration, intent=intent)
+    return assemble_recommendation(context, verdict, presented, narration, intent=intent)
 
 
 def _goal_from_resolution(resolution: GoalResolution, user_id: UUID) -> TravelGoal:

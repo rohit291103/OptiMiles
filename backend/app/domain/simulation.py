@@ -59,6 +59,19 @@ class SimulationOutcome(BaseModel):
     )
     miles_at_target_date: int = Field(ge=0)
     total_fees_inr: int = Field(ge=0)
+    card_fees_inr: int = Field(
+        default=0,
+        ge=0,
+        description="Joining fees of acquired cards — the price of the route; "
+        "what the UI headlines as 'fees'",
+    )
+    transfer_fees_inr: int = Field(
+        default=0,
+        ge=0,
+        description="Program fees charged by banks at transfer time (e.g. Axis "
+        "₹235/transfer) — real money but not a card fee; total_fees_inr = "
+        "card_fees_inr + transfer_fees_inr",
+    )
     buffer_achieved: bool
     misses_goal: bool = Field(
         default=False, description="Passed the gate but missed in simulation — never ranks #1"

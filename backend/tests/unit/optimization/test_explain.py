@@ -126,6 +126,101 @@ def test_allocation_detail_floors_fractional_points() -> None:
     assert rows[0].monthly_points == 1_666
 
 
+def test_allocation_detail_monthly_miles_golden() -> None:
+    """The worked example the UI shows per row: floor(spend × effective miles
+    per ₹100 / 100). 40,000 × 4.0 / 100 = 1,600; 30,000 × 4.0 / 100 = 1,200."""
+    assignment: Assignment = {
+        SpendCategory.TRAVEL: _opportunity(SpendCategory.TRAVEL, earn_rate="5.0", eff="4.0"),
+        SpendCategory.DINING: _opportunity(SpendCategory.DINING, earn_rate="5.0", eff="4.0"),
+    }
+    by_cat = {r.category_slug: r for r in allocation_detail(assignment, _spend())}
+    assert by_cat[SpendCategory.TRAVEL].monthly_miles == 1_600
+    assert by_cat[SpendCategory.DINING].monthly_miles == 1_200
+
+
+def test_allocation_detail_monthly_miles_floors() -> None:
+    """33,333 × 4.0 / 100 = 1,333.32 → 1,333 (never overstate)."""
+    assignment: Assignment = {
+        SpendCategory.TRAVEL: _opportunity(SpendCategory.TRAVEL, earn_rate="5", eff="4"),
+    }
+    spend = SpendProfile(
+        items=(SpendProfileItem(category_slug=SpendCategory.TRAVEL, monthly_spend_inr=33_333),)
+    )
+    assert allocation_detail(assignment, spend)[0].monthly_miles == 1_333
+
+
+def test_allocation_detail_carries_reward_system_story() -> None:
+    """Each row explains the card's reward system: the currency it earns, the
+    transfer ratio to the target program (from the opportunity's own transfer
+    path — 5:4 in the fixture), and the catalog's label for an accelerated
+    category (how to actually get the rate, e.g. a portal). A category priced
+    at the default rate gets no label — the note already says it's default."""
+    assignment: Assignment = {
+        SpendCategory.TRAVEL: _opportunity(SpendCategory.TRAVEL, earn_rate="5.0", eff="4.0"),
+        SpendCategory.DINING: _opportunity(SpendCategory.DINING, earn_rate="2.0", eff="1.6"),
+    }
+    rows = allocation_detail(
+        assignment,
+        _spend(),
+        currency_names={CARD: "EDGE Miles"},
+        category_labels={(CARD, SpendCategory.TRAVEL): "Flights & hotels via the travel portal"},
+    )
+    by_cat = {r.category_slug: r for r in rows}
+    travel = by_cat[SpendCategory.TRAVEL]
+    assert travel.currency_name == "EDGE Miles"
+    assert travel.transfer_ratio_from == 5
+    assert travel.transfer_ratio_to == 4
+    assert travel.category_label == "Flights & hotels via the travel portal"
+    dining = by_cat[SpendCategory.DINING]
+    assert dining.currency_name == "EDGE Miles"
+    assert dining.category_label is None
+
+
+def test_allocation_detail_runner_up_is_best_other_available_card() -> None:
+    """The 'why not my other card' answer: among the cards actually available
+    in this plan (wallet + acquired), the best non-chosen card's effective
+    miles/₹100 is recorded per category. A better card that is NOT available
+    in the plan never appears — the comparison is against real options only."""
+    other, unavailable = uuid4(), uuid4()
+    chosen = _opportunity(SpendCategory.TRAVEL, earn_rate="5.0", eff="4.0")
+    other_opp = _opportunity(SpendCategory.TRAVEL, earn_rate="2.0", eff="2.0").model_copy(
+        update={"card_id": other}
+    )
+    stronger_but_unavailable = _opportunity(
+        SpendCategory.TRAVEL, earn_rate="9.0", eff="9.0"
+    ).model_copy(update={"card_id": unavailable})
+
+    rows = allocation_detail(
+        {SpendCategory.TRAVEL: chosen},
+        SpendProfile(
+            items=(
+                SpendProfileItem(category_slug=SpendCategory.TRAVEL, monthly_spend_inr=40_000),
+            )
+        ),
+        all_opportunities=(chosen, other_opp, stronger_but_unavailable),
+        available_card_ids=frozenset({CARD, other}),
+    )
+    assert rows[0].runner_up_card_id == other
+    assert rows[0].runner_up_miles_per_100inr == Decimal("2.0")
+
+
+def test_allocation_detail_runner_up_absent_without_another_card() -> None:
+    """One-card wallet: nothing to compare against, fields stay None."""
+    chosen = _opportunity(SpendCategory.TRAVEL, earn_rate="5.0", eff="4.0")
+    rows = allocation_detail(
+        {SpendCategory.TRAVEL: chosen},
+        SpendProfile(
+            items=(
+                SpendProfileItem(category_slug=SpendCategory.TRAVEL, monthly_spend_inr=40_000),
+            )
+        ),
+        all_opportunities=(chosen,),
+        available_card_ids=frozenset({CARD}),
+    )
+    assert rows[0].runner_up_card_id is None
+    assert rows[0].runner_up_miles_per_100inr is None
+
+
 def test_card_monthly_points_floors_once_per_card_not_per_category() -> None:
     """The engine's contract (allocation.py / projector.py): sum exact points
     across all categories on a card, then floor ONCE — not per category. Two

@@ -429,6 +429,38 @@ def test_golden_magnus_whole_block_transfer_leaves_remainder(
     assert outcome.total_fees_inr == 235
 
 
+def test_golden_fee_split_card_vs_transfer(snapshot: CatalogSnapshot) -> None:
+    """Fees are two different kinds of money: the ₹5,000 Atlas joining fee is
+    the price of the route; the ₹235 Axis program fee is a bank charge at
+    transfer time. The outcome reports both separately, and total_fees_inr is
+    exactly their sum — hand-computed: 5,000 + 235 = 5,235."""
+    context = _context(snapshot, {SpendCategory.TRAVEL: 100_000}, wallet=(), horizon_months=4)
+    outcome = simulate(
+        _strategy(
+            {SpendCategory.TRAVEL: "axis-atlas"},
+            acquire=("axis-atlas",),
+            transfers=(("axis-atlas", 5_000, 1),),
+        ),
+        context,
+    )
+    assert outcome.card_fees_inr == 5_000
+    assert outcome.transfer_fees_inr == 235
+    assert outcome.total_fees_inr == 5_235
+
+
+def test_fee_split_zero_fee_link_and_no_acquisition(snapshot: CatalogSnapshot) -> None:
+    """Wallet-only Infinia plan through the fee-free HDFC link: every fee
+    figure is zero — nothing is invented on either side of the split."""
+    context = _context(snapshot, {SpendCategory.DINING: 30_000})
+    outcome = simulate(
+        _strategy({SpendCategory.DINING: "hdfc-infinia"}, transfers=(("hdfc-infinia", 5_000, 2),)),
+        context,
+    )
+    assert outcome.card_fees_inr == 0
+    assert outcome.transfer_fees_inr == 0
+    assert outcome.total_fees_inr == 0
+
+
 def test_transfer_below_min_threshold_is_skipped(snapshot: CatalogSnapshot) -> None:
     """900 < Infinia link min 1,000: no execution, no fee, balance intact."""
     context = _context(snapshot, {SpendCategory.DINING: 30_000})
