@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, Check, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,7 @@ import {
   type SimulateResponse,
 } from "@/lib/api";
 import { StrategyDetail } from "@/components/strategy-detail";
-import { FinePrint, VerdictHero } from "@/components/strategy-story";
+import { AdjustmentMenu, FinePrint, VerdictHero } from "@/components/strategy-story";
 import { getAccessToken } from "@/lib/supabase";
 import { useAuth } from "@/lib/use-auth";
 
@@ -71,11 +71,31 @@ export function GoalSimulator() {
   >("idle");
   const { user, loading: authLoading } = useAuth();
 
+  // The finished strategy renders far below the form — bring it into view so
+  // the user isn't left staring at the button wondering whether it's done.
+  const resultRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (loading || !response || !resultRef.current) return;
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    resultRef.current.scrollIntoView({
+      behavior: reduceMotion ? "auto" : "smooth",
+      block: "start",
+    });
+  }, [loading, response]);
+
   const cardNames = new Map(cards.map((c) => [c.id, c.card_name]));
   // "Cards you already hold" lists the FULL catalog — `acquirable` gates what
   // the engine may propose as a NEW card, not what a user can hold (Atlas is
-  // closed to new applicants but plenty of wallets have one).
-  const pickerCards = cards;
+  // closed to new applicants but plenty of wallets have one). Grouped by bank
+  // so the picker reads like a wallet, not a flat tag dump.
+  const cardsByBank: [string, CardSummary[]][] = [];
+  for (const card of cards) {
+    const group = cardsByBank.find(([bank]) => bank === card.bank);
+    if (group) group[1].push(card);
+    else cardsByBank.push([card.bank, [card]]);
+  }
   const totalSpend = SPEND_CATEGORIES.reduce(
     (sum, c) => sum + Math.max(Math.round(Number(spend[c.slug]) || 0), 0),
     0,
@@ -188,7 +208,7 @@ export function GoalSimulator() {
           </span>
           Your goal
         </p>
-        <p className="mt-4 font-heading text-xl leading-[2.2] text-foreground sm:text-2xl">
+        <p className="mt-4 font-heading text-2xl leading-[2.1] text-foreground sm:text-3xl sm:leading-loose">
           I want to fly{" "}
           <InlineSelect
             ariaLabel="Cabin class"
@@ -219,7 +239,7 @@ export function GoalSimulator() {
               value={timeline}
               onChange={(e) => setTimeline(e.target.value)}
               aria-label="Timeline in months"
-              className="w-14 rounded-none border-0 border-b border-gold/50 bg-transparent px-1 text-center font-heading italic text-gold focus:border-gold focus:outline-none"
+              className="w-16 rounded-none border-0 border-b border-gold/50 bg-transparent px-1 text-center font-heading italic text-gold focus:border-gold focus:outline-none"
             />
             months
           </span>
@@ -239,56 +259,77 @@ export function GoalSimulator() {
 
       {/* ── Your situation: cards, spend, appetite for new cards ── */}
       <div className="p-6 sm:p-8">
-        {pickerCards.length > 0 && (
-          <div className="space-y-2">
-            <Label className="text-muted-foreground">Cards you already hold</Label>
-            <div className="flex flex-wrap gap-2">
-              {pickerCards.map((card) => {
-                const selected = selectedCardIds.includes(card.id);
-                return (
-                  <button
-                    key={card.id}
-                    type="button"
-                    onClick={() => toggleCard(card.id)}
-                    aria-pressed={selected}
-                    className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors ${
-                      selected
-                        ? "border-gold/40 bg-gold/15 text-gold"
-                        : "border-hairline text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {card.card_name}
-                  </button>
-                );
-              })}
+        {cardsByBank.length > 0 && (
+          <div className="space-y-4">
+            <Label className="text-base font-semibold text-foreground">
+              Cards you already hold
+            </Label>
+            <div className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
+              {cardsByBank.map(([bank, bankCards]) => (
+                <div key={bank}>
+                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground/80">
+                    {bank}
+                  </p>
+                  <div className="mt-2.5 flex flex-wrap gap-2">
+                    {bankCards.map((card) => {
+                      const selected = selectedCardIds.includes(card.id);
+                      return (
+                        <button
+                          key={card.id}
+                          type="button"
+                          onClick={() => toggleCard(card.id)}
+                          aria-pressed={selected}
+                          className={`flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-medium transition-all ${
+                            selected
+                              ? "border-gold/50 bg-gold/10 text-gold"
+                              : "border-hairline bg-input/20 text-muted-foreground hover:border-white/25 hover:text-foreground"
+                          }`}
+                        >
+                          <span
+                            aria-hidden="true"
+                            className={`grid size-4 shrink-0 place-items-center rounded-full border transition-colors ${
+                              selected
+                                ? "border-gold bg-gold text-gold-foreground"
+                                : "border-white/25 text-transparent"
+                            }`}
+                          >
+                            <Check className="size-3" strokeWidth={3} />
+                          </span>
+                          {card.card_name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
-        <div className="mt-6 space-y-2">
+        <div className="mt-8 space-y-2.5">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <Label className="text-muted-foreground">
+            <Label className="text-base font-semibold text-foreground">
               What you spend in a month
             </Label>
-            <span className="text-xs tabular-nums text-muted-foreground">
+            <span className="text-sm tabular-nums text-muted-foreground">
               Total ₹{totalSpend.toLocaleString("en-IN")}/mo
             </span>
           </div>
-          <p className="text-xs text-muted-foreground/80">
+          <p className="text-sm text-muted-foreground">
             The engine routes each category to the card that earns it best —
             rough numbers are fine.
           </p>
-          <div className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
+          <div className="grid gap-x-8 gap-y-2.5 pt-1 sm:grid-cols-2">
             {SPEND_CATEGORIES.map((c) => (
               <div key={c.slug} className="flex items-center justify-between gap-3">
                 <Label
                   htmlFor={`spend-${c.slug}`}
-                  className="text-sm font-normal text-foreground/85"
+                  className="text-[15px] font-normal text-foreground/90"
                 >
                   {c.label}
                 </Label>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-sm text-muted-foreground">₹</span>
+                  <span className="text-[15px] text-muted-foreground">₹</span>
                   <Input
                     id={`spend-${c.slug}`}
                     type="number"
@@ -298,7 +339,7 @@ export function GoalSimulator() {
                     onChange={(e) =>
                       setSpend((prev) => ({ ...prev, [c.slug]: e.target.value }))
                     }
-                    className="h-9 w-28 bg-input/30 text-right tabular-nums"
+                    className="h-10 w-32 bg-input/30 text-right text-[15px]! tabular-nums"
                   />
                 </div>
               </div>
@@ -306,8 +347,10 @@ export function GoalSimulator() {
           </div>
         </div>
 
-        <div className="mt-6 space-y-2">
-          <Label className="text-muted-foreground">Open to adding a new card?</Label>
+        <div className="mt-8 space-y-2.5">
+          <Label className="text-base font-semibold text-foreground">
+            Open to adding a new card?
+          </Label>
           <div className="inline-flex rounded-lg border border-hairline bg-input/20 p-1">
             {[
               { label: "Yes, show me options", value: true },
@@ -318,7 +361,7 @@ export function GoalSimulator() {
                 type="button"
                 onClick={() => setOpenToNewCards(opt.value)}
                 aria-pressed={openToNewCards === opt.value}
-                className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+                className={`rounded-md px-5 py-2 text-sm font-medium transition-colors ${
                   openToNewCards === opt.value
                     ? "bg-gold text-gold-foreground"
                     : "text-muted-foreground hover:text-foreground"
@@ -346,7 +389,8 @@ export function GoalSimulator() {
           </p>
         )}
 
-        <div aria-live="polite">
+        {/* scroll-mt clears the app shell's sticky top bar when auto-scrolled. */}
+        <div aria-live="polite" ref={resultRef} className="scroll-mt-24">
           {loading && (
             <div className="mt-8 rounded-2xl border border-hairline bg-background/40 p-4 sm:p-6">
               <PlaneLoader />
@@ -435,12 +479,26 @@ function SaveGoal({
         variant="outline"
         className="border-gold/40 text-gold hover:bg-gold/10 disabled:opacity-60"
       >
-        {state === "saving"
-          ? "Saving…"
-          : state === "saved"
-            ? "Saved ✓"
-            : "Save this goal"}
+        {state === "saving" ? (
+          <>
+            <span
+              aria-hidden="true"
+              className="size-4 animate-spin rounded-full border-2 border-gold/30 border-t-gold motion-reduce:animate-none"
+            />
+            Saving…
+          </>
+        ) : state === "saved" ? (
+          "Saved ✓"
+        ) : (
+          "Save this goal"
+        )}
       </Button>
+      {state === "saving" && (
+        <span className="text-sm text-muted-foreground" role="status">
+          Recomputing and saving your strategy — this can take up to a minute.
+          Keep this page open until you see &ldquo;Saved ✓&rdquo;.
+        </span>
+      )}
       {state === "saved" && (
         <span className="text-sm text-muted-foreground" role="status">
           Saved to your account.{" "}
@@ -569,23 +627,7 @@ function RecommendationView({
         programName={requirement.target_program_name}
         narrationSummary={narration?.summary}
       />
-      {verdict.adjustment_options.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
-            What would make it work
-          </p>
-          <ul className="space-y-2">
-            {verdict.adjustment_options.map((opt) => (
-              <li
-                key={opt.kind + opt.description}
-                className="rounded-lg border border-hairline bg-background/40 px-4 py-2.5 text-sm text-foreground"
-              >
-                {opt.description}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <AdjustmentMenu options={verdict.adjustment_options} />
       <FinePrint snapshotVersion={rec.catalog_snapshot_version} engineVersion={rec.engine_version} />
     </div>
   );

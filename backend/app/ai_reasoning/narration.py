@@ -17,8 +17,10 @@ deterministic number-echo check that rejects anything the payload can't back.
   'template-fallback'`). Stilted but true. The numbers ship whether or not
   the LLM is available or honest — only eloquence degrades.
 
-Infeasible path: `recommended is None`; the narration becomes the computed
-adjustment menu from the `FeasibilityVerdict`, same echo-checking.
+Infeasible path: the narration carries the computed adjustment menu from the
+`FeasibilityVerdict` — alongside the best-effort plan's honest shortfall when
+Stage 9 still produced one (`recommended` set, misses_goal), alone when
+nothing was allocatable (`recommended is None`). Same echo-checking.
 """
 
 import logging
@@ -112,7 +114,9 @@ def build_narration_payload(
     program = context.requirement.target_program_name
     required = context.requirement.miles_required_total
 
-    numbers: set[int] = {required, context.horizon_months}
+    # The theoretical bound is an honest engine artifact in every branch —
+    # feasible-with-plan, infeasible-with-plan, or adjustment-menu-only.
+    numbers: set[int] = {required, context.horizon_months, verdict.best_case_miles}
     card_names: tuple[str, ...] = ()
     acquire_names: tuple[str, ...] = ()
     assumptions: tuple[str, ...] = ()
@@ -151,10 +155,11 @@ def build_narration_payload(
             comparison = _build_tiers(recommended, alternatives, names_by_card)
             for tier in comparison:
                 numbers.update({tier.miles, tier.card_fees_inr})
-    else:
-        # Infeasible: the answer is the adjustment menu.
-        headline = verdict.best_case_miles
-        numbers.add(headline)
+
+    if not verdict.feasible:
+        # Infeasible: the adjustment menu is part of the answer — alongside
+        # the best-effort plan when one exists (recommended above), alone
+        # when nothing was allocatable (headline stays the theoretical bound).
         numbers.add(verdict.portfolio.current_capability_miles)
         notes: list[str] = []
         for option in verdict.adjustment_options:
@@ -329,7 +334,20 @@ def _prompt(payload: NarrationPayload) -> str:
                     f"₹{tier.card_fees_inr:,} card fees{mark}"
                 )
     else:
-        lines.append(f"Goal NOT reachable as stated; best case {payload.headline_miles:,} miles.")
+        if payload.card_names:
+            # A best-effort plan exists: its honest shortfall is the story.
+            lines.append(
+                f"Goal NOT reachable as stated: the best-effort plan still earns "
+                f"{payload.headline_miles:,} of the {payload.required_miles:,} miles needed."
+            )
+            lines.append(f"Cards used: {', '.join(payload.card_names)}")
+            if payload.acquire_names:
+                lines.append(f"New card(s) to apply for: {', '.join(payload.acquire_names)}")
+            lines.append(f"New-card fees: ₹{payload.card_fees_inr:,}")
+        else:
+            lines.append(
+                f"Goal NOT reachable as stated; best case {payload.headline_miles:,} miles."
+            )
         if payload.adjustment_notes:
             lines.append("Adjustments that would work:")
             lines.extend(f"  - {note}" for note in payload.adjustment_notes)
@@ -365,6 +383,25 @@ def _template(payload: NarrationPayload) -> RecommendationNarration:
         ) or (
             ActionItem(priority=1, action="Route your spend as planned and transfer on schedule"),
         )
+    elif payload.card_names:
+        # Infeasible, but a best-effort plan exists: state its honest
+        # shortfall first, then the changes that would close the gap.
+        summary = (
+            f"Not reachable as stated — the best route still earns "
+            f"{payload.headline_miles:,} of the {payload.required_miles:,} "
+            f"{program} miles needed."
+        )
+        reasoning_bits = [f"Best-effort plan uses: {', '.join(payload.card_names)}."]
+        if payload.acquire_names:
+            reasoning_bits.append(f"Apply for: {', '.join(payload.acquire_names)}.")
+        reasoning_bits.append("Changes that would close the gap:")
+        reasoning_bits.extend(f"- {note}." for note in payload.adjustment_notes)
+        actions = tuple(
+            ActionItem(priority=i, action=note)
+            for i, note in enumerate(payload.adjustment_notes, start=1)
+        ) or (
+            ActionItem(priority=1, action="Route your spend as planned and transfer on schedule"),
+        )
     else:
         summary = (
             f"Not reachable as stated — best case {payload.headline_miles:,} "
@@ -388,8 +425,12 @@ def _template(payload: NarrationPayload) -> RecommendationNarration:
 
 def _comparison_notes(payload: NarrationPayload) -> str | None:
     """Deterministic tier story: 'your cards reach X; adding a card lifts you to
-    Y for ₹Z'. None when there is no comparison to draw (a single option)."""
-    if len(payload.comparison) < 2:
+    Y for ₹Z'. None when there is no comparison to draw (a single option) or
+    when the verdict is infeasible — the success-framed tier story would read
+    as if the routes reached the goal (matching _prompt, which also omits the
+    comparison block on the infeasible path; the tiers themselves still ship
+    structurally for the UI)."""
+    if not payload.feasible or len(payload.comparison) < 2:
         return None
     parts: list[str] = []
     for tier in payload.comparison:

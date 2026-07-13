@@ -113,6 +113,20 @@ export type AllocationDetail = {
    * "why not my other card" comparison. */
   runner_up_card_id?: string | null;
   runner_up_miles_per_100inr?: string | null;
+  /** Counterfactual-verified reason a HIGHER-rated runner-up still lost this
+   * category (engine re-estimated the plan with the category swapped):
+   * transfer_cap | milestone | fewer_total | equal_total | route_shape.
+   * Null/absent when the chosen card simply rates higher, or on older data. */
+  runner_up_reason?:
+    | "transfer_cap"
+    | "milestone"
+    | "fewer_total"
+    | "equal_total"
+    | "route_shape"
+    | null;
+  /** Whole-plan miles lost by the swap (negative = the swap would gain but
+   * this route declines it). Set exactly when runner_up_reason is. */
+  runner_up_plan_delta_miles?: number | null;
 };
 
 export type RankedStrategy = {
@@ -313,6 +327,9 @@ export type SavedGoalDetail = {
   engine_version: string | null;
   strategy: SavedStrategy | null;
   strategy_options: SavedStrategyOption[];
+  /** The Stage-6 adjustment menu persisted with best-effort infeasible saves
+   * ("what would close the gap"); empty on feasible and older saves. */
+  adjustment_options?: { kind: string; description: string }[];
   card_names: Record<string, string>;
   partner_names: Record<string, string>;
 };

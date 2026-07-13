@@ -2,6 +2,7 @@
 
 import type { FinalRecommendation, RankedStrategy } from "@/lib/api";
 import {
+  AdjustmentMenu,
   FinePrint,
   NextSteps,
   StrategyPlanTabs,
@@ -91,7 +92,14 @@ export function StrategyDetail({
         cardsToAcquireNames={recommended.strategy.cards_to_acquire.map(nameOf)}
         programName={programName}
         narrationSummary={rec.narration?.summary}
+        bestEffort={!rec.verdict.feasible}
+        hasAdjustments={rec.verdict.adjustment_options.length > 0}
       />
+      {/* Unreachable-as-stated goals ship a best-effort plan AND the computed
+          changes that would actually close the gap. */}
+      {!rec.verdict.feasible && (
+        <AdjustmentMenu options={rec.verdict.adjustment_options} />
+      )}
       <StrategyPlanTabs
         tiers={tiers}
         targetMiles={rec.requirement.miles_required_total}

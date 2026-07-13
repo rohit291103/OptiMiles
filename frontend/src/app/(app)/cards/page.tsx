@@ -120,17 +120,17 @@ function CardTile({ card }: { card: CardSummary }) {
   const displayName = CARD_DISPLAY_NAMES[`${card.bank}|${card.card_name}`] ?? card.card_name;
   return (
     <article className="group flex flex-col gap-3">
-      <div className="relative aspect-[1.586/1] overflow-hidden rounded-2xl bg-black shadow-[0_1px_0_rgba(255,255,255,0.04)] ring-1 ring-white/5 transition-all duration-500 group-hover:ring-gold/40 group-hover:shadow-[0_20px_40px_-20px_rgba(0,0,0,0.55)]">
+      <div className="relative aspect-[1.586/1] overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-card to-background p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-all duration-500 group-hover:border-gold/40 group-hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_20px_40px_-20px_rgba(0,0,0,0.55)]">
         {image ? (
-          // Real card art fills the tile edge-to-edge (the photos are already
-          // full card faces), so no plate/padding shows a light frame around
-          // dark cards like Magnus.
+          // Contained on a padded plate, same as the landing page's wallet
+          // (supported-cards.tsx) — some source photos (e.g. Infinia) aren't
+          // cropped tight to the card, so object-cover was cutting off edges.
           <Image
             src={image}
             alt={displayName}
             fill
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 22vw"
-            className="object-cover"
+            className="object-contain"
           />
         ) : (
           <span className="grid size-full place-items-center bg-gradient-to-br from-card to-background text-gold">

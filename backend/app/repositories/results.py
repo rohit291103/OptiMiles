@@ -99,8 +99,10 @@ async def persist_recommendation(
         },
     )
 
-    # No simulation_results row on the infeasible path — the adjustment menu is
-    # the answer, and there is no ranked strategy to project.
+    # No simulation_results row only when NOTHING was allocatable (no ranked
+    # strategy at all) — an infeasible goal with a best-effort plan persists
+    # its projection like any other; recommendation_type still records
+    # infeasibility.
     result_id: UUID | None = None
     if recommendation.recommended is not None:
         result_id = await _write_result_row(
@@ -149,6 +151,12 @@ async def _write_result_row(
         "score_breakdown": recommended.score_breakdown.model_dump(mode="json"),
         "headline_differentiator": recommended.headline_differentiator,
         "strategy_options": _strategy_options(recommendation),
+        # The Stage-6 adjustment menu (empty when feasible) — persisted so a
+        # saved best-effort goal can still show "what would close the gap".
+        "adjustment_options": [
+            {"kind": option.kind, "description": option.description}
+            for option in recommendation.verdict.adjustment_options
+        ],
     }
     milestones = [m.model_dump(mode="json") for m in strategy.expected_milestones]
     transfers = [t.model_dump(mode="json") for t in strategy.transfer_plan]

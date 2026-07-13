@@ -22,6 +22,7 @@ from app.api.schemas import (
     RecommendationRequest,
     RecommendationResponse,
     SavedActionItem,
+    SavedAdjustmentOption,
     SavedAllocationDetail,
     SavedGoalDetail,
     SavedGoalsResponse,
@@ -172,6 +173,7 @@ def detail_from_row(row: SavedGoalDetailRow) -> SavedGoalDetail:
     typed fields (plus a priority sort for action items); no engine calls."""
     strategy: SavedStrategy | None = None
     strategy_options: tuple[SavedStrategyOption, ...] = ()
+    adjustment_options: tuple[SavedAdjustmentOption, ...] = ()
     if row.card_allocations is not None:
         allocations = row.card_allocations
         breakdown_raw = allocations.get("score_breakdown")
@@ -210,6 +212,10 @@ def detail_from_row(row: SavedGoalDetailRow) -> SavedGoalDetail:
             SavedStrategyOption(**opt)
             for opt in allocations.get("strategy_options", [])
         )
+        adjustment_options = tuple(
+            SavedAdjustmentOption(**opt)
+            for opt in allocations.get("adjustment_options", [])
+        )
 
     action_items = tuple(
         sorted(
@@ -239,6 +245,7 @@ def detail_from_row(row: SavedGoalDetailRow) -> SavedGoalDetail:
         engine_version=row.engine_version,
         strategy=strategy,
         strategy_options=strategy_options,
+        adjustment_options=adjustment_options,
     )
 
 

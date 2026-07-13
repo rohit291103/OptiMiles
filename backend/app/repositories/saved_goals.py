@@ -111,7 +111,8 @@ class SavedGoalDetailRow:
     model_version: str | None
     catalog_snapshot_version: str | None
     engine_version: str | None
-    # Its simulation_results row (absent on the infeasible path, results.py).
+    # Its simulation_results row (absent only when nothing was allocatable —
+    # infeasible goals normally persist a best-effort plan, results.py).
     months_to_goal: int | None
     optimization_score: Decimal | None
     card_allocations: dict[str, Any] | None
@@ -123,7 +124,8 @@ class SavedGoalDetailRow:
 # never read another user's goal by guessing its UUID; no row ⇒ the API 404s
 # without revealing whether the goal exists. Same deterministic latest-pick as
 # the list query, then LEFT JOIN to the simulation_results row that
-# recommendation references (absent for infeasible goals).
+# recommendation references (absent only when nothing was allocatable;
+# infeasible goals normally carry a best-effort plan's row).
 _DETAIL_SQL = text(
     """
     SELECT

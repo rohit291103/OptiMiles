@@ -101,6 +101,11 @@ class ClaimedEstimate:
     total_miles: int
     transfer_plan: tuple[TransferPlanItem, ...]
     expected_milestones: tuple[ExpectedMilestone, ...]
+    cap_bound_currencies: frozenset[UUID] = frozenset()
+    """Currencies whose transfer-link annual cap actually CLAMPED this estimate
+    (points available exceeded the cap remaining) — the engine-owned fact for
+    attribution, as opposed to inferring it from the block-floored plan (which
+    false-positives when a cap isn't a multiple of the ratio)."""
 
 
 def candidate_opportunities(
@@ -331,6 +336,7 @@ def claimed_estimate(
     total_miles = 0
     plan: list[TransferPlanItem] = []
     expected: list[ExpectedMilestone] = []
+    cap_bound: set[UUID] = set()
     for currency_id in sorted(by_currency, key=str):
         link = links[currency_id]
         cutoff = context.horizon_months - 1 - _ceil_div(link.processing_days_max, 30)
@@ -363,6 +369,8 @@ def claimed_estimate(
             points += int(monthly_points.get(card_id, Decimal(0))) * (cutoff + 1)
             points += sum(f.milestone.bonus_points for f in fires if f.month <= cutoff)
             send = points if cap_remaining is None else min(points, cap_remaining)
+            if cap_remaining is not None and points > cap_remaining:
+                cap_bound.add(currency_id)  # the cap, not the earn, limited this
             if send <= 0 or send < link.min_transfer_points:
                 continue
             points_sent, miles = whole_block_transfer(send, link)
@@ -384,4 +392,5 @@ def claimed_estimate(
         total_miles=total_miles,
         transfer_plan=tuple(plan),
         expected_milestones=tuple(expected),
+        cap_bound_currencies=frozenset(cap_bound),
     )

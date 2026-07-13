@@ -203,11 +203,21 @@ function FocusGoal({ goal }: { goal: SavedGoal }) {
   const monthsLeft = monthsUntil(goal.target_date);
   const confidence =
     goal.confidence_score !== null ? Math.round(goal.confidence_score * 100) : null;
+  // The focus slot shows the NEWEST goal, whatever its status — only claim
+  // "Active" (and pulse) when the persisted status actually says so.
+  const isActive = goal.status === "active";
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-gold/20 bg-gradient-to-br from-gold/10 via-card/60 to-card/40 p-6 sm:p-8">
-      <p className="flex items-center gap-2 text-xs uppercase tracking-[0.12em] text-gold">
-        <Plane className="size-3.5" /> Your current goal
+    <section className="relative overflow-hidden rounded-2xl border border-gold/45 bg-gradient-to-br from-gold/15 via-card/60 to-card/40 p-6 shadow-[0_0_50px_-18px] shadow-gold/40 sm:p-8">
+      <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.12em] text-gold">
+        {isActive && (
+          <span className="relative flex size-2" aria-hidden="true">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gold/60 motion-reduce:animate-none" />
+            <span className="relative inline-flex size-2 rounded-full bg-gold" />
+          </span>
+        )}
+        <Plane className="size-3.5" />
+        {isActive ? "Active goal" : `${titleCase(goal.status)} goal`}
       </p>
       <h2 className="mt-3 font-heading text-2xl text-foreground sm:text-3xl">
         {goal.goal_name}
@@ -282,7 +292,13 @@ function GoalCard({
             {goal.goal_name}
           </Link>
         </h3>
-        <span className="shrink-0 rounded-full border border-hairline px-2 py-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+        <span
+          className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] uppercase tracking-wide ${
+            goal.status === "active"
+              ? "border-gold/40 bg-gold/10 font-medium text-gold"
+              : "border-hairline text-muted-foreground"
+          }`}
+        >
           {goal.status}
         </span>
         <GoalMenu goal={goal} onDeleted={onDeleted} />
@@ -508,6 +524,10 @@ function cabinLabel(cabin: string): string {
     first: "First",
   };
   return map[cabin] ?? cabin;
+}
+
+function titleCase(s: string): string {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 }
 
 function formatDate(iso: string): string {

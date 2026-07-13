@@ -347,6 +347,105 @@ async def test_infeasible_verdict_narrates_adjustments(snapshot: CatalogSnapshot
     assert narration.action_items  # at least one adjustment option surfaced
 
 
+def _best_effort_ranked(context: PlanningContext) -> RankedStrategy:
+    """A status-quo plan that honestly misses the goal — what Stage 9 hands
+    narration when the verdict is infeasible but a plan still exists."""
+    strategy = CandidateStrategy(
+        strategy_id="status_quo_optimized-1",
+        archetype=StrategyArchetype.STATUS_QUO_OPTIMIZED,
+        cards_used=(INFINIA,),
+        cards_to_acquire=(),
+        spend_allocation={SpendCategory.TRAVEL: INFINIA, SpendCategory.DINING: INFINIA},
+        transfer_plan=(
+            TransferPlanItem(
+                from_card_id=INFINIA, to_partner_id=KRISFLYER, points=42_000, planned_month=6
+            ),
+        ),
+        claimed_total_miles=42_000,
+    )
+    outcome = SimulationOutcome(
+        strategy_id="status_quo_optimized-1",
+        ledger=(),
+        months_to_goal=None,
+        miles_at_target_date=42_000,
+        total_fees_inr=0,
+        card_fees_inr=0,
+        transfer_fees_inr=0,
+        buffer_achieved=False,
+        misses_goal=True,
+    )
+    return RankedStrategy(
+        strategy=strategy,
+        simulation=outcome,
+        score=Decimal("30.00"),
+        score_breakdown=ScoreBreakdown(
+            goal_achievement=Decimal("0"),
+            efficiency=Decimal("100"),
+            cost=Decimal("100"),
+            simplicity=Decimal("100"),
+            portfolio_utilization=Decimal("100"),
+            risk=Decimal("90"),
+        ),
+        rank=1,
+        headline_differentiator="no new cards",
+    )
+
+
+async def test_infeasible_with_best_effort_plan_narrates_both(
+    snapshot: CatalogSnapshot,
+) -> None:
+    """Infeasible + a best-effort route → the narration states the plan's
+    honest shortfall (the simulated miles, not the theoretical bound) AND the
+    adjustment menu, with every cited number allow-listed for echo checks."""
+    from app.domain import ConstraintSet
+
+    context = _context(snapshot).model_copy(
+        update={"constraints": ConstraintSet(no_new_cards=True)}
+    )
+    verdict = _verdict(context)
+    assert verdict.feasible is False
+    best_effort = _best_effort_ranked(context)
+
+    narration = await narrate(best_effort, verdict, context, alternatives=(), model=None)
+    assert narration.model_version == "template-fallback"
+    text = f"{narration.summary} {narration.reasoning}"
+    assert "42,000" in text  # the plan's simulated miles headline the story
+    assert narration.action_items  # the adjustment menu still ships
+
+    payload = build_narration_payload(best_effort, verdict, context, ())
+    assert payload.feasible is False
+    assert 42_000 in payload.allowed_numbers  # plan miles are echo-allowed
+    assert payload.adjustment_notes  # menu facts survive alongside the plan
+    assert all(
+        option.resulting_best_case_miles in payload.allowed_numbers
+        for option in verdict.adjustment_options
+    )
+
+
+async def test_infeasible_comparison_notes_suppressed(snapshot: CatalogSnapshot) -> None:
+    """Reviewer finding: with ≥2 best-effort routes under an infeasible
+    verdict, the template's success-framed tier story ("With your current
+    cards: X miles … (recommended)") must NOT ship — it reads as if the
+    routes reached the goal. Matches _prompt, which already omits the
+    comparison block when infeasible; the tiers still ship structurally."""
+    from app.domain import ConstraintSet
+
+    context = _context(snapshot).model_copy(
+        update={"constraints": ConstraintSet(no_new_cards=True)}
+    )
+    verdict = _verdict(context)
+    assert verdict.feasible is False
+    best_effort = _best_effort_ranked(context)
+
+    narration = await narrate(
+        best_effort, verdict, context, alternatives=(best_effort,), model=None
+    )
+    assert narration.comparison_notes is None
+
+    payload = build_narration_payload(best_effort, verdict, context, (best_effort,))
+    assert payload.comparison  # the tiers themselves are still in the payload
+
+
 async def test_faithful_echo_of_adjustment_amount_is_accepted(
     snapshot: CatalogSnapshot,
 ) -> None:

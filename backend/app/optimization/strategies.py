@@ -71,11 +71,16 @@ def generate_candidates(
     verdict: FeasibilityVerdict,
     context: PlanningContext,
 ) -> tuple[CandidateStrategy, ...]:
-    """Bounded archetype candidates for a feasible goal (infeasible ⇒ ()).
-    1–2 candidates is a valid outcome for small wallets."""
-    if not verdict.feasible:
-        return ()
+    """Bounded archetype candidates. 1–2 candidates is a valid outcome for
+    small wallets.
 
+    Infeasible verdicts still generate: the Stage-6 bound is a true upper
+    bound, so every candidate honestly misses the requirement (the two
+    goal-clearing archetypes, simplest/cheapest_viable, naturally emit
+    nothing) — ranking presents the least-bad route as a best-effort plan
+    alongside the adjustment menu. () only when nothing is allocatable at
+    all (e.g. a cashback-only wallet with acquisitions forbidden)."""
+    del verdict  # feasibility shapes narration, not the search
     wallet_ids = frozenset(w.card_id for w in context.wallet)
     allowed = allowed_card_ids(opportunities, wallet_ids, context.constraints)
     categories = {item.category_slug for item in context.spend_profile.items}

@@ -6,6 +6,7 @@ outputs; validation failures discard a candidate, never patch it silently.
 """
 
 from decimal import Decimal
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -87,6 +88,27 @@ class StrategyAllocationDetail(BaseModel):
     )
     runner_up_miles_per_100inr: Decimal | None = Field(
         default=None, description="That runner-up's effective miles per ₹100 (Stage-5 value)"
+    )
+    runner_up_reason: Literal[
+        "transfer_cap", "milestone", "fewer_total", "equal_total", "route_shape"
+    ] | None = Field(
+        default=None,
+        description="Why a HIGHER-rated runner-up still lost this category, verified "
+        "by re-estimating the whole plan with the category swapped: 'transfer_cap' "
+        "(the runner-up's transfer link cap would strand points), 'milestone' (the "
+        "swap forfeits a milestone bonus), 'fewer_total' (the swap verifiably lowers "
+        "the plan total), 'equal_total' (no difference), 'route_shape' (the swap "
+        "would gain but the route declines it by design — set ONLY for the forced "
+        "single-card archetypes; a gaining swap on a hill-climbed route is a "
+        "search artifact and ships no cause). None when the chosen card simply "
+        "rates higher/equal, no runner-up exists, or no context was available "
+        "for the counterfactual.",
+    )
+    runner_up_plan_delta_miles: int | None = Field(
+        default=None,
+        description="Engine-verified whole-plan miles LOST by moving this category "
+        "to the runner-up (current total − swapped total; negative when the swap "
+        "would gain — the 'route_shape' case). Set exactly when runner_up_reason is.",
     )
 
 

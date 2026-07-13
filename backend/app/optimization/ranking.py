@@ -20,8 +20,11 @@ Pipeline (SRE workflow, optimization-engine-spec §3.2):
    acquisition gets no such protection — the hard rule below already keeps
    it out of the recommendation).
 2. **Hard rules before weights.** `misses_goal` candidates rank below every
-   achieving one regardless of score (they are kept for transparency, never
-   recommended). User constraints were filtered at generation (BR-03).
+   achieving one regardless of score — never recommended over an achieving
+   plan. On an infeasible goal every candidate misses by construction (the
+   Stage-6 bound is a true upper bound), so the least-bad one ranks first
+   and becomes the best-effort recommendation, presented alongside the
+   adjustment menu. User constraints were filtered at generation (BR-03).
 3. **Score.** Six named sub-scores, 0–100 each (`ScoreBreakdown` — every
    ranking decision explainable, BR-04/AD-06). Formulas, with quantization
    2dp ROUND_DOWN unless stated:
@@ -78,6 +81,7 @@ from app.domain import (
     SimulationOutcome,
     SpendCategory,
     StrategyAllocationDetail,
+    StrategyArchetype,
 )
 from app.optimization.explain import allocation_detail
 
@@ -317,6 +321,14 @@ def _details_for(
         available_card_ids=available,
         currency_names=story.currency_names,
         category_labels=story.category_labels,
+        # Enables runner-up cause attribution (counterfactual re-estimate) —
+        # the deterministic "why did the higher-rate card lose this category".
+        # The forced single-card archetypes are marked so the counterfactual
+        # uses their own include_idle_balances=False basis and a declined
+        # gaining swap is owned as route_shape.
+        context=context,
+        single_card_route=strategy.archetype
+        in (StrategyArchetype.SIMPLEST_VIABLE, StrategyArchetype.CHEAPEST_VIABLE),
     )
 
 

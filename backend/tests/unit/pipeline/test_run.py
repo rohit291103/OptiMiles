@@ -230,6 +230,33 @@ async def test_infeasible_goal_returns_verdict_with_adjustments(
     assert any("not reachable" in r.lower() for r in result.risks_and_limitations)
 
 
+async def test_infeasible_goal_still_ships_best_effort_plan(
+    snapshot: CatalogSnapshot,
+) -> None:
+    """An unreachable timeline returns BOTH: the ranked least-bad plan
+    (honestly marked misses_goal, never dressed up as success) AND the
+    computed adjustment menu — a dead end with no plan is a product failure,
+    not honesty."""
+    rushed = ParsedGoalIntent(
+        origin_city="Hyderabad",
+        destination_city="Singapore",
+        cabin_class="business",
+        timeline_months=2,
+        num_passengers=2,
+        confidence=0.95,
+    )
+    result = await _run_text(snapshot, intent=rushed)
+    assert isinstance(result, FinalRecommendation)
+    assert result.verdict.feasible is False
+    assert result.recommended is not None  # the best-effort plan ships
+    assert result.recommended.simulation.misses_goal is True
+    assert result.verdict.adjustment_options  # the menu still ships too
+    assert result.narration is not None
+    lowered = [r.lower() for r in result.risks_and_limitations]
+    assert any("not reachable" in r for r in lowered)
+    assert any("closest available" in r for r in lowered)
+
+
 # ── LLM path (scripted fake) ─────────────────────────────────────────────
 
 

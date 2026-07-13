@@ -19,6 +19,9 @@ Two entry points share the deterministic core:
   `PlanningContext` (the public simulator, a spend-tweak replay) →
   core → narration → recommendation. Deterministic and, with `model=None`,
   byte-identical on repeat: the standing determinism invariant lives here.
+  Infeasible goals still produce a best-effort plan when one is allocatable
+  (`recommended` set, `misses_goal=True`) plus the adjustment menu; only a
+  wallet with nothing to allocate leaves `recommended=None`.
 
 The orchestrator owns no DB writes and no engine internals; it calls engine
 entry points in order and shapes their outputs. Persistence is the caller's job
@@ -167,25 +170,26 @@ async def run_from_context(
     # Stage 5 — Opportunity enumeration & valuation.
     opportunities = enumerate_opportunities(context)
 
-    # Stage 6 — Feasibility gate. Infeasible short-circuits Stages 7–9.
+    # Stage 6 — Feasibility verdict. Infeasible no longer short-circuits
+    # Stages 7–9: an unreachable goal still deserves the least-bad plan
+    # (honestly marked misses_goal) alongside the adjustment menu. The
+    # verdict shapes narration and risks, not whether a plan exists.
     verdict = assess_feasibility(opportunities, context)
 
-    presented: tuple[RankedStrategy, ...] = ()
-    recommended: RankedStrategy | None = None
-    if verdict.feasible:
-        # Stage 7 — Candidate generation (validated at exit).
-        candidates = generate_candidates(opportunities, verdict, context)
-        # Stage 8 — Timeline simulation, once per candidate.
-        pairs = tuple((candidate, simulate(candidate, context)) for candidate in candidates)
-        # Stage 9 — Ranking & selection (reconciled against simulation);
-        # opportunities threaded through so each ranked strategy carries its
-        # per-category earn story (allocation_details) for the UI. The package
-        # presents at most 3 genuinely different routes — one per distinct
-        # acquisition set (archetype variants of the same acquisition collapse
-        # to the best-ranked plan).
-        ranked = rank(pairs, context, weights, opportunities=opportunities)
-        presented = select_route_options(ranked)
-        recommended = presented[0] if presented else None
+    # Stage 7 — Candidate generation (validated at exit). May be empty when
+    # nothing is allocatable (e.g. cashback-only wallet, no acquisitions).
+    candidates = generate_candidates(opportunities, verdict, context)
+    # Stage 8 — Timeline simulation, once per candidate.
+    pairs = tuple((candidate, simulate(candidate, context)) for candidate in candidates)
+    # Stage 9 — Ranking & selection (reconciled against simulation);
+    # opportunities threaded through so each ranked strategy carries its
+    # per-category earn story (allocation_details) for the UI. The package
+    # presents at most 3 genuinely different routes — one per distinct
+    # acquisition set (archetype variants of the same acquisition collapse
+    # to the best-ranked plan).
+    ranked = rank(pairs, context, weights, opportunities=opportunities)
+    presented = select_route_options(ranked)
+    recommended: RankedStrategy | None = presented[0] if presented else None
 
     # Stage 10 — Explanation & narration (AI edge; template fallback).
     narration = await narrate(

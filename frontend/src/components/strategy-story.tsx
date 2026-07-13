@@ -68,6 +68,8 @@ export function VerdictHero({
   cardsToAcquireNames,
   programName,
   narrationSummary,
+  bestEffort = false,
+  hasAdjustments = false,
 }: {
   feasible: boolean;
   tight: boolean;
@@ -79,12 +81,22 @@ export function VerdictHero({
   cardsToAcquireNames: string[];
   programName: string;
   narrationSummary?: string | null;
+  /** Infeasible goals can still carry a best-effort plan — when true,
+   * `projectedMiles` is that plan's honest simulated total (not the
+   * theoretical bound) and the hero says how far it gets. */
+  bestEffort?: boolean;
+  /** Whether an AdjustmentMenu actually renders below — gates the hero's
+   * "changes that would close the gap" promise (the engine can find no
+   * working adjustment, and older saves didn't persist the menu). */
+  hasAdjustments?: boolean;
 }) {
   const monthsEarly =
     goalMonth !== null && horizonMonths !== null ? horizonMonths - goalMonth : null;
 
   let headline: string;
-  if (!feasible) {
+  if (!feasible && bestEffort) {
+    headline = `As stated, this goal doesn't reach ${fmt(targetMiles)} ${programName} miles in time — but the best route still gets you ~${fmt(projectedMiles)}.`;
+  } else if (!feasible) {
     headline = `As stated, this goal doesn't reach ${fmt(targetMiles)} ${programName} miles in time — here's what would make it work.`;
   } else if (goalMonth !== null) {
     const timing =
@@ -110,7 +122,7 @@ export function VerdictHero({
         feasible ? "border-gold/30 bg-gold/5" : "border-hairline bg-background/40",
       )}
     >
-      <p className="flex items-center gap-2 text-xs uppercase tracking-[0.12em] text-muted-foreground">
+      <p className="flex items-center gap-2 text-sm uppercase tracking-[0.12em] text-muted-foreground">
         {feasible ? (
           <BadgeCheck className="size-4 text-gold" />
         ) : (
@@ -118,13 +130,21 @@ export function VerdictHero({
         )}
         {feasible ? (tight ? "Achievable — cutting it close" : "Achievable") : "Not as stated"}
       </p>
-      <h4 className="mt-2.5 max-w-2xl font-heading text-xl leading-snug text-foreground sm:text-2xl">
+      <h4 className="mt-2.5 max-w-2xl font-heading text-2xl leading-snug text-foreground sm:text-3xl">
         {headline}
       </h4>
       {feasible && (
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+        <p className="mt-2 max-w-2xl text-base text-muted-foreground">
           You need {fmt(targetMiles)} miles for this trip. The recommended route gets
           there {how}, for {cost}.
+        </p>
+      )}
+      {!feasible && bestEffort && (
+        <p className="mt-2 max-w-2xl text-base text-muted-foreground">
+          That&apos;s {fmt(Math.max(0, targetMiles - projectedMiles))} miles short of
+          the {fmt(targetMiles)} you need. Below: the plan that gets you furthest{" "}
+          {how}, for {cost}
+          {hasAdjustments ? " — and the changes that would close the gap" : ""}.
         </p>
       )}
       {/* When the plan is feasible the headline above already states the
@@ -132,10 +152,39 @@ export function VerdictHero({
           as a stylistic inconsistency, not information. It only adds value on
           the infeasible path (the adjustment story). */}
       {!feasible && narrationSummary && (
-        <p className="mt-3 max-w-2xl border-t border-hairline/60 pt-3 text-sm leading-relaxed text-foreground/85">
+        <p className="mt-3 max-w-2xl border-t border-hairline/60 pt-3 text-base leading-relaxed text-foreground/85">
           {narrationSummary}
         </p>
       )}
+    </section>
+  );
+}
+
+/** The computed adjustment menu for goals that aren't reachable as stated —
+ * each entry is a Stage-6 inverse problem (extend / add card / raise spend /
+ * downgrade cabin) the engine verified would actually work. Shared by the
+ * live simulator's no-plan fallback and the best-effort plan view. */
+export function AdjustmentMenu({
+  options,
+}: {
+  options: { kind: string; description: string }[];
+}) {
+  if (options.length === 0) return null;
+  return (
+    <section className="space-y-2">
+      <p className="text-sm uppercase tracking-[0.12em] text-muted-foreground">
+        What would make it work
+      </p>
+      <ul className="space-y-2">
+        {options.map((opt) => (
+          <li
+            key={opt.kind + opt.description}
+            className="rounded-lg border border-hairline bg-background/40 px-4 py-2.5 text-base text-foreground"
+          >
+            {opt.description}
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
@@ -193,8 +242,14 @@ function tierLabel(tier: PlanTier, allTiers: PlanTier[], nameOf: (id: string) =>
 
 /** One sentence comparing the selected tier against the recommended one —
  * plain-language trade-off instead of a wall of bars. Pure differences of
- * engine numbers. */
-function tradeOff(selected: PlanTier, recommended: PlanTier): string | null {
+ * engine numbers. When the recommended route itself misses the goal (a
+ * best-effort plan on an unreachable-as-stated goal), extra miles are real
+ * progress toward the shortfall, never "unneeded buffer". */
+function tradeOff(
+  selected: PlanTier,
+  recommended: PlanTier,
+  targetMiles: number,
+): string | null {
   if (selected.strategyId === recommended.strategyId) return null;
   const milesDiff = selected.miles - recommended.miles;
   const feesDiff = selected.fees - recommended.fees;
@@ -210,11 +265,18 @@ function tradeOff(selected: PlanTier, recommended: PlanTier): string | null {
       : feesDiff > 0
         ? `but costs ${inr(feesDiff)} more in card fees`
         : `and saves ${inr(-feesDiff)} in fees`;
-  return `This route ${milesPart}, ${feesPart}. ${
-    milesDiff > 0
-      ? "Worth it if you want a buffer for taxes, upgrades or a second trip — not needed to reach this goal."
-      : "We recommend the marked option instead."
-  }`;
+  let verdictPart: string;
+  if (milesDiff <= 0) {
+    verdictPart = "We recommend the marked option instead.";
+  } else if (recommended.miles >= targetMiles) {
+    verdictPart =
+      "Worth it if you want a buffer for taxes, upgrades or a second trip — not needed to reach this goal.";
+  } else {
+    // Best-effort context: neither route reaches the target, so the extra
+    // miles genuinely shrink the gap.
+    verdictPart = `Neither route reaches your ${fmt(targetMiles)}-mile target as stated, so the extra miles shrink the gap — weigh them against the fees.`;
+  }
+  return `This route ${milesPart}, ${feesPart}. ${verdictPart}`;
 }
 
 export function StrategyPlanTabs({
@@ -253,13 +315,13 @@ export function StrategyPlanTabs({
 
   if (tiers.length === 0 || !selected) return null;
 
-  const note = tradeOff(selected, recommended);
+  const note = tradeOff(selected, recommended, targetMiles);
 
   return (
     <div className="space-y-5">
       {tiers.length > 1 && (
         <section aria-label="Compare your route options">
-          <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
+          <p className="text-sm uppercase tracking-[0.12em] text-muted-foreground">
             Your routes — pick one to see its full plan
           </p>
           <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3" role="tablist">
@@ -281,19 +343,19 @@ export function StrategyPlanTabs({
                   )}
                 >
                   <span className="flex items-start justify-between gap-2">
-                    <span className="min-w-0 break-words text-sm font-medium text-foreground">
+                    <span className="min-w-0 break-words text-base font-medium text-foreground">
                       {tierLabel(tier, tiers, nameOf)}
                     </span>
                     {tier.isRecommended && (
                       <Star className="mt-0.5 size-3.5 shrink-0 fill-gold text-gold" />
                     )}
                   </span>
-                  <span className="mt-1.5 block text-lg font-medium tabular-nums text-foreground">
-                    {fmt(tier.miles)} <span className="text-xs text-muted-foreground">miles</span>
+                  <span className="mt-1.5 block text-xl font-medium tabular-nums text-foreground">
+                    {fmt(tier.miles)} <span className="text-sm text-muted-foreground">miles</span>
                   </span>
                   <span
                     className={cn(
-                      "mt-0.5 block text-xs",
+                      "mt-1 block text-sm",
                       reaches ? "text-gold" : "text-muted-foreground",
                     )}
                   >
@@ -310,10 +372,10 @@ export function StrategyPlanTabs({
             })}
           </div>
           {note && (
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-foreground/85">{note}</p>
+            <p className="mt-3 max-w-2xl text-base leading-relaxed text-foreground/85">{note}</p>
           )}
           {!note && comparisonNotes && (
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-3 max-w-2xl text-base leading-relaxed text-muted-foreground">
               {comparisonNotes}
             </p>
           )}
@@ -367,7 +429,7 @@ function CompactTierPanel({
 }) {
   return (
     <section className="rounded-xl border border-hairline bg-background/40 p-4">
-      <p className="text-sm text-foreground">
+      <p className="text-base text-foreground">
         {tier.cardsToAcquire.length > 0 ? (
           <>
             This route adds{" "}
@@ -385,7 +447,7 @@ function CompactTierPanel({
           </>
         )}
       </p>
-      <p className="mt-2 text-xs text-muted-foreground">
+      <p className="mt-2 text-sm text-muted-foreground">
         The full month-by-month breakdown was stored for the recommended route —
         re-run this goal from the simulator to explore this option in detail.
       </p>
@@ -426,13 +488,13 @@ function PlanSteps({
             {tier.cardsToAcquire.map((id) => (
               <li
                 key={id}
-                className="flex items-center gap-1.5 rounded-full border border-gold/40 bg-gold/10 px-3.5 py-1.5 text-xs font-medium text-gold"
+                className="flex items-center gap-1.5 rounded-full border border-gold/40 bg-gold/10 px-3.5 py-1.5 text-sm font-medium text-gold"
               >
                 <Plus className="size-3.5" /> {nameOf(id)}
               </li>
             ))}
           </ul>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Apply now — this plan starts counting its earning (and any welcome
             bonus) from the month it&apos;s in your wallet.
           </p>
@@ -464,9 +526,9 @@ function PlanSteps({
             {detail.transferPlan.map((step, i) => (
               <li
                 key={`${step.fromCardId}-${step.plannedMonth}-${i}`}
-                className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-hairline bg-background/40 px-3 py-2.5 text-sm"
+                className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-hairline bg-background/40 px-3 py-2.5 text-base"
               >
-                <span className="rounded-md bg-gold/15 px-2 py-0.5 text-xs font-medium tabular-nums text-gold">
+                <span className="rounded-md bg-gold/15 px-2 py-0.5 text-sm font-medium tabular-nums text-gold">
                   Month {step.plannedMonth}
                 </span>
                 <span className="min-w-0 text-foreground">
@@ -480,7 +542,7 @@ function PlanSteps({
               </li>
             ))}
           </ul>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Transfers aren&apos;t instant — partners take days to land the miles. The
             months above already account for each partner&apos;s processing time.
             {tier.transferFees > 0 && (
@@ -498,22 +560,34 @@ function PlanSteps({
     });
   }
 
+  // A best-effort tier structurally can't reach the target — the booking
+  // step must say so instead of promising a balance that won't arrive.
+  const reachesTarget = tier.miles >= targetMiles;
   steps.push({
     title: "Book your award seat",
     body: (
-      <div className="space-y-2 text-sm text-foreground/90">
+      <div className="space-y-2 text-base text-foreground/90">
         <p>
           {chartMilesPerSeat
             ? `A saver award on this route costs ${fmt(chartMilesPerSeat)} ${programName} miles per seat. `
             : ""}
-          Book once your {programName} balance reaches {fmt(targetMiles)} miles
-          {bufferMiles
-            ? ` — the plan also works toward a ${fmt(bufferMiles)}-mile cushion on top, in case rates move`
-            : ""}
-          .
+          {reachesTarget ? (
+            <>
+              Book once your {programName} balance reaches {fmt(targetMiles)} miles
+              {bufferMiles
+                ? ` — the plan also works toward a ${fmt(bufferMiles)}-mile cushion on top, in case rates move`
+                : ""}
+              .
+            </>
+          ) : (
+            <>
+              This route alone projects {fmt(tier.miles)} of the {fmt(targetMiles)}{" "}
+              miles needed — close the gap (see the changes above) before booking.
+            </>
+          )}
         </p>
         {risks.length > 0 && (
-          <ul className="space-y-1.5 text-xs text-muted-foreground">
+          <ul className="space-y-1.5 text-sm text-muted-foreground">
             {risks.map((r) => (
               <li key={r} className="flex items-start gap-2">
                 <Info className="mt-0.5 size-3.5 shrink-0" />
@@ -528,7 +602,7 @@ function PlanSteps({
 
   return (
     <section aria-label="Your plan, step by step">
-      <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
+      <p className="text-sm uppercase tracking-[0.12em] text-muted-foreground">
         The plan, step by step
       </p>
       <ol className="mt-3 space-y-0">
@@ -545,7 +619,7 @@ function PlanSteps({
               {i + 1}
             </span>
             <div className="min-w-0 flex-1 pt-1">
-              <h5 className="text-sm font-medium text-foreground">{step.title}</h5>
+              <h5 className="text-base font-medium text-foreground">{step.title}</h5>
               <div className="mt-2">{step.body}</div>
             </div>
           </li>
@@ -556,8 +630,10 @@ function PlanSteps({
 }
 
 /** One row's runner-up comparison, in plain language — the deterministic
- * answer to "why is my other card ignored here?". Pure comparison of two
- * engine numbers (effective miles/₹100), no reward math. */
+ * answer to "why is my other card ignored here?". Pure comparison of engine
+ * numbers; when the engine attributed a cause (it re-ran the plan with this
+ * category swapped to the runner-up), the sentence states WHY with the
+ * verified whole-plan delta. No reward math happens here. */
 function runnerUpSentence(r: AllocationDetail, nameOf: (id: string) => string): string | null {
   if (!r.runner_up_card_id || r.runner_up_miles_per_100inr == null) return null;
   const chosen = Number(r.effective_miles_per_100inr);
@@ -569,9 +645,24 @@ function runnerUpSentence(r: AllocationDetail, nameOf: (id: string) => string): 
   if (other === chosen) {
     return `Ties with ${otherName} (${other} miles/₹100) — either card works for this category.`;
   }
-  // Don't invent a specific cause (caps? milestones? route shape?) — the row
-  // doesn't carry attribution, so name the trade-off without asserting why.
-  return `${otherName} rates higher per ₹100 here (${other} vs ${chosen} miles/₹100) — a trade-off this route accepts; caps, milestone bonuses and the route's own goal all shape the split.`;
+  const rates = `${otherName} rates higher per ₹100 here (${other} vs ${chosen} miles/₹100)`;
+  const delta = r.runner_up_plan_delta_miles;
+  switch (r.runner_up_reason) {
+    case "transfer_cap":
+      return `${rates}, but its yearly transfer allowance is already fully used by this plan — moving this spend there would strand the extra points and end ${delta != null ? fmt(delta) : "thousands of"} miles lower overall.`;
+    case "milestone":
+      return `${rates}, but moving this spend would forfeit a milestone bonus this plan collects${delta != null ? ` — the plan would end ${fmt(delta)} miles lower overall` : ""}.`;
+    case "fewer_total":
+      return `${rates}, but we re-ran the plan with this spend moved there and it comes out lower overall${delta != null ? ` — by ${fmt(delta)} miles` : ""} — so it stays here.`;
+    case "equal_total":
+      return `${rates}, but moving it makes no difference to the plan's total — either card works.`;
+    case "route_shape":
+      return `${rates} — this route keeps everything on one card for simplicity${delta != null ? `, giving up ${fmt(-delta)} miles vs splitting the spend` : ""}; the other route options capture them.`;
+    default:
+      // Older data without attribution — name the trade-off without
+      // asserting a cause the row can't back.
+      return `${rates} — a trade-off this route accepts; caps, milestone bonuses and the route's own goal all shape the split.`;
+  }
 }
 
 const DEFAULT_RATE_NOTE = "earns at the card's default rate";
@@ -605,7 +696,7 @@ function SpendStep({
         {entries.map(([category, cardId]) => (
           <li
             key={category}
-            className="flex items-center justify-between rounded-lg border border-hairline bg-background/40 px-3 py-2 text-sm"
+            className="flex items-center justify-between rounded-lg border border-hairline bg-background/40 px-3 py-2 text-base"
           >
             <span className="text-muted-foreground">{categoryLabel(category)}</span>
             <span className="flex items-center gap-1.5 font-medium text-foreground">
@@ -637,7 +728,7 @@ function SpendStep({
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         Each card earns its own points on these categories — step{" "}
         {transferStepNumber} turns them into {programName} miles.
       </p>
@@ -650,23 +741,33 @@ function SpendStep({
         );
         const allDefaultRate =
           rows.length > 1 && rows.every((r) => r.notes.some((n) => n.startsWith(DEFAULT_RATE_NOTE)));
+        const totalSpend = rows.reduce((s, r) => s + r.monthly_spend_inr, 0);
+        const guidanceRows = rows
+          .map((r) => ({
+            row: r,
+            comparison: runnerUpSentence(r, nameOf),
+            rowNotes: r.notes.filter(
+              (note) =>
+                !shared.includes(note) &&
+                !(allDefaultRate && note.startsWith(DEFAULT_RATE_NOTE)),
+            ),
+          }))
+          .filter(
+            ({ row, comparison, rowNotes }) =>
+              row.category_label || comparison || rowNotes.length > 0,
+          );
         return (
           <div
             key={cardId}
             className="overflow-hidden rounded-xl border border-hairline bg-background/40"
           >
-            <div className="border-b border-hairline/70 px-3.5 py-2.5">
-              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-foreground">
-                  <CreditCard className="size-4 shrink-0 text-gold" />
-                  <span className="min-w-0 wrap-break-word">{nameOf(cardId)}</span>
-                </span>
-                <span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">
-                  ~{fmt(cardMonthlyPoints(rows))} pts/mo
-                </span>
-              </div>
+            <div className="border-b border-hairline/70 px-4 py-3">
+              <span className="flex min-w-0 items-center gap-2 text-base font-medium text-foreground">
+                <CreditCard className="size-4 shrink-0 text-gold" />
+                <span className="min-w-0 wrap-break-word">{nameOf(cardId)}</span>
+              </span>
               {story && (
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="mt-1 text-sm text-muted-foreground">
                   {story.currency_name ? `Earns ${story.currency_name}` : "Earns points"}
                   {story.transfer_ratio_from != null && story.transfer_ratio_to != null && (
                     <>
@@ -679,78 +780,118 @@ function SpendStep({
                 </p>
               )}
             </div>
-            <ul className="divide-y divide-hairline/50">
-              {rows.map((r) => {
-                const comparison = runnerUpSentence(r, nameOf);
-                const rowNotes = r.notes.filter(
-                  (note) =>
-                    !shared.includes(note) &&
-                    !(allDefaultRate && note.startsWith(DEFAULT_RATE_NOTE)),
-                );
-                return (
-                  <li key={r.category_slug} className="px-3.5 py-2.5 text-sm">
-                    {/* Wraps on narrow screens — the category + ₹ amount is the
-                        primary info and must never truncate away. */}
-                    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                      <span className="min-w-0 text-foreground">
+            {/* The calculation, as a table — every column is an engine
+                artifact; the only arithmetic here is the total spend (a sum
+                of the user's own inputs) and the card's honest points total
+                (exact cross-category sum floored ONCE, matching the engine's
+                one-floor-per-card-month rule). Wide tables scroll inside
+                their own container, never the page. */}
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[560px] text-sm">
+                <thead>
+                  <tr className="border-b border-hairline/50 text-xs uppercase tracking-[0.08em] text-muted-foreground">
+                    <th scope="col" className="px-4 py-2.5 text-left font-medium">
+                      Category
+                    </th>
+                    <th scope="col" className="px-3 py-2.5 text-right font-medium">
+                      Spend / mo
+                    </th>
+                    <th scope="col" className="px-3 py-2.5 text-right font-medium">
+                      Earn rate
+                    </th>
+                    <th scope="col" className="px-3 py-2.5 text-right font-medium">
+                      Points / mo
+                    </th>
+                    <th scope="col" className="px-3 py-2.5 text-right font-medium">
+                      Miles / ₹100
+                    </th>
+                    <th scope="col" className="px-4 py-2.5 text-right font-medium">
+                      ≈ Miles / mo
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-hairline/40">
+                  {rows.map((r) => (
+                    <tr key={r.category_slug}>
+                      <td className="px-4 py-2.5 text-foreground">
                         {categoryLabel(r.category_slug)}
-                        <span className="ml-2 whitespace-nowrap text-xs text-muted-foreground">
-                          {inr(r.monthly_spend_inr)}/mo
-                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-foreground">
+                        {inr(r.monthly_spend_inr)}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-gold">
+                        {Number(r.earn_rate)} pts/₹100
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-foreground">
+                        {fmt(r.monthly_points)}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-foreground">
+                        {Number(r.effective_miles_per_100inr)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-2.5 text-right tabular-nums text-foreground">
+                        {r.monthly_miles != null && r.monthly_miles > 0
+                          ? `~${fmt(r.monthly_miles)}`
+                          : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                {rows.length > 1 && (
+                  <tfoot>
+                    <tr className="border-t border-hairline/70 font-medium">
+                      <td className="px-4 py-2.5 text-foreground">Total</td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-foreground">
+                        {inr(totalSpend)}
+                      </td>
+                      <td />
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-foreground">
+                        ~{fmt(cardMonthlyPoints(rows))}
+                      </td>
+                      <td />
+                      <td />
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            </div>
+            {(guidanceRows.length > 0 || shared.length > 0 || allDefaultRate) && (
+              <div className="space-y-2 border-t border-hairline/70 px-4 py-3">
+                {guidanceRows.map(({ row, comparison, rowNotes }) => (
+                  <div key={row.category_slug} className="text-sm leading-relaxed">
+                    <span className="font-medium text-foreground">
+                      {categoryLabel(row.category_slug)}:
+                    </span>{" "}
+                    {row.category_label && (
+                      <span className="text-gold/90">
+                        To get this rate — {row.category_label}.{" "}
                       </span>
-                      <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs tabular-nums">
-                        <span className="whitespace-nowrap text-gold">
-                          {Number(r.earn_rate)} pts per ₹100
-                        </span>
-                        <span className="whitespace-nowrap text-foreground">
-                          → {Number(r.effective_miles_per_100inr)} miles/₹100
-                        </span>
-                      </span>
-                    </div>
-                    {/* The worked example: spend → points → program miles. */}
-                    <p className="mt-1 text-xs tabular-nums text-muted-foreground">
-                      {inr(r.monthly_spend_inr)} × {Number(r.earn_rate)}/₹100 ={" "}
-                      {fmt(r.monthly_points)} pts
-                      {r.monthly_miles != null && r.monthly_miles > 0 && (
-                        <> → ~{fmt(r.monthly_miles)} {programName} miles a month</>
-                      )}
-                    </p>
-                    {r.category_label && (
-                      <p className="mt-1 text-xs leading-relaxed text-gold/90">
-                        To get this rate: {r.category_label}
-                      </p>
                     )}
                     {comparison && (
-                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                        {comparison}
-                      </p>
+                      <span className="text-muted-foreground">{comparison} </span>
                     )}
                     {rowNotes.length > 0 && (
-                      <ul className="mt-1 space-y-0.5 text-xs leading-relaxed text-muted-foreground/80">
-                        {rowNotes.map((note, i) => (
-                          <li key={i}>{note}</li>
-                        ))}
-                      </ul>
+                      <span className="text-muted-foreground/80">
+                        {rowNotes.join(" · ")}
+                      </span>
                     )}
-                  </li>
-                );
-              })}
-            </ul>
-            {(shared.length > 0 || allDefaultRate) && (
-              <div className="border-t border-hairline/70 px-3.5 py-2">
-                <ul className="space-y-0.5 text-xs leading-relaxed text-muted-foreground/80">
-                  {allDefaultRate && (
-                    <li>
-                      These categories all earn the card&apos;s flat default rate —
-                      no accelerated category applies.
-                    </li>
-                  )}
-                  {shared
-                    .filter((note) => !note.startsWith(DEFAULT_RATE_NOTE))
-                    .map((note, i) => (
-                      <li key={i}>{note}</li>
-                    ))}
-                </ul>
+                  </div>
+                ))}
+                {(allDefaultRate ||
+                  shared.some((note) => !note.startsWith(DEFAULT_RATE_NOTE))) && (
+                  <ul className="space-y-1 text-sm leading-relaxed text-muted-foreground/80">
+                    {allDefaultRate && (
+                      <li>
+                        These categories all earn the card&apos;s flat default rate —
+                        no accelerated category applies.
+                      </li>
+                    )}
+                    {shared
+                      .filter((note) => !note.startsWith(DEFAULT_RATE_NOTE))
+                      .map((note, i) => (
+                        <li key={i}>{note}</li>
+                      ))}
+                  </ul>
+                )}
               </div>
             )}
           </div>
@@ -758,16 +899,18 @@ function SpendStep({
       })}
       {milestones.length > 0 && (
         <div className="rounded-xl border border-hairline bg-background/40 px-3.5 py-3">
-          <p className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+          <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
             <Award className="size-3.5 text-gold" /> Bonuses this plan collects along the way
           </p>
           <ul className="mt-2 space-y-1.5">
             {milestones.map((m) => (
               <li
-                key={m.id}
-                className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm"
+                // A recurring milestone (quarterly/annual re-fires) appears
+                // once per firing month with the same id — month disambiguates.
+                key={`${m.id}-${m.expectedMonth}`}
+                className="flex flex-wrap items-center gap-x-3 gap-y-1 text-base"
               >
-                <span className="rounded-md bg-gold/15 px-2 py-0.5 text-xs font-medium tabular-nums text-gold">
+                <span className="rounded-md bg-gold/15 px-2 py-0.5 text-sm font-medium tabular-nums text-gold">
                   Month {m.expectedMonth}
                 </span>
                 <span className="min-w-0 text-foreground">{nameOf(m.cardId)}</span>
@@ -829,10 +972,10 @@ export function EarnChart({
 
   return (
     <section>
-      <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
+      <p className="text-sm uppercase tracking-[0.12em] text-muted-foreground">
         Points earned, month by month
       </p>
-      {subtitle && <p className="mt-1 text-xs text-muted-foreground/80">{subtitle}</p>}
+      {subtitle && <p className="mt-1 text-sm text-muted-foreground/80">{subtitle}</p>}
       <div className="relative mt-3">
         <svg
           viewBox={`0 0 ${W} ${H}`}
@@ -911,7 +1054,7 @@ export function EarnChart({
           ))}
         </div>
         {hover !== null && (
-          <div className="pointer-events-none mt-1 text-center text-xs text-muted-foreground">
+          <div className="pointer-events-none mt-1 text-center text-sm text-muted-foreground">
             Month {hover}:{" "}
             <span className="tabular-nums text-foreground">
               {series[hover].toLocaleString()}
@@ -1005,19 +1148,19 @@ export function WhyThisRoute({
 
   return (
     <section>
-      <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
+      <p className="text-sm uppercase tracking-[0.12em] text-muted-foreground">
         {isRec ? "Why this is the recommended route" : "What this route means"}
       </p>
       <ul className="mt-3 space-y-2">
         {reasons.map((r) => (
-          <li key={r} className="flex items-start gap-2.5 text-sm text-foreground/90">
+          <li key={r} className="flex items-start gap-2.5 text-base text-foreground/90">
             <BadgeCheck className="mt-0.5 size-4 shrink-0 text-gold" />
             <span>{r}</span>
           </li>
         ))}
       </ul>
       {reasoning && (
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+        <p className="mt-3 max-w-2xl text-base leading-relaxed text-muted-foreground">
           {reasoning}
         </p>
       )}
@@ -1045,7 +1188,7 @@ function ScoreDisclosure({
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+        className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
         <ChevronDown className={cn("size-3.5 transition-transform", open && "rotate-180")} />
         How OptiMiles scored this route{score ? ` (${Math.round(Number(score))}/100 weighted)` : ""}
@@ -1098,10 +1241,10 @@ export function NextSteps({
   const sorted = [...items].sort((a, b) => a.priority - b.priority);
   return (
     <section>
-      <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
+      <p className="text-sm uppercase tracking-[0.12em] text-muted-foreground">
         Your next steps
       </p>
-      <ul className="mt-3 space-y-2.5 text-sm text-foreground/90">
+      <ul className="mt-3 space-y-2.5 text-base text-foreground/90">
         {sorted.map((item) => (
           <li key={`${item.priority}-${item.action}`} className="flex items-start gap-2.5">
             <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-gold/15 text-gold">
@@ -1110,7 +1253,7 @@ export function NextSteps({
             <span>
               {item.action}
               {item.impact && (
-                <span className="ml-1.5 text-xs text-gold">({item.impact})</span>
+                <span className="ml-1.5 text-sm text-gold">({item.impact})</span>
               )}
             </span>
           </li>

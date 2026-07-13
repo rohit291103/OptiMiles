@@ -41,7 +41,7 @@ const CARDS: Card[] = [
     name: "Amex Platinum Travel",
     tier: "Premium Travel",
     active: true,
-    image: "/cards/amex-platinum-travel.png",
+    image: "/cards/amex-platinum-travel-v2.png",
   },
 ];
 

@@ -153,6 +153,65 @@ async def test_check_constraint_values_are_in_set(snapshot: CatalogSnapshot) -> 
     assert Decimal(result_params["miles"]) <= rec.recommended.simulation.miles_at_target_date  # type: ignore[union-attr]
 
 
+async def _best_effort_recommendation(snapshot: CatalogSnapshot) -> FinalRecommendation:
+    """Infeasible verdict WITH a best-effort plan: a usable wallet card but
+    spend far too small to reach the requirement, acquisitions forbidden."""
+    goal = make_goal(snapshot, today=TODAY)
+    context = assemble_context(
+        goal,
+        estimate_requirement(goal, snapshot, buffer_pct=5.0),
+        snapshot,
+        wallet=(
+            WalletCard(card_id=seed_id("card", "hdfc-infinia"), current_points_balance=20_000),
+        ),
+        spend_profile=SpendProfile(
+            items=(
+                SpendProfileItem(category_slug=SpendCategory.UTILITIES, monthly_spend_inr=1_000),
+            )
+        ),
+        constraints=ConstraintSet(no_new_cards=True),
+        today=TODAY,
+    )
+    return await run_from_context(context, weights=WEIGHTS, model=None)
+
+
+async def test_infeasible_with_best_effort_plan_persists_full_lineage(
+    snapshot: CatalogSnapshot,
+) -> None:
+    """The now-common infeasible case: a best-effort plan exists, so the FULL
+    FK chain persists — recommendation_type still records infeasibility, the
+    confidence derives from the goal-missing composite (in range), the result
+    row's months_to_goal is NULL, and the Stage-6 adjustment menu rides in
+    the allocations JSONB so a saved goal can show what would close the gap."""
+    rec = await _best_effort_recommendation(snapshot)
+    assert rec.verdict.feasible is False  # precondition
+    assert rec.recommended is not None  # precondition: a plan exists
+    assert rec.recommended.simulation.misses_goal is True
+
+    conn = CapturingConn()
+    ids = await persist_recommendation(conn, rec, user_id=uuid4())  # type: ignore[arg-type]
+
+    assert [conn.table_of(i) for i in range(4)] == [
+        "user_goals",
+        "spend_simulations",
+        "simulation_results",
+        "recommendation_outputs",
+    ]
+    assert "result_id" in ids
+
+    rec_params = conn.calls[3][1]
+    assert rec_params["rec_type"] == "goal_feasibility"
+    assert rec_params["result_id"] is not None
+    assert Decimal("0") <= Decimal(rec_params["confidence"]) <= Decimal("1")
+
+    result_params = conn.calls[2][1]
+    assert result_params["months"] is None  # the goal is never reached in-window
+    allocations = json.loads(result_params["allocations"])
+    menu = allocations["adjustment_options"]
+    assert menu  # the computed menu persisted alongside the plan
+    assert all({"kind", "description"} <= set(option) for option in menu)
+
+
 async def test_infeasible_skips_result_row_and_confidence(
     snapshot: CatalogSnapshot,
 ) -> None:

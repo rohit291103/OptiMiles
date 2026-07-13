@@ -16,6 +16,18 @@ The optional story inputs deepen the "why" without new math:
   for each category, the best OTHER card actually available in this plan
   (wallet + acquired) and its effective miles/₹100 — the deterministic answer
   to "why is my other card ignored?". Cards outside the plan never appear.
+- `context` additionally powers **cause attribution** when the runner-up rates
+  strictly HIGHER than the chosen card: the counterfactual (the category
+  swapped to the runner-up) is re-estimated with the same `claimed_estimate`
+  the generator uses, and the verified whole-plan difference is attributed —
+  the runner-up's transfer-link cap binding (`transfer_cap`), a milestone
+  bonus forfeited by the swap (`milestone`), a verified lower total
+  (`fewer_total`), no difference (`equal_total`), or — only on the forced
+  single-card routes (`single_card_route`) — the swap would actually GAIN and
+  the route declines it by design (`route_shape`); a gaining swap on a
+  hill-climbed route ships no cause at all. This is the one part of this
+  module that runs engine math, and it runs the engine's own estimator —
+  nothing is re-derived here.
 
 The per-category `monthly_points` on each row is an **illustrative** figure —
 `floor(monthly_spend × earn_rate / 100)` for that one category. It is NOT
@@ -29,15 +41,21 @@ true card total by a point or two when several categories share a card. Use
 
 from collections.abc import Mapping, Sequence
 from decimal import ROUND_DOWN, Decimal
+from typing import Literal
 from uuid import UUID
 
 from app.domain import (
+    PlanningContext,
     RewardOpportunity,
     SpendCategory,
     SpendProfile,
     StrategyAllocationDetail,
 )
-from app.optimization.allocation import Assignment
+from app.optimization.allocation import Assignment, ClaimedEstimate, claimed_estimate
+
+RunnerUpReason = Literal[
+    "transfer_cap", "milestone", "fewer_total", "equal_total", "route_shape"
+]
 
 
 def _floor(value: Decimal) -> int:
@@ -52,6 +70,8 @@ def allocation_detail(
     available_card_ids: frozenset[UUID] = frozenset(),
     currency_names: Mapping[UUID, str] | None = None,
     category_labels: Mapping[tuple[UUID, SpendCategory], str] | None = None,
+    context: PlanningContext | None = None,
+    single_card_route: bool = False,
 ) -> tuple[StrategyAllocationDetail, ...]:
     """Per-category earn detail for a strategy's routing, ordered by category
     slug for determinism. One row per allocated category; a category with no
@@ -59,10 +79,23 @@ def allocation_detail(
 
     Each row's `monthly_points`/`monthly_miles` is the per-category
     illustrative floor (see module docstring): fine to show per row, wrong to
-    sum. For a card's true monthly credit use `card_monthly_points`."""
+    sum. For a card's true monthly credit use `card_monthly_points`.
+
+    With `context`, a row whose runner-up rates strictly higher also carries
+    the counterfactual-verified reason + whole-plan delta (module docstring).
+    `single_card_route` marks the forced single-card archetypes
+    (simplest/cheapest_viable): both counterfactual sides then match the
+    generator's `include_idle_balances=False` basis (so the delta is measured
+    against the strategy's own claim, not a different plan), and a swap that
+    would GAIN is attributed `route_shape` — declining it IS those routes'
+    design. On hill-climbed routes a gaining swap is a search artifact, not a
+    design choice, so no cause is asserted (fields stay None)."""
     spend_by_category = {
         item.category_slug: item.monthly_spend_inr for item in spend_profile.items
     }
+    # The current plan's estimate is shared by every row's counterfactual —
+    # computed once, lazily (only when some row actually needs attribution).
+    current_estimate: ClaimedEstimate | None = None
     rows: list[StrategyAllocationDetail] = []
     for category in sorted(assignment, key=lambda c: c.value):
         opportunity = assignment[category]
@@ -74,6 +107,26 @@ def allocation_detail(
         runner_up = _runner_up(
             category, opportunity.card_id, all_opportunities, available_card_ids
         )
+        reason: RunnerUpReason | None = None
+        delta: int | None = None
+        if (
+            context is not None
+            and runner_up is not None
+            and runner_up.effective_miles_per_100inr
+            > opportunity.effective_miles_per_100inr
+        ):
+            if current_estimate is None:
+                current_estimate = claimed_estimate(
+                    assignment, context, include_idle_balances=not single_card_route
+                )
+            reason, delta = _attribute_runner_up(
+                assignment,
+                category,
+                runner_up,
+                current_estimate,
+                context,
+                single_card_route=single_card_route,
+            )
         rows.append(
             StrategyAllocationDetail(
                 category_slug=category,
@@ -94,9 +147,58 @@ def allocation_detail(
                 runner_up_miles_per_100inr=(
                     runner_up.effective_miles_per_100inr if runner_up else None
                 ),
+                runner_up_reason=reason,
+                runner_up_plan_delta_miles=delta,
             )
         )
     return tuple(rows)
+
+
+def _attribute_runner_up(
+    assignment: Assignment,
+    category: SpendCategory,
+    runner_up: RewardOpportunity,
+    current: ClaimedEstimate,
+    context: PlanningContext,
+    *,
+    single_card_route: bool,
+) -> tuple[RunnerUpReason | None, int | None]:
+    """Why does a higher-rated runner-up still lose this category? Run the
+    actual counterfactual — the same `claimed_estimate` the generator uses,
+    with just this category swapped — and attribute the verified difference.
+    Priority when the swap loses miles: the runner-up's transfer cap binding
+    beats a forfeited milestone beats the generic verified total (a capped
+    swap usually also reshuffles milestones; the cap is the actionable
+    fact). The milestone check is presence-of-loss, not magnitude — a lost
+    bonus is named even when rate effects contribute part of the delta;
+    acceptable while few seeded cards carry milestones, revisit if the
+    catalog grows stacked milestone ladders."""
+    swapped = claimed_estimate(
+        {**assignment, category: runner_up},
+        context,
+        include_idle_balances=not single_card_route,
+    )
+    delta = current.total_miles - swapped.total_miles
+    if delta < 0:
+        # The swap would GAIN. For the forced single-card archetypes that is
+        # a design choice the row should own; on hill-climbed routes it is a
+        # search artifact (the climb optimizes an optimistic bound, this
+        # verifier is stricter) — asserting "declined by design" would be a
+        # lie, so no cause ships.
+        return ("route_shape", delta) if single_card_route else (None, None)
+    if delta == 0:
+        return "equal_total", 0
+    if runner_up.transfer_path.currency_id in swapped.cap_bound_currencies:
+        # Engine-owned fact from the counterfactual itself: the runner-up's
+        # link cap actually clamped, so the cap — not the earn rate — is what
+        # limits the swapped plan.
+        return "transfer_cap", delta
+    lost_milestones = {m.milestone_id for m in current.expected_milestones} - {
+        m.milestone_id for m in swapped.expected_milestones
+    }
+    if lost_milestones:
+        return "milestone", delta
+    return "fewer_total", delta
 
 
 def _runner_up(

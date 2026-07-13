@@ -393,23 +393,32 @@ def test_cheapest_viable_absent_when_no_single_new_card_alone_clears_the_goal(
 
 
 def test_cheapest_viable_respects_no_new_cards_and_fee_cap(snapshot: CatalogSnapshot) -> None:
-    """`no_new_cards` forbids any acquisition; a ₹5,000 cap excludes DCB
-    (₹10,000) — only HSBC/Amex Platinum Travel (≤₹5,000) would qualify by
-    fee, and neither alone clears this fixture's goal (hand-computed above:
-    HSBC 33,000 / Amex PT 30,500 < 45,000 required), so no acquiring
-    candidate should appear under either constraint."""
-    for constraints in (NO_NEW_CARDS, ConstraintSet(max_annual_fees_inr=5_000)):
-        candidates = _generate(
-            _context(
-                snapshot,
-                spend={SpendCategory.TRAVEL: 40_000, SpendCategory.DINING: 30_000},
-                wallet={},
-                horizon_months=12,
-                num_passengers=1,
-                constraints=constraints,
-            )
-        )
-        assert not any(c.cards_to_acquire for c in candidates)
+    """`no_new_cards` with an empty wallet leaves nothing to allocate at all.
+    A ₹5,000 cap excludes DCB (₹10,000) — only HSBC/Amex Platinum Travel
+    (≤₹5,000) qualify by fee, and neither alone clears this fixture's goal
+    (hand-computed above: HSBC 33,000 / Amex PT 30,500 < 45,000 required) —
+    so every acquiring candidate is an honest best-effort (claim short of the
+    requirement, fee cap respected); cheapest/simplest_viable must not
+    fabricate a goal-clearing plan."""
+    fixture = dict(
+        spend={SpendCategory.TRAVEL: 40_000, SpendCategory.DINING: 30_000},
+        wallet={},
+        horizon_months=12,
+        num_passengers=1,
+    )
+    assert _generate(_context(snapshot, constraints=NO_NEW_CARDS, **fixture)) == ()
+
+    capped = _context(snapshot, constraints=ConstraintSet(max_annual_fees_inr=5_000), **fixture)
+    candidates = _generate(capped)
+    assert candidates  # best-effort acquisitions within the cap now surface
+    required = capped.requirement.miles_required_total
+    fees = {
+        a.card_id: a.annual_fee_inr
+        for a in enumerate_opportunities(capped).card_aggregates
+    }
+    for candidate in candidates:
+        assert sum(fees[c] for c in candidate.cards_to_acquire) <= 5_000
+        assert candidate.claimed_total_miles < required
 
 
 # ── Contract guarantees ───────────────────────────────────────────────────
@@ -423,7 +432,26 @@ def test_every_candidate_allocates_every_profile_category(snapshot: CatalogSnaps
         assert set(candidate.spend_allocation) == categories
 
 
-def test_infeasible_verdict_generates_nothing(snapshot: CatalogSnapshot) -> None:
+def test_infeasible_verdict_still_generates_best_effort(snapshot: CatalogSnapshot) -> None:
+    """An unreachable goal still gets candidates: the Stage-6 bound is a true
+    upper bound, so every claim honestly falls short of the requirement —
+    ranking can then present the least-bad route alongside the adjustment
+    menu instead of returning silence."""
+    context = _context(snapshot, horizon_months=2)
+    opportunities = enumerate_opportunities(context)
+    verdict = assess_feasibility(opportunities, context)
+    assert verdict.feasible is False
+    candidates = generate_candidates(opportunities, verdict, context)
+    assert candidates  # best-effort, not silence
+    assert candidates[0].archetype == StrategyArchetype.STATUS_QUO_OPTIMIZED
+    required = context.requirement.miles_required_total
+    assert all(c.claimed_total_miles < required for c in candidates)
+
+
+def test_infeasible_with_unusable_wallet_generates_nothing(snapshot: CatalogSnapshot) -> None:
+    """Best-effort still requires something to allocate: a cashback-only wallet
+    (zero opportunities by construction) with acquisitions forbidden yields no
+    candidates — the adjustment menu alone is the honest answer."""
     context = _context(snapshot, wallet={"sbi-cashback": 0}, constraints=NO_NEW_CARDS)
     opportunities = enumerate_opportunities(context)
     verdict = assess_feasibility(opportunities, context)

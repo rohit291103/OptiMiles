@@ -2,6 +2,7 @@
 
 import type { SavedGoalDetail } from "@/lib/api";
 import {
+  AdjustmentMenu,
   NextSteps,
   StrategyPlanTabs,
   VerdictHero,
@@ -111,11 +112,20 @@ export function SavedStrategyView({ detail }: { detail: SavedGoalDetail }) {
   // length is the stored horizon in months.
   const horizonMonths =
     strategy && strategy.ledger.length > 1 ? strategy.ledger.length : null;
+  // Infeasible goals now persist a best-effort plan, so strategy presence no
+  // longer implies feasibility — the persisted recommendation_type is the
+  // truth ("goal_feasibility" = infeasible). Older rows without it fall back
+  // to the old inference.
+  const feasible = detail.recommendation_type
+    ? detail.recommendation_type !== "goal_feasibility"
+    : Boolean(strategy);
 
   return (
     <div className="space-y-6">
       <VerdictHero
-        feasible={Boolean(strategy)}
+        feasible={feasible}
+        bestEffort={!feasible && Boolean(strategy)}
+        hasAdjustments={(detail.adjustment_options ?? []).length > 0}
         tight={false}
         targetMiles={detail.target_miles}
         projectedMiles={recommendedTier?.miles ?? 0}
@@ -126,6 +136,13 @@ export function SavedStrategyView({ detail }: { detail: SavedGoalDetail }) {
         programName={programName}
         narrationSummary={detail.summary}
       />
+
+      {/* Best-effort infeasible saves persist the Stage-6 adjustment menu —
+          the hero's "changes that would close the gap" promise. Older saves
+          have none; the summary/reasoning prose then carries the story. */}
+      {!feasible && (
+        <AdjustmentMenu options={detail.adjustment_options ?? []} />
+      )}
 
       {tiers.length > 0 && (
         <StrategyPlanTabs

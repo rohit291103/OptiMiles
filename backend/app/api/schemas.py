@@ -191,6 +191,13 @@ class SavedAllocationDetail(BaseModel):
     category_label: str | None = None
     runner_up_card_id: str | None = None
     runner_up_miles_per_100inr: Decimal | None = None
+    # Counterfactual-verified cause attribution (2026-07-13; absent on older
+    # saves): why the higher-rated runner-up still lost this category, plus
+    # the whole-plan miles delta of the swap. Deliberately `str`, not the
+    # domain Literal — stored JSONB may carry values from any engine version,
+    # and an unknown reason must deserialize (the UI falls back generically).
+    runner_up_reason: str | None = None
+    runner_up_plan_delta_miles: int | None = None
 
 
 class SavedScoreBreakdown(BaseModel):
@@ -251,13 +258,23 @@ class SavedActionItem(BaseModel):
     card_id: UUID | None = None
 
 
+class SavedAdjustmentOption(BaseModel):
+    """One persisted Stage-6 adjustment ("what would close the gap") — stored
+    with best-effort infeasible saves; empty on feasible and older saves."""
+
+    kind: str
+    description: str
+
+
 class SavedGoalDetail(BaseModel):
     """GET /goals/{id} — one saved goal's full stored recommendation.
 
     Everything here is a persisted engine artifact (D-2 lineage): re-opening a
     goal shows what was computed at save time, against the snapshot named here.
-    `strategy` is None for infeasible goals (no simulation_results row) — the
-    summary/reasoning then carry the adjustment story."""
+    `strategy` is None only when nothing was allocatable (no simulation_results
+    row; infeasible goals normally persist a best-effort plan and
+    `recommendation_type` records the infeasibility) — the summary/reasoning
+    then carry the adjustment story."""
 
     goal_id: UUID
     goal_name: str
@@ -282,6 +299,10 @@ class SavedGoalDetail(BaseModel):
     # the infeasible path). Lives on the detail, not the strategy, because it
     # spans strategies.
     strategy_options: tuple[SavedStrategyOption, ...] = ()
+    # The Stage-6 adjustment menu for best-effort infeasible saves (empty when
+    # feasible or on older saves). Detail-scoped like strategy_options: it
+    # belongs to the verdict, not any one strategy.
+    adjustment_options: tuple[SavedAdjustmentOption, ...] = ()
     # Cosmetic id → display-name maps resolved from the *current* snapshot so
     # the client can label cards/partners without extra calls. Ids no longer in
     # the catalog are simply absent (client falls back to a generic label).
