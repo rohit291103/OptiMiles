@@ -5,6 +5,8 @@
 **Source:** Mirrored from Notion `Goal_To_Strategy_User_Journey_v1` (2026-06-28) on 2026-07-03.
 **Purpose:** The complete end-to-end user experience from travel goal input to actionable reward strategy. This is the *product* journey; the backend realization of stages 3–4 is [system-execution-flow-v1.md](../architecture/system-execution-flow-v1.md). (The existing [landing-page-v1.md](landing-page-v1.md) covers the marketing site; this doc covers the logged-in product experience — most of it not yet built.)
 
+> **2026-07-13 update:** the goal-entry and strategy-reveal flow (stages 4–7 here) was redesigned as a guided conversational wizard — total-spend-over-horizon input, card/ecosystem education step, opt-in category split, end-of-flow feasibility verdict with extra-card strategies. The locked design + implementation slices live in [2026-07-13-guided-strategy-flow-design.md](../decisions/2026-07-13-guided-strategy-flow-design.md); where the two conflict, that decision doc wins.
+
 ---
 
 # 1. Experience vision
