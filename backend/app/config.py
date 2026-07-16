@@ -32,7 +32,7 @@ class Settings(BaseSettings):
         "'https://openrouter.ai/api/v1' to route through OpenRouter, which "
         "exposes many models (incl. free Qwen/DeepSeek) behind the OpenAI API.",
     )
-    ranking_weights_path: Path = Path("config/ranking-weights-v1.yaml")
+    ranking_weights_path: Path = Path("config/ranking-weights-v2.yaml")
     requirement_buffer_pct: float = 5.0
     supabase_url: str = ""
     """Supabase project URL (e.g. https://<ref>.supabase.co). When set, its JWKS

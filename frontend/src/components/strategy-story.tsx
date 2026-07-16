@@ -160,6 +160,70 @@ export function VerdictHero({
   );
 }
 
+/** The guided flow's end-of-flow verdict when the current wallet can't clear
+ * the goal but an added card can (decision 8): state the honest wallet-only
+ * shortfall first, without pushing the acquisition — the ask below does that
+ * explicitly, on the user's click. */
+export function WalletShortfallHero({
+  walletMiles,
+  targetMiles,
+  programName,
+}: {
+  walletMiles: number;
+  targetMiles: number;
+  programName: string;
+}) {
+  return (
+    <section className="rounded-2xl border border-hairline bg-background/40 p-5 sm:p-6">
+      <p className="flex items-center gap-2 text-sm uppercase tracking-[0.12em] text-muted-foreground">
+        <Info className="size-4 text-muted-foreground" />
+        Your cards alone fall short
+      </p>
+      <h4 className="mt-2.5 max-w-2xl font-heading text-2xl leading-snug text-foreground sm:text-3xl">
+        Your current cards get you ~{fmt(walletMiles)} of the {fmt(targetMiles)}{" "}
+        {programName} miles.
+      </h4>
+      <p className="mt-2 max-w-2xl text-base text-muted-foreground">
+        That&apos;s {fmt(Math.max(0, targetMiles - walletMiles))} miles short
+        within your timeline. Below is the plan that gets you furthest with
+        what you hold — adding one card would close the gap.
+      </p>
+    </section>
+  );
+}
+
+/** The explicit extra-card ask (decision 8): nothing about acquisitions is
+ * pushed until the user opts in — then exactly the engine's labeled pair
+ * (cheapest + best value) is revealed. */
+export function ExtraCardAsk({
+  count,
+  onReveal,
+}: {
+  count: number;
+  onReveal: () => void;
+}) {
+  return (
+    <section className="rounded-2xl border border-gold/30 bg-gold/5 p-5 sm:p-6">
+      <p className="font-heading text-xl text-foreground">
+        Want strategies with additional cards?
+      </p>
+      <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
+        {count >= 2
+          ? "We found two routes that clear your goal by adding one card — the lowest-fee option, and the best overall value."
+          : "We found a route that clears your goal by adding one card — it's both the lowest-fee option and the best overall value."}
+      </p>
+      <button
+        type="button"
+        onClick={onReveal}
+        className="mt-4 inline-flex items-center gap-2 rounded-lg bg-gold px-5 py-2.5 text-sm font-medium text-gold-foreground transition-colors hover:bg-gold/90"
+      >
+        {count >= 2 ? "Show me the two routes" : "Show me the route"}
+        <ArrowRight className="size-4" />
+      </button>
+    </section>
+  );
+}
+
 /** The computed adjustment menu for goals that aren't reachable as stated —
  * each entry is a Stage-6 inverse problem (extend / add card / raise spend /
  * downgrade cabin) the engine verified would actually work. Shared by the
@@ -218,10 +282,28 @@ export type PlanTier = {
    * (two different archetypes can both land on "Add Magnus for Burgundy"
    * with different numbers underneath). */
   headline: string;
+  /** Guided-flow extra-card label from the engine ("cheapest" /
+   * "best_value" / "cheapest_and_best_value") — set only when the current
+   * wallet can't clear the goal. Renders as a gold badge on the tab. */
+  acquisitionRole?: string | null;
   /** Full plan payload — present for every tier on live runs; only for the
    * recommended tier on older saved goals (the rest persisted compactly). */
   detail: PlanTierDetail | null;
 };
+
+/** The engine's pair labels, in user words (decision 9). */
+export function acquisitionRoleLabel(role: string): string | null {
+  switch (role) {
+    case "cheapest":
+      return "Lowest fees";
+    case "best_value":
+      return "Best value";
+    case "cheapest_and_best_value":
+      return "Lowest fees · best value";
+    default:
+      return null;
+  }
+}
 
 /** Base label + a headline suffix when another tier shares the same label —
  * "Add Magnus for Burgundy" appearing twice (two archetypes converging on
@@ -292,6 +374,7 @@ export function StrategyPlanTabs({
   nameOf,
   partnerNameOf,
   preferNoNewCards = false,
+  heading,
 }: {
   tiers: PlanTier[];
   targetMiles: number;
@@ -305,6 +388,9 @@ export function StrategyPlanTabs({
   nameOf: (id: string) => string;
   partnerNameOf: (id: string) => string;
   preferNoNewCards?: boolean;
+  /** Override the tab-section heading (e.g. the feasible path's quiet
+   * "optional upgrades" framing, decision 8). */
+  heading?: string;
 }) {
   const recommended = tiers.find((t) => t.isRecommended) ?? tiers[0];
   const preferred = preferNoNewCards
@@ -322,7 +408,7 @@ export function StrategyPlanTabs({
       {tiers.length > 1 && (
         <section aria-label="Compare your route options">
           <p className="text-sm uppercase tracking-[0.12em] text-muted-foreground">
-            Your routes — pick one to see its full plan
+            {heading ?? "Your routes — pick one to see its full plan"}
           </p>
           <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3" role="tablist">
             {tiers.map((tier) => {
@@ -350,6 +436,11 @@ export function StrategyPlanTabs({
                       <Star className="mt-0.5 size-3.5 shrink-0 fill-gold text-gold" />
                     )}
                   </span>
+                  {tier.acquisitionRole && acquisitionRoleLabel(tier.acquisitionRole) && (
+                    <span className="mt-1 inline-block rounded-full border border-gold/40 bg-gold/10 px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.08em] text-gold">
+                      {acquisitionRoleLabel(tier.acquisitionRole)}
+                    </span>
+                  )}
                   <span className="mt-1.5 block text-xl font-medium tabular-nums text-foreground">
                     {fmt(tier.miles)} <span className="text-sm text-muted-foreground">miles</span>
                   </span>

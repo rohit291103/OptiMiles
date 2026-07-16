@@ -1,0 +1,49 @@
+# OptiMiles ranking weights — v2 (build rule 5: reward rules are config, not
+# code; this is the most-tuned artifact in the system, so it is versioned).
+#
+# v2 = v1's ranking weights UNCHANGED + the new `acquisition_weights` profile
+# (guided-flow decision 9, decision log 2026-07-13-guided-strategy-flow-design).
+# v1 is kept for history; the app default points here.
+#
+# Weights feed the Stage 9 composite: score = Σ(weight × sub-score) / Σ weights,
+# sub-scores 0–100 each (formulas in app/optimization/ranking.py docstring).
+# goal_achievement dominates by design — reaching the target by the date is
+# the product promise; everything else is a trade-off dimension.
+#
+# near_tie_threshold: a top-2 score gap below this is presented honestly as a
+# co-recommendation (Stage 9 failure scenario) instead of a manufactured winner.
+#
+# Changing any number here changes ranking for every user — treat edits like
+# seed rows: human review, then bump the file version (v3) rather than
+# rewriting history silently.
+
+version: "2"
+weights:
+  goal_achievement: "35"
+  efficiency: "20"
+  cost: "15"
+  simplicity: "10"
+  portfolio_utilization: "10"
+  risk: "10"
+near_tie_threshold: "2.0"
+
+# The guided flow's extra-card selection criteria (decision 9), as weights over
+# the SAME six sub-scores — no new scoring engine. The user's stated
+# priorities map directly:
+#   low fees                → cost        (inverted min-max of total fees)
+#   reward ecosystem        → efficiency  (miles the route actually earns)
+#   transfer-partner quality → risk       (cap headroom + processing speed are
+#                                          exactly what the risk penalty scores)
+# Ease-of-getting-the-card is explicitly OUT of scope (decision log).
+# goal_achievement stays modest — every candidate in the pair already clears
+# the goal by construction; it only rewards clearing it sooner.
+# portfolio_utilization is 0: an acquisition necessarily routes spend off the
+# current wallet, so scoring wallet share would bias against exactly the
+# routes this profile exists to compare.
+acquisition_weights:
+  goal_achievement: "15"
+  efficiency: "30"
+  cost: "30"
+  simplicity: "5"
+  portfolio_utilization: "0"
+  risk: "20"

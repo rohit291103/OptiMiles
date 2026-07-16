@@ -11,11 +11,12 @@ from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.domain import (
     ClarificationRequest,
     ConstraintSet,
+    FeasibilityVerdict,
     FinalRecommendation,
     ParsedGoalIntent,
     SpendCategory,
@@ -58,6 +59,9 @@ class RecommendationRequest(BaseModel):
     Either `text` (run Stage 1) or `intent` (client-held loop, skip Stage 1).
     Wallet/spend/constraints are optional — omitted spend applies the flagged
     default template, an empty wallet is a valid (likely-infeasible) context.
+    Spend arrives as EITHER a category split (`spend_profile`) OR one
+    total-over-horizon budget (`total_spend_inr`, guided flow) — never both;
+    the server derives the assumed template split from a total (Stage 4).
     """
 
     text: str | None = None
@@ -65,7 +69,24 @@ class RecommendationRequest(BaseModel):
     profile_city: str | None = None
     wallet: tuple[WalletCardInput, ...] = ()
     spend_profile: tuple[SpendItemInput, ...] = ()
+    total_spend_inr: int | None = Field(
+        default=None,
+        gt=0,
+        description="Approximate total spend over the whole goal horizon, in "
+        "INR. Mutually exclusive with spend_profile; the server spreads it "
+        "uniformly (floor per month) across the default category template and "
+        "flags the derived profile `assumed`.",
+    )
     constraints: ConstraintSet | None = None
+
+    @model_validator(mode="after")
+    def _spend_input_is_split_or_total(self) -> "RecommendationRequest":
+        if self.spend_profile and self.total_spend_inr is not None:
+            raise ValueError(
+                "spend_profile and total_spend_inr are mutually exclusive — "
+                "send a category split or a total, not both"
+            )
+        return self
 
     def wallet_cards(self) -> tuple[WalletCard, ...]:
         return tuple(
@@ -103,6 +124,24 @@ class RecommendationResponse(BaseModel):
         "chain was actually written. None on anonymous/non-persisting calls so "
         "the UI can tell a real save from a best-effort one that failed.",
     )
+
+
+class ProbeResponse(BaseModel):
+    """POST /simulations/probe — the wizard's silent early feasibility check.
+
+    Discriminated on `kind` like the recommendation response (the probe runs
+    the same Stage 1–4 prefix, so it can hit the same early exits). On
+    `feasibility` the verdict carries the Stage-6 adjustment menu; the wizard
+    interrupts only when `verdict.feasible` is false."""
+
+    kind: Literal["feasibility", "clarification", "unsupported_route", "scope_refusal"]
+    verdict: FeasibilityVerdict | None = None
+    miles_required_total: int | None = None
+    horizon_months: int | None = None
+    catalog_snapshot_version: str | None = None
+    clarification: ClarificationRequest | None = None
+    unsupported_route: UnsupportedRoute | None = None
+    message: str | None = None
 
 
 class CardSummary(BaseModel):
@@ -230,6 +269,10 @@ class SavedStrategyOption(BaseModel):
     score: Decimal | None = None
     is_recommended: bool = False
     co_recommended: bool = False
+    # Guided-flow pair label ('cheapest' / 'best_value' /
+    # 'cheapest_and_best_value'; absent on older saves and standard routes).
+    # Deliberately `str` for forward-compat, like runner_up_reason.
+    acquisition_role: str | None = None
 
 
 class SavedStrategy(BaseModel):

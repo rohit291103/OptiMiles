@@ -330,6 +330,7 @@ async def _run_and_respond(
         user_id=user_id,
         wallet=request.wallet_cards(),
         spend_profile=spend,
+        total_spend_inr=request.total_spend_inr,
         constraints=request.constraints,
         profile_city=request.profile_city,
         model=model,

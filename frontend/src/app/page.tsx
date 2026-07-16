@@ -4,7 +4,7 @@ import { ArrowRight, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { FadeUp } from "@/components/ui/motion";
-import { GoalSimulator } from "@/components/goal-simulator";
+import { GoalWizard } from "@/components/goal-wizard";
 import { SiteNav } from "@/components/site-nav";
 import { SiteFooter } from "@/components/site-footer";
 import { Hero } from "@/components/sections/hero";
@@ -29,12 +29,13 @@ export default function Home() {
         <Hero />
 
         {/*
-          The product first, Apple-style. The simulator is a pinned scene: the
-          intro copy holds the viewport while the live simulator scales/fades up
-          into place. Usable on the first scroll — not buried mid-page.
+          The product first, Apple-style. The guided wizard is a pinned scene:
+          the intro copy holds the viewport while the live wizard scales/fades
+          up into place. Usable on the first scroll — not buried mid-page.
+          The education step doubles as the marketing demo (decision 1).
         */}
         <SimulatorScene>
-          <GoalSimulator />
+          <GoalWizard />
         </SimulatorScene>
 
         {/* Dream outcomes */}

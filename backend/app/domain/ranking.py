@@ -50,3 +50,11 @@ class RankedStrategy(BaseModel):
         "strategy's routing — presentation reshape of Stage-5 opportunities, "
         "empty when the OpportunitySet was not supplied to rank()",
     )
+    acquisition_role: str | None = Field(
+        default=None,
+        description="Guided-flow pair label (decision 9, 2026-07-13): "
+        "'cheapest' (lowest-fee card that alone clears the goal) / "
+        "'best_value' (top one_new_card under the acquisition-weights "
+        "profile) / 'cheapest_and_best_value' (the two collapsed onto one "
+        "acquisition). None outside the wallet-can't-clear presentation.",
+    )

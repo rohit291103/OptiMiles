@@ -94,7 +94,7 @@ Vertical slices, dependency-ordered, each one sitting of focused work and
 demoable on its own. Backend calculation/API slices are TDD-mandatory (`tdd`
 skill). References: decisions numbered above; current state per `docs/tracker.md`.
 
-1. [ ] **Simulate accepts a total-spend budget** (decisions 2–3) — depends on: none
+1. [x] **Simulate accepts a total-spend budget** (decisions 2–3) — depends on: none — *shipped 2026-07-14*
    - Backend only: request gains `total_spend_inr` (mutually exclusive with
      `spend_profile`); server scales the default template to the total,
      `monthly = floor(total ÷ horizon_months)`, profile flagged `assumed`.
@@ -103,7 +103,7 @@ skill). References: decisions numbered above; current state per `docs/tracker.md
      `backend/app/api/goals.py`, unit tests.
    - Demo: curl `/simulations` with only a total → full recommendation, assumed flags set.
 
-2. [ ] **Education endpoint returns the wallet's reward story** (decision 4) — depends on: none
+2. [x] **Education endpoint returns the wallet's reward story** (decision 4) — depends on: none — *shipped 2026-07-14*
    - Backend only: wallet card ids → per-card currency, earn rules with category
      labels (portal-accelerated rates included), transfer links (ratio/cap/fee),
      partners shared across the wallet. Pure catalog-snapshot read (Knowledge
@@ -112,7 +112,7 @@ skill). References: decisions numbered above; current state per `docs/tracker.md
      `knowledge/store.py` consumers, unit tests against the seed catalog.
    - Demo: curl with Atlas+TravelOne ids → both cards' chains to KrisFlyer with rates.
 
-3. [ ] **Fast feasibility probe endpoint** (decision 5) — depends on: slice 1
+3. [x] **Fast feasibility probe endpoint** (decision 5) — depends on: slice 1 — *shipped 2026-07-14*
    - Backend only: goal intent + wallet + total → Stage 2–6 only (resolution →
      requirement → context → opportunities → bound check), returning the verdict +
      adjustment menu. No candidates, no simulation, no narration — sub-second.
@@ -120,7 +120,7 @@ skill). References: decisions numbered above; current state per `docs/tracker.md
      `pipeline/run.py` (early-exit composition), tests.
    - Demo: hopeless goal returns `feasible: false` + menu in <1s.
 
-4. [ ] **Wizard shell: goal → cards → total-spend, conversational scroll** (decisions 1, 2, 11, 12) — depends on: slice 1
+4. [x] **Wizard shell: goal → cards → total-spend, conversational scroll** (decisions 1, 2, 11, 12) — depends on: slice 1 — *shipped 2026-07-15 (new `goal-wizard.tsx`, embedded at `/goals/new`; homepage keeps the one-shot until slice 10)*
    - Frontend: step framework (completed steps collapse to editable summary
      lines; editing invalidates downstream; auto-scroll to active step), steps 1–2
      built from the existing goal sentence + bank-grouped picker + a new
@@ -131,21 +131,21 @@ skill). References: decisions numbered above; current state per `docs/tracker.md
      `goal-wizard.tsx` + step components), `frontend/src/lib/api.ts`.
    - Demo: full journey minus education/split — total in, strategy out.
 
-5. [ ] **Hopeless goals get stopped early** (decision 5) — depends on: slices 3, 4
+5. [x] **Hopeless goals get stopped early** (decision 5) — depends on: slices 3, 4 — *shipped 2026-07-15*
    - Frontend: silent probe fires after the total-spend step; clearly-infeasible →
      inline interrupt with the shared `AdjustmentMenu` and editable steps;
      otherwise invisible.
    - Touches: wizard step flow, `frontend/src/lib/api.ts`.
    - Demo: 2-month ×2-pax business on ₹1L stops before education; sane goal flows on.
 
-6. [ ] **Education step in the wizard** (decisions 4, 10, 13) — depends on: slices 2, 4
+6. [x] **Education step in the wizard** (decisions 4, 10, 13) — depends on: slices 2, 4 — *shipped 2026-07-15 (deterministic template text; LLM framing stays slice 10)*
    - Frontend: renders the education payload as the cards → partners → reward
      system story (deterministic template text first); empty wallet skips with the
      one-liner and defers education into the strategy output.
    - Touches: new `education-step` component, wizard flow, `api.ts`.
    - Demo: Atlas+TravelOne shows both chains to KrisFlyer; empty wallet skips.
 
-7. [ ] **Opt-in category split step** (decisions 6, 7) — depends on: slice 4
+7. [x] **Opt-in category split step** (decisions 6, 7) — depends on: slice 4 — *shipped 2026-07-15*
    - Frontend: "Want a spending strategy?" → Yes: categories-win split UI
      (pre-filled from the template scaled to their total; edits free; total
      live-updates). No: run on the assumed split, render the strategy with the
@@ -153,7 +153,7 @@ skill). References: decisions numbered above; current state per `docs/tracker.md
    - Touches: new `split-step` component, wizard flow.
    - Demo: both paths produce a full strategy; the No path shows the caveat.
 
-8. [ ] **Acquisition pair for infeasible goals: cheapest + best-value** (decisions 8, 9) — depends on: none (parallel)
+8. [x] **Acquisition pair for infeasible goals: cheapest + best-value** (decisions 8, 9) — depends on: none (parallel) — *shipped 2026-07-15 (ranking-weights-v2.yaml acquisition profile; cheapest selected by fee, not archetype label — dedupe can merge the cheapest_viable plan into an identical one_new_card plan)*
    - Backend: versioned acquisition-weights profile in the ranking config
      (fees/ecosystem/transfer-quality); infeasible responses expose exactly two
      acquisition strategies — `cheapest_viable` + the top-composite
@@ -162,14 +162,14 @@ skill). References: decisions numbered above; current state per `docs/tracker.md
      `backend/app/optimization/ranking.py`, `pipeline/run.py`, tests.
    - Demo: infeasible run returns the two labeled acquisition routes.
 
-9. [ ] **End-of-flow verdict: confident hero, contextual extra-card ask** (decisions 8, 9) — depends on: slices 7, 8
+9. [x] **End-of-flow verdict: confident hero, contextual extra-card ask** (decisions 8, 9) — depends on: slices 7, 8 — *shipped 2026-07-15*
    - Frontend: feasible → current-cards hero with the existing route tabs demoted
      to quiet "upgrade" options; infeasible → best-effort verdict + explicit
      "want strategies with additional cards?" reveal of the two routes.
    - Touches: `strategy-detail.tsx`, `strategy-story.tsx`, wizard final step.
    - Demo: both verdict paths live against the real engine.
 
-10. [ ] **Wizard ships everywhere + LLM framing on top** (decisions 1, 10) — depends on: slices 4–9
+10. [x] **Wizard ships everywhere + LLM framing on top** (decisions 1, 10) — depends on: slices 4–9 — *shipped 2026-07-15 (homepage embeds the wizard, one-shot simulator deleted; education framing = GET /catalog/education/story, number-echo validated with a 10s bound → null; calculation framing rides the existing Stage-10 narration). Saved-goal signed-in surfaces re-checked statically only (login-gated) — live click-through still on the tracker.*
     - Homepage embed swapped to the wizard; dead one-shot code removed; education
       + calculation framing narrated by the LLM (purpose-built system prompt,
       number-echo validated, template fallback, never blocking); full

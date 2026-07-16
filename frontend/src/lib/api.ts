@@ -42,6 +42,11 @@ export type SimulateRequest = {
   profile_city?: string | null;
   wallet?: WalletCardInput[];
   spend_profile?: SpendItemInput[];
+  /** Approximate TOTAL spend over the whole goal horizon (guided wizard).
+   * Mutually exclusive with spend_profile — the server spreads it uniformly
+   * (floor per month) across its default category template and flags the
+   * derived profile `assumed`. */
+  total_spend_inr?: number;
 };
 
 // ── Response (subset the simulator renders) ──────────────────────────────
@@ -136,6 +141,9 @@ export type RankedStrategy = {
   rank: number;
   headline_differentiator: string;
   co_recommended: boolean;
+  /** Guided-flow extra-card label, set only when the current wallet can't
+   * clear the goal: "cheapest" | "best_value" | "cheapest_and_best_value". */
+  acquisition_role?: string | null;
   allocation_details: AllocationDetail[];
   simulation: {
     ledger: MonthLedgerEntry[];
@@ -208,6 +216,71 @@ export type SimulateResponse =
   | { kind: "clarification"; clarification: ClarificationRequest }
   | { kind: "unsupported_route"; unsupported_route: UnsupportedRoute }
   | { kind: "scope_refusal"; message: string | null };
+
+/** POST /simulations/probe — the wizard's silent early feasibility check
+ * (Stages 1–6 only, sub-second). Same request shape as /simulations; the
+ * verdict carries the adjustment menu when the goal is clearly hopeless. */
+export type ProbeResponse =
+  | {
+      kind: "feasibility";
+      verdict: FeasibilityVerdict;
+      miles_required_total: number;
+      horizon_months: number;
+      catalog_snapshot_version: string;
+    }
+  | { kind: "clarification"; clarification: ClarificationRequest }
+  | { kind: "unsupported_route"; unsupported_route: UnsupportedRoute }
+  | { kind: "scope_refusal"; message: string | null };
+
+/** GET /catalog/education — the selected wallet's reward story, straight off
+ * the catalog snapshot (matches knowledge/education.py). Deterministic and
+ * instant; the wizard's education step renders it as template text. */
+export type EducationEarnRule = {
+  category_slug: string;
+  category_label: string;
+  earn_rate: string;
+  monthly_cap_inr: number | null;
+  quarterly_cap_inr: number | null;
+  annual_cap_inr: number | null;
+  notes: string | null;
+};
+
+export type EducationTransferLink = {
+  partner_id: string;
+  partner_name: string;
+  program_name: string;
+  partner_type: string;
+  ratio_from: number;
+  ratio_to: number;
+  min_transfer_points: number;
+  max_transfer_points: number | null;
+  transfer_fee_inr: number;
+  processing_days_min: number;
+  processing_days_max: number;
+  notes: string | null;
+};
+
+export type CardEducation = {
+  card_id: string;
+  bank: string;
+  card_name: string;
+  currency: { id: string; currency_name: string; issuer: string };
+  base_earn_rate: string;
+  earn_rules: EducationEarnRule[];
+  transfer_links: EducationTransferLink[];
+};
+
+export type EducationPayload = {
+  catalog_snapshot_version: string;
+  cards: CardEducation[];
+  shared_partners: {
+    partner_id: string;
+    partner_name: string;
+    program_name: string;
+    partner_type: string;
+    card_ids: string[];
+  }[];
+};
 
 export type CardSummary = {
   id: string;
@@ -290,6 +363,8 @@ export type SavedStrategyOption = {
   score: string | null;
   is_recommended: boolean;
   co_recommended: boolean;
+  /** Guided-flow extra-card label (absent on older saves). */
+  acquisition_role?: string | null;
 };
 
 export type SavedStrategy = {
@@ -377,6 +452,50 @@ async function postJson<T>(
 /** Run the deterministic pipeline for a structured goal (anonymous). */
 export function simulate(request: SimulateRequest): Promise<SimulateResponse> {
   return postJson<SimulateResponse>("/simulations", request);
+}
+
+/** The wizard's silent feasibility probe — Stages 1–6 only, sub-second.
+ * Callers treat failures as "no signal": the probe is an enhancement and
+ * must never block the flow. */
+export function probeFeasibility(
+  request: SimulateRequest,
+): Promise<ProbeResponse> {
+  return postJson<ProbeResponse>("/simulations/probe", request);
+}
+
+/** The selected wallet's reward story (education step) — a pure catalog
+ * read, instant and deterministic. */
+export async function fetchEducation(
+  cardIds: string[],
+): Promise<EducationPayload> {
+  const params = new URLSearchParams();
+  for (const id of cardIds) params.append("card_ids", id);
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}/catalog/education?${params}`);
+  } catch {
+    throw new ApiError("Couldn't load your cards' reward story.");
+  }
+  if (!response.ok) {
+    throw new ApiError(`Education error (${response.status}).`, response.status);
+  }
+  return (await response.json()) as EducationPayload;
+}
+
+/** LLM-phrased framing over the same education facts (decision 10) — null is
+ * the norm (no key / 429 / failed number-echo check). Pure enhancement: the
+ * deterministic education render never waits on this. */
+export async function fetchEducationStory(
+  cardIds: string[],
+): Promise<string | null> {
+  const params = new URLSearchParams();
+  for (const id of cardIds) params.append("card_ids", id);
+  const response = await fetch(
+    `${API_BASE_URL}/catalog/education/story?${params}`,
+  );
+  if (!response.ok) return null;
+  const body = (await response.json()) as { narrative: string | null };
+  return body.narrative;
 }
 
 /**

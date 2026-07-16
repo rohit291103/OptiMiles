@@ -60,6 +60,39 @@ def default_spend_profile() -> SpendProfile:
     )
 
 
+def spend_profile_from_total(total_spend_inr: int, horizon_months: int) -> SpendProfile:
+    """One total-over-horizon budget → the template split, flagged assumed.
+
+    The guided flow (decision log 2026-07-13, decisions 2–3) asks for a single
+    number — "₹6,00,000 over 12 months" — and the server derives the category
+    profile so the `assumed` flag stays honest. Exact integer arithmetic:
+
+        monthly_budget    = floor(total_spend_inr ÷ horizon_months)
+        category_amount_i = floor(monthly_budget × weight_i ÷ Σ weights)
+
+    with weights = the `DEFAULT_SPEND_PROFILE` template amounts. Both divisions
+    floor so projections never overstate earnings; the ≤ ₹(categories−1)/month
+    floor loss is deliberately dropped, never redistributed. Categories that
+    floor to ₹0 are omitted (a `SpendProfileItem` must be positive); a total too
+    small to fund any category yields an empty profile — Stages 5–6 then declare
+    infeasibility honestly rather than this function inventing spend.
+    """
+    if total_spend_inr <= 0:
+        raise ValueError("total_spend_inr must be positive")
+    if horizon_months <= 0:
+        raise ValueError("horizon_months must be positive")
+    monthly_budget = total_spend_inr // horizon_months
+    weight_sum = sum(amount for _, amount in DEFAULT_SPEND_PROFILE)
+    return SpendProfile(
+        items=tuple(
+            SpendProfileItem(category_slug=category, monthly_spend_inr=amount)
+            for category, weight in DEFAULT_SPEND_PROFILE
+            if (amount := monthly_budget * weight // weight_sum) > 0
+        ),
+        assumed=True,
+    )
+
+
 def horizon_months(target_date: date, today: date) -> int:
     """Whole months from today to the target, rounded UP, floored at 1.
 
@@ -80,16 +113,29 @@ def assemble_context(
     *,
     wallet: tuple[WalletCard, ...],
     spend_profile: SpendProfile | None,
+    total_spend_inr: int | None = None,
     constraints: ConstraintSet | None,
     today: date,
 ) -> PlanningContext:
+    """`spend_profile` and `total_spend_inr` are mutually exclusive: a caller
+    supplying both is a contract violation (fail loud — the API edge already
+    422s it). Neither ⇒ the flagged default template."""
+    if spend_profile is not None and total_spend_inr is not None:
+        raise ValueError("spend_profile and total_spend_inr are mutually exclusive")
+    horizon = horizon_months(goal.target_date, today)
+    if spend_profile is None:
+        spend_profile = (
+            spend_profile_from_total(total_spend_inr, horizon)
+            if total_spend_inr is not None
+            else default_spend_profile()
+        )
     return PlanningContext(
         user_id=goal.user_id,
         goal=goal,
         requirement=requirement,
         snapshot=snapshot,
         wallet=wallet,
-        spend_profile=spend_profile if spend_profile is not None else default_spend_profile(),
-        horizon_months=horizon_months(goal.target_date, today),
+        spend_profile=spend_profile,
+        horizon_months=horizon,
         constraints=constraints if constraints is not None else ConstraintSet(),
     )

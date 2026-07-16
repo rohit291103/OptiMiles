@@ -287,6 +287,7 @@ def _strategy_options(recommendation: FinalRecommendation) -> list[dict[str, obj
                 "score": str(option.score),
                 "is_recommended": is_recommended,
                 "co_recommended": option.co_recommended,
+                "acquisition_role": option.acquisition_role,
             }
         )
     return tiers

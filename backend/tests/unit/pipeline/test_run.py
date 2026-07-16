@@ -32,8 +32,10 @@ from app.knowledge.seed_catalog import seed_id
 from app.optimization.ranking import load_ranking_weights
 from app.pipeline.run import (
     ClarificationNeeded,
+    FeasibilityProbe,
     RouteUnsupported,
     ScopeRefused,
+    run_feasibility_probe,
     run_from_context,
     run_goal_pipeline,
 )
@@ -41,6 +43,7 @@ from tests.unit.pipeline.helpers import FakeChatModel, make_goal
 
 TODAY = date(2026, 7, 4)
 WEIGHTS = load_ranking_weights(Path("config/ranking-weights-v1.yaml"))
+WEIGHTS_V2 = load_ranking_weights(Path("config/ranking-weights-v2.yaml"))
 
 # A wallet + spend that comfortably clears the SEA-business target, so the
 # feasible path is exercised deterministically.
@@ -202,6 +205,199 @@ async def test_unsupported_route_short_circuits(snapshot: CatalogSnapshot) -> No
 async def test_no_text_and_no_intent_is_an_error(snapshot: CatalogSnapshot) -> None:
     with pytest.raises(ValueError):
         await _run_text(snapshot, text="", intent=None)
+
+
+# ── Feasibility probe (Stages 2–6 only — guided-flow slice 3) ────────────
+
+
+async def _probe(
+    snapshot: CatalogSnapshot,
+    *,
+    intent: ParsedGoalIntent | None = None,
+    wallet: tuple[WalletCard, ...] = _FEASIBLE_WALLET,
+    spend: SpendProfile | None = _FEASIBLE_SPEND,
+    total_spend_inr: int | None = None,
+    constraints: ConstraintSet | None = None,
+):
+    return await run_feasibility_probe(
+        text=None,
+        intent=intent or _complete_intent(),
+        snapshot=snapshot,
+        buffer_pct=5.0,
+        user_id=uuid4(),
+        wallet=wallet,
+        spend_profile=spend,
+        total_spend_inr=total_spend_inr,
+        constraints=constraints,
+        today=TODAY,
+    )
+
+
+async def test_probe_feasible_returns_verdict_only(snapshot: CatalogSnapshot) -> None:
+    """The silent early check: a sane goal gets a quiet feasible verdict, with
+    the requirement + lineage the wizard needs and nothing else (no candidates,
+    no simulation, no narration fields exist on the type)."""
+    result = await _probe(snapshot)
+    assert isinstance(result, FeasibilityProbe)
+    assert result.verdict.feasible is True
+    assert result.miles_required_total > 0
+    assert result.horizon_months == 8
+    assert result.catalog_snapshot_version == snapshot.version
+
+
+async def test_probe_hopeless_goal_ships_adjustment_menu(
+    snapshot: CatalogSnapshot,
+) -> None:
+    """Hopeless-with-a-fix (2 pax on an Atlas whose transfer cap tops out at
+    60,000 of the 90,000 miles needed, no new cards) → feasible=False plus the
+    Stage-6 adjustment menu — the wizard interrupts with this before walking
+    the user through education."""
+    two_pax = ParsedGoalIntent(
+        origin_city="Hyderabad",
+        destination_city="Singapore",
+        cabin_class="business",
+        timeline_months=8,
+        num_passengers=2,
+        confidence=0.95,
+    )
+    travel_only = SpendProfile(
+        items=(SpendProfileItem(category_slug=SpendCategory.TRAVEL, monthly_spend_inr=100_000),)
+    )
+    result = await _probe(
+        snapshot,
+        intent=two_pax,
+        wallet=(WalletCard(card_id=seed_id("card", "axis-atlas"), current_points_balance=0),),
+        spend=travel_only,
+        constraints=ConstraintSet(no_new_cards=True),
+    )
+    assert isinstance(result, FeasibilityProbe)
+    assert result.verdict.feasible is False
+    assert result.verdict.adjustment_options
+
+
+async def test_probe_accepts_total_spend_budget(snapshot: CatalogSnapshot) -> None:
+    """The probe runs on the same total-over-horizon input the wizard collects
+    (slice 1's derivation, shared through Stage 4)."""
+    result = await _probe(snapshot, spend=None, total_spend_inr=800_000)
+    assert isinstance(result, FeasibilityProbe)
+    assert result.verdict.feasible is True
+
+
+async def test_probe_short_circuits_on_incomplete_intent(
+    snapshot: CatalogSnapshot,
+) -> None:
+    incomplete = ParsedGoalIntent(
+        origin_city="Hyderabad",
+        destination_city=None,
+        cabin_class="business",
+        timeline_months=8,
+        num_passengers=1,
+        confidence=0.9,
+    )
+    result = await _probe(snapshot, intent=incomplete)
+    assert isinstance(result, ClarificationNeeded)
+
+
+async def test_probe_is_deterministic(snapshot: CatalogSnapshot) -> None:
+    """No minted ids in the probe result — repeat runs are fully identical."""
+    assert await _probe(snapshot) == await _probe(snapshot)
+
+
+async def test_probe_never_runs_stages_seven_plus(
+    snapshot: CatalogSnapshot, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The probe's whole value is stopping at the Stage-6 bound check — spy on
+    the expensive stages so a future accidental Stage 7+ call fails loudly
+    here, not as a latency regression in production."""
+    import app.pipeline.run as run_module
+
+    def _forbidden(*args: object, **kwargs: object) -> object:
+        raise AssertionError("the feasibility probe must stop after Stage 6")
+
+    monkeypatch.setattr(run_module, "generate_candidates", _forbidden)
+    monkeypatch.setattr(run_module, "simulate", _forbidden)
+    monkeypatch.setattr(run_module, "narrate", _forbidden)
+    result = await _probe(snapshot)
+    assert isinstance(result, FeasibilityProbe)
+
+
+# ── Acquisition pair (guided-flow slice 8, seed catalog end-to-end) ───────
+
+
+async def test_wallet_infeasible_run_presents_labeled_acquisition_pair(
+    snapshot: CatalogSnapshot,
+) -> None:
+    """Empty wallet, 12-month 1-pax goal (required 45,000): no wallet-only
+    route exists, several acquisitions clear it. With the v2 weights the
+    package must present the labeled pair — every labeled route achieves the
+    goal, the cheapest is genuinely the lowest-fee labeled route, and dedupe
+    means each acquisition set appears once."""
+    twelve_months = ParsedGoalIntent(
+        origin_city="Hyderabad",
+        destination_city="Singapore",
+        cabin_class="business",
+        timeline_months=12,
+        num_passengers=1,
+        confidence=0.95,
+    )
+    spend = SpendProfile(
+        items=(
+            SpendProfileItem(category_slug=SpendCategory.TRAVEL, monthly_spend_inr=40_000),
+            SpendProfileItem(category_slug=SpendCategory.DINING, monthly_spend_inr=30_000),
+        )
+    )
+    result = await run_goal_pipeline(
+        text=None,
+        intent=twelve_months,
+        snapshot=snapshot,
+        weights=WEIGHTS_V2,
+        buffer_pct=5.0,
+        user_id=uuid4(),
+        wallet=(),
+        spend_profile=spend,
+        today=TODAY,
+    )
+    assert isinstance(result, FinalRecommendation)
+    presented = (result.recommended, *result.alternatives)
+    labeled = [r for r in presented if r is not None and r.acquisition_role is not None]
+    assert labeled, "wallet can't clear the goal — the pair must be offered"
+    roles = {r.acquisition_role for r in labeled}
+    assert roles <= {"cheapest", "best_value", "cheapest_and_best_value"}
+    # Both halves of the pair are represented (possibly collapsed into one).
+    assert roles == {"cheapest", "best_value"} or roles == {"cheapest_and_best_value"}
+    for route in labeled:
+        assert route.strategy.cards_to_acquire  # an acquisition, by definition
+        assert not route.simulation.misses_goal  # the pair is a promise
+    if len(labeled) == 2:
+        by_role = {r.acquisition_role: r for r in labeled}
+        assert (
+            by_role["cheapest"].simulation.card_fees_inr
+            <= by_role["best_value"].simulation.card_fees_inr
+        )
+        sets = {frozenset(r.strategy.cards_to_acquire) for r in labeled}
+        assert len(sets) == 2  # deduped: distinct acquisition sets
+
+
+async def test_feasible_wallet_run_has_no_acquisition_labels(
+    snapshot: CatalogSnapshot,
+) -> None:
+    """Decision 8's feasible path: the wallet clears the goal → standard
+    presentation, no pair labels, even with the v2 profile loaded."""
+    result = await run_goal_pipeline(
+        text=None,
+        intent=_complete_intent(),
+        snapshot=snapshot,
+        weights=WEIGHTS_V2,
+        buffer_pct=5.0,
+        user_id=uuid4(),
+        wallet=_FEASIBLE_WALLET,
+        spend_profile=_FEASIBLE_SPEND,
+        today=TODAY,
+    )
+    assert isinstance(result, FinalRecommendation)
+    assert result.recommended is not None
+    for route in (result.recommended, *result.alternatives):
+        assert route.acquisition_role is None
 
 
 # ── Infeasible path (adjustment menu is the recommendation) ──────────────

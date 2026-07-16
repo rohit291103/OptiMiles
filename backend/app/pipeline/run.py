@@ -6,7 +6,7 @@ framework, the same order every request. The two AI stages (1 and 10) are
 fenced behind a `ChatModel | None` and both degrade to non-LLM paths, so the
 whole pipeline runs end-to-end with no API key.
 
-Two entry points share the deterministic core:
+Three entry points share the deterministic stages:
 
 - **`run_goal_pipeline`** — Flow A. Raw text (or an already-resolved intent for
   the client-held clarification loop) → intent → resolution → requirement →
@@ -22,6 +22,11 @@ Two entry points share the deterministic core:
   Infeasible goals still produce a best-effort plan when one is allocatable
   (`recommended` set, `misses_goal=True`) plus the adjustment menu; only a
   wallet with nothing to allocate leaves `recommended=None`.
+
+- **`run_feasibility_probe`** — the guided wizard's silent early check
+  (decision 5, 2026-07-13): the same Stage 1–4 prefix, then Stage 5 + the
+  Stage-6 bound check only. Verdict + adjustment menu out, sub-second, no
+  candidates/simulation/narration.
 
 The orchestrator owns no DB writes and no engine internals; it calls engine
 entry points in order and shapes their outputs. Persistence is the caller's job
@@ -41,6 +46,7 @@ from app.domain import (
     CatalogSnapshot,
     ClarificationRequest,
     ConstraintSet,
+    FeasibilityVerdict,
     FinalRecommendation,
     GoalResolution,
     ParsedGoalIntent,
@@ -54,7 +60,12 @@ from app.domain import (
 from app.knowledge.goal_resolution import resolve_goal
 from app.knowledge.requirements import estimate_requirement
 from app.optimization.feasibility import assess_feasibility
-from app.optimization.ranking import RankingWeights, rank, select_route_options
+from app.optimization.ranking import (
+    RankingWeights,
+    rank,
+    select_guided_routes,
+    select_route_options,
+)
 from app.optimization.strategies import generate_candidates
 from app.pipeline.assemble import assemble_recommendation
 from app.pipeline.context import assemble_context
@@ -93,6 +104,25 @@ PipelineOutcome = (
 )
 
 
+class FeasibilityProbe(BaseModel):
+    """Stages 1–6 only — the wizard's silent early check (guided-flow
+    decision 5). Just the verdict (with its adjustment menu) plus the numbers
+    the interrupt UI needs; no candidates, no simulation, no narration. No
+    minted ids either, so repeat probes are fully identical."""
+
+    model_config = ConfigDict(frozen=True)
+
+    verdict: FeasibilityVerdict
+    miles_required_total: int
+    horizon_months: int
+    catalog_snapshot_version: str
+
+
+# What the probe can produce: a verdict, or the same honest early exits as
+# Flow A (the probe runs the identical Stage 1–4 prefix).
+ProbeOutcome = FeasibilityProbe | ClarificationNeeded | RouteUnsupported | ScopeRefused
+
+
 async def run_goal_pipeline(
     *,
     text: str | None,
@@ -103,6 +133,7 @@ async def run_goal_pipeline(
     user_id: UUID,
     wallet: tuple[WalletCard, ...] = (),
     spend_profile: SpendProfile | None = None,
+    total_spend_inr: int | None = None,
     constraints: ConstraintSet | None = None,
     profile_city: str | None = None,
     model: ChatModel | None = None,
@@ -113,9 +144,105 @@ async def run_goal_pipeline(
     Pass `intent` directly to skip Stage 1 — this is how the client-held
     clarification loop resubmits an accumulated intent once it's complete.
     Pass `text` to run intent extraction (LLM or structured-form fallback).
+    Pass `total_spend_inr` (mutually exclusive with `spend_profile`) to have
+    Stage 4 derive the assumed template split from one total-over-horizon
+    budget — the split needs the horizon, so it can only happen here.
     """
-    today = today or date.today()
+    prepared = await _prepare_context(
+        text=text,
+        intent=intent,
+        snapshot=snapshot,
+        buffer_pct=buffer_pct,
+        user_id=user_id,
+        wallet=wallet,
+        spend_profile=spend_profile,
+        total_spend_inr=total_spend_inr,
+        constraints=constraints,
+        profile_city=profile_city,
+        model=model,
+        today=today or date.today(),
+    )
+    if not isinstance(prepared, tuple):
+        return prepared
+    context, resolved_intent = prepared
+    return await run_from_context(
+        context, weights=weights, model=model, intent=resolved_intent
+    )
 
+
+async def run_feasibility_probe(
+    *,
+    text: str | None,
+    intent: ParsedGoalIntent | None,
+    snapshot: CatalogSnapshot,
+    buffer_pct: float,
+    user_id: UUID,
+    wallet: tuple[WalletCard, ...] = (),
+    spend_profile: SpendProfile | None = None,
+    total_spend_inr: int | None = None,
+    constraints: ConstraintSet | None = None,
+    profile_city: str | None = None,
+    model: ChatModel | None = None,
+    today: date | None = None,
+) -> ProbeOutcome:
+    """Stages 1–6 only: the wizard's silent early feasibility check.
+
+    Same Stage 1–4 prefix as Flow A (identical early exits), then opportunity
+    enumeration and the cheap Stage-6 bound check — no candidate generation, no
+    simulation, no narration, so it returns in well under a second. Clearly
+    hopeless goals get the adjustment menu before the user is walked through
+    education (guided-flow decision 5)."""
+    prepared = await _prepare_context(
+        text=text,
+        intent=intent,
+        snapshot=snapshot,
+        buffer_pct=buffer_pct,
+        user_id=user_id,
+        wallet=wallet,
+        spend_profile=spend_profile,
+        total_spend_inr=total_spend_inr,
+        constraints=constraints,
+        profile_city=profile_city,
+        model=model,
+        today=today or date.today(),
+    )
+    if not isinstance(prepared, tuple):
+        return prepared
+    context, _ = prepared
+
+    # Stage 5 + the Stage-6 bound check — the whole cost of the probe.
+    opportunities = enumerate_opportunities(context)
+    verdict = assess_feasibility(opportunities, context)
+    return FeasibilityProbe(
+        verdict=verdict,
+        miles_required_total=context.requirement.miles_required_total,
+        horizon_months=context.horizon_months,
+        catalog_snapshot_version=context.snapshot.version,
+    )
+
+
+async def _prepare_context(
+    *,
+    text: str | None,
+    intent: ParsedGoalIntent | None,
+    snapshot: CatalogSnapshot,
+    buffer_pct: float,
+    user_id: UUID,
+    wallet: tuple[WalletCard, ...],
+    spend_profile: SpendProfile | None,
+    total_spend_inr: int | None,
+    constraints: ConstraintSet | None,
+    profile_city: str | None,
+    model: ChatModel | None,
+    today: date,
+) -> (
+    tuple[PlanningContext, ParsedGoalIntent]
+    | ClarificationNeeded
+    | RouteUnsupported
+    | ScopeRefused
+):
+    """Stages 1–4, shared by Flow A and the feasibility probe: intent →
+    resolution → requirement → PlanningContext, or the honest early exit."""
     # Stage 1 — Intent Extraction & Clarification (AI edge, or skipped).
     if intent is None:
         if text is None:
@@ -147,11 +274,11 @@ async def run_goal_pipeline(
         snapshot,
         wallet=wallet,
         spend_profile=spend_profile,
+        total_spend_inr=total_spend_inr,
         constraints=constraints,
         today=today,
     )
-
-    return await run_from_context(context, weights=weights, model=model, intent=intent)
+    return context, intent
 
 
 async def run_from_context(
@@ -188,7 +315,17 @@ async def run_from_context(
     # acquisition set (archetype variants of the same acquisition collapse
     # to the best-ranked plan).
     ranked = rank(pairs, context, weights, opportunities=opportunities)
-    presented = select_route_options(ranked)
+    # Guided-flow presentation (decisions 8–9, 2026-07-13): when the wallet
+    # can't clear the goal but an acquisition can, present the labeled
+    # cheapest + best-value pair (plus the wallet best-effort). Everywhere
+    # else — wallet clears, nothing clears, or a config without the
+    # acquisition profile — the standard ≤3-distinct-routes selection stands.
+    guided = (
+        select_guided_routes(ranked, weights.acquisition)
+        if weights.acquisition is not None
+        else None
+    )
+    presented = guided if guided is not None else select_route_options(ranked)
     recommended: RankedStrategy | None = presented[0] if presented else None
 
     # Stage 10 — Explanation & narration (AI edge; template fallback).

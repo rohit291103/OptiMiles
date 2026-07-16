@@ -92,19 +92,24 @@ _RECONCILE_LOG_GAP = Decimal("0.10")  # >10% claim/simulation gap = generator bu
 _NEVER = 10**6  # months_to_goal for goal-missing candidates in dominance checks
 
 
-class RankingWeights(BaseModel):
-    """The versioned scoring policy (config, not code — build rule 5)."""
+class AcquisitionWeights(BaseModel):
+    """A profile over the six Stage-9 sub-scores (config, not code).
+
+    Used as the guided flow's acquisition-selection criteria (decision 9,
+    2026-07-13): the user's stated priorities map onto existing sub-scores —
+    low fees → cost, reward-ecosystem strength → efficiency, transfer-partner
+    quality → risk (cap headroom + processing speed are exactly what the risk
+    penalty measures). Ease-to-get is explicitly out of scope. No new scoring
+    machinery: the composite formula is Stage 9's, only the weights differ."""
 
     model_config = ConfigDict(frozen=True)
 
-    version: str
     goal_achievement: Decimal = Field(ge=0)
     efficiency: Decimal = Field(ge=0)
     cost: Decimal = Field(ge=0)
     simplicity: Decimal = Field(ge=0)
     portfolio_utilization: Decimal = Field(ge=0)
     risk: Decimal = Field(ge=0)
-    near_tie_threshold: Decimal = Field(ge=0)
 
     @model_validator(mode="after")
     def _weights_must_weigh(self) -> Self:
@@ -123,11 +128,26 @@ class RankingWeights(BaseModel):
         )
 
 
+class RankingWeights(AcquisitionWeights):
+    """The versioned scoring policy (config, not code — build rule 5).
+
+    `acquisition` is the optional second profile the guided flow scores
+    extra-card routes with (v2 config); None on configs that predate it."""
+
+    version: str
+    near_tie_threshold: Decimal = Field(ge=0)
+    acquisition: AcquisitionWeights | None = None
+
+
 def load_ranking_weights(path: Path) -> RankingWeights:
     raw = yaml.safe_load(path.read_text())
+    acquisition_raw = raw.get("acquisition_weights")
     return RankingWeights(
         version=str(raw["version"]),
         near_tie_threshold=raw["near_tie_threshold"],
+        acquisition=(
+            AcquisitionWeights(**acquisition_raw) if acquisition_raw is not None else None
+        ),
         **raw["weights"],
     )
 
@@ -243,6 +263,102 @@ def select_route_options(
         if len(selected) == max_options:
             break
     return tuple(selected)
+
+
+def select_acquisition_pair(
+    ranked: tuple[RankedStrategy, ...] | Sequence[RankedStrategy],
+    acquisition: AcquisitionWeights,
+) -> tuple[RankedStrategy, ...]:
+    """The guided flow's two extra-card offerings (decision 9, 2026-07-13).
+
+    Over already-ranked strategies, pick:
+      - **cheapest** — the goal-achieving acquiring route with the lowest
+        card (joining) fees, ties to the better rank. Selected by fee, not by
+        the `cheapest_viable` archetype label: the archetype exists to make
+        sure this candidate is *generated*, but Stage 9's duplicate-prune can
+        merge its forced plan into an identical `one_new_card` plan (first-in
+        wins), so the label is an unreliable witness — the fee is the fact.
+      - **best_value** — the goal-achieving `one_new_card` candidate with the
+        highest composite under the acquisition-weights profile (Stage 9's
+        composite formula, different weights); ties break by original rank.
+
+    Goal-missing candidates are never offered — the pair is a promise that
+    these routes clear the goal. If both picks land on the same acquisition
+    set they collapse to one route (the higher acquisition-composite plan,
+    ties to the better rank) labeled `cheapest_and_best_value`. Each returned
+    strategy is a copy carrying its `acquisition_role`; cheapest first."""
+    achieving = [entry for entry in ranked if not _misses(entry.simulation)]
+
+    cheapest = min(
+        (e for e in achieving if e.strategy.cards_to_acquire),
+        key=lambda e: (e.simulation.card_fees_inr, e.rank),
+        default=None,
+    )
+    best_value: RankedStrategy | None = None
+    best_composite: Decimal | None = None
+    for entry in achieving:  # ranked order ⇒ strict > keeps the better rank on ties
+        if entry.strategy.archetype != StrategyArchetype.ONE_NEW_CARD:
+            continue
+        if not entry.strategy.cards_to_acquire:
+            continue
+        composite = _composite(entry.score_breakdown, acquisition)
+        if best_composite is None or composite > best_composite:
+            best_value, best_composite = entry, composite
+
+    if cheapest is None and best_value is None:
+        return ()
+    if cheapest is None:
+        assert best_value is not None
+        return (best_value.model_copy(update={"acquisition_role": "best_value"}),)
+    if best_value is None:
+        return (cheapest.model_copy(update={"acquisition_role": "cheapest"}),)
+
+    same_set = frozenset(cheapest.strategy.cards_to_acquire) == frozenset(
+        best_value.strategy.cards_to_acquire
+    )
+    if same_set:
+        cheapest_composite = _composite(cheapest.score_breakdown, acquisition)
+        assert best_composite is not None
+        keep = (
+            best_value
+            if best_composite > cheapest_composite
+            or (best_composite == cheapest_composite and best_value.rank < cheapest.rank)
+            else cheapest
+        )
+        return (keep.model_copy(update={"acquisition_role": "cheapest_and_best_value"}),)
+    return (
+        cheapest.model_copy(update={"acquisition_role": "cheapest"}),
+        best_value.model_copy(update={"acquisition_role": "best_value"}),
+    )
+
+
+def select_guided_routes(
+    ranked: tuple[RankedStrategy, ...],
+    acquisition: AcquisitionWeights,
+) -> tuple[RankedStrategy, ...] | None:
+    """Guided-flow presentation (decisions 8–9): when the current wallet
+    can't clear the goal but an acquisition can, present the labeled pair (in
+    original rank order) plus the best wallet-only route last (the honest
+    best-effort the verdict hero shows). Returns None whenever the reshaping
+    doesn't apply — the wallet clears the goal (standard hero + quiet upgrade
+    tabs), or nothing acquiring achieves it (the existing best-effort +
+    adjustment-menu path) — so callers fall back to `select_route_options`."""
+    wallet_clears = any(
+        not _misses(entry.simulation) and not entry.strategy.cards_to_acquire
+        for entry in ranked
+    )
+    if wallet_clears:
+        return None
+    pair = select_acquisition_pair(ranked, acquisition)
+    if not pair:
+        return None
+    routes = list(sorted(pair, key=lambda entry: entry.rank))
+    best_effort = next(
+        (entry for entry in ranked if not entry.strategy.cards_to_acquire), None
+    )
+    if best_effort is not None:
+        routes.append(best_effort)
+    return tuple(routes)
 
 
 def _opportunity_index(
@@ -507,7 +623,7 @@ def _down(value: Decimal) -> Decimal:
     return value.quantize(_TWO_DP, rounding=ROUND_DOWN)
 
 
-def _composite(breakdown: ScoreBreakdown, weights: RankingWeights) -> Decimal:
+def _composite(breakdown: ScoreBreakdown, weights: AcquisitionWeights) -> Decimal:
     weighted = (
         weights.goal_achievement * breakdown.goal_achievement
         + weights.efficiency * breakdown.efficiency
