@@ -106,6 +106,9 @@ export function GoalWizard() {
   const [saveState, setSaveState] = useState<
     "idle" | "saving" | "saved" | "error" | "session_expired"
   >("idle");
+  // The persisted goal's id from a landed save — links "Saved ✓" straight to
+  // the saved goal instead of the dashboard list.
+  const [savedGoalId, setSavedGoalId] = useState<string | null>(null);
   const { user, loading: authLoading } = useAuth();
 
   const months = Math.max(Number(timeline) || 1, 1);
@@ -335,6 +338,7 @@ export function GoalWizard() {
       }
       const result = await simulateAndSave(lastRequest, token);
       const saved = result.kind === "recommendation" && result.persisted === true;
+      setSavedGoalId(saved ? (result.saved_goal_id ?? null) : null);
       setSaveState(saved ? "saved" : "error");
     } catch {
       setSaveState("error");
@@ -772,6 +776,7 @@ export function GoalWizard() {
             <SaveGoal
               isLoggedIn={Boolean(user)}
               state={saveState}
+              savedGoalId={savedGoalId}
               onSave={handleSave}
             />
           )}

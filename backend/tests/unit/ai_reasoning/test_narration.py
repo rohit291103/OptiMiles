@@ -165,6 +165,77 @@ async def test_llm_failure_falls_back_to_template(snapshot: CatalogSnapshot) -> 
     assert narration.model_version == "template-fallback"
 
 
+async def test_slow_model_is_abandoned_within_the_timeout(
+    snapshot: CatalogSnapshot,
+) -> None:
+    """Each narration attempt is time-bounded: a provider that stalls (e.g. a
+    rate-limited upstream honouring a 29s Retry-After inside its client
+    retries) degrades to the template instead of blowing the 30s request
+    budget. One timed-out attempt ⇒ straight to template, no second call."""
+    import asyncio
+
+    class SlowModel:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        async def complete(self, **kwargs: object) -> RecommendationNarration:
+            self.calls += 1
+            await asyncio.sleep(30)
+            return _good_narration()
+
+    context = _context(snapshot)
+    model = SlowModel()
+    narration = await narrate(
+        _ranked(context),
+        _verdict(context),
+        context,
+        alternatives=(),
+        model=model,
+        timeout_seconds=0.05,
+    )
+    assert narration.model_version == "template-fallback"
+    assert model.calls == 1
+
+
+async def test_regeneration_shares_the_total_budget(
+    snapshot: CatalogSnapshot,
+) -> None:
+    """`timeout_seconds` is the TOTAL Stage-10 budget: a fast-but-unfaithful
+    draft followed by a stalled regeneration still resolves to the template
+    within the one budget — the two attempts never stack to 2× the bound."""
+    import asyncio
+    import time
+
+    class UnfaithfulThenSlow:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        async def complete(self, **kwargs: object) -> RecommendationNarration:
+            self.calls += 1
+            if self.calls == 1:
+                # Instant draft citing a number the payload can't back.
+                return _good_narration().model_copy(
+                    update={"summary": "You will earn 9,999,999 miles."}
+                )
+            await asyncio.sleep(30)
+            return _good_narration()
+
+    context = _context(snapshot)
+    model = UnfaithfulThenSlow()
+    started = time.monotonic()
+    narration = await narrate(
+        _ranked(context),
+        _verdict(context),
+        context,
+        alternatives=(),
+        model=model,
+        timeout_seconds=0.2,
+    )
+    assert narration.model_version == "template-fallback"
+    assert model.calls == 2  # the regeneration ran, bounded by the remainder
+    assert time.monotonic() - started < 1.0
+
+
 # ── Tier comparison ("your cards → +1 → +2" story) ─────────────────────────
 
 

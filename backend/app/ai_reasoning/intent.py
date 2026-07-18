@@ -23,6 +23,7 @@ Scope refusal: a low-confidence reading with no usable travel fields is an
 out-of-MVP-scope request ("optimize my taxes"); the pipeline never starts.
 """
 
+import asyncio
 import logging
 
 from pydantic import BaseModel, ConfigDict
@@ -70,16 +71,30 @@ async def extract_intent(
     *,
     model: ChatModel | None,
     profile_city: str | None = None,
+    timeout_seconds: float = 10.0,
 ) -> ParsedGoalIntent | ClarificationRequest | ScopeRefusal:
     if model is None:
         return _ask_for_everything()
 
     try:
-        proposal = await model.complete(
-            instructions=_instructions(),
-            prompt=_prompt(text, snapshot),
-            output_type=ParsedGoalIntent,
+        # Hard per-call budget (same rationale as narration/education): the
+        # provider client's internal 429 retries honour Retry-After sleeps
+        # that can stall far past the request budget; the structured-form
+        # clarification is the honest fallback either way.
+        proposal = await asyncio.wait_for(
+            model.complete(
+                instructions=_instructions(),
+                prompt=_prompt(text, snapshot),
+                output_type=ParsedGoalIntent,
+            ),
+            timeout=timeout_seconds,
         )
+    except TimeoutError:
+        logger.warning(
+            "intent extraction LLM call exceeded %.1fs; falling back to clarification",
+            timeout_seconds,
+        )
+        return _ask_for_everything()
     except Exception:
         logger.warning("intent extraction LLM call failed; falling back to clarification")
         return _ask_for_everything()

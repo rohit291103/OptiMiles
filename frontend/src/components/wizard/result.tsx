@@ -136,10 +136,13 @@ function Note({ title, children }: { title: string; children: React.ReactNode })
 export function SaveGoal({
   isLoggedIn,
   state,
+  savedGoalId,
   onSave,
 }: {
   isLoggedIn: boolean;
   state: "idle" | "saving" | "saved" | "error" | "session_expired";
+  /** Set when the save landed — links straight to the saved goal. */
+  savedGoalId?: string | null;
   onSave: () => void;
 }) {
   if (!isLoggedIn) {
@@ -184,8 +187,11 @@ export function SaveGoal({
       {state === "saved" && (
         <span className="text-sm text-muted-foreground" role="status">
           Saved to your account.{" "}
-          <Link href="/goals" className="font-medium text-gold hover:underline">
-            View it on your dashboard →
+          <Link
+            href={savedGoalId ? `/goals/${savedGoalId}` : "/goals"}
+            className="font-medium text-gold hover:underline"
+          >
+            {savedGoalId ? "View your saved strategy →" : "View it on your dashboard →"}
           </Link>
         </span>
       )}

@@ -66,14 +66,14 @@ def test_delete_goal_requires_auth() -> None:
     """Destructive and per-user ⇒ no token, no delete (401)."""
     app = create_app()
     with TestClient(app) as client:
-        response = client.delete(f"/goals/{uuid4()}")
+        response = client.delete(f"/v1/goals/{uuid4()}")
     assert response.status_code == 401
 
 
 def test_unknown_or_foreign_goal_is_404(monkeypatch: pytest.MonkeyPatch) -> None:
     with _client_with_fake_delete(monkeypatch, deleted=False) as client:
         response = client.delete(
-            f"/goals/{uuid4()}", headers={"Authorization": f"Bearer {_token()}"}
+            f"/v1/goals/{uuid4()}", headers={"Authorization": f"Bearer {_token()}"}
         )
     assert response.status_code == 404
 
@@ -81,7 +81,7 @@ def test_unknown_or_foreign_goal_is_404(monkeypatch: pytest.MonkeyPatch) -> None
 def test_successful_delete_is_empty_204(monkeypatch: pytest.MonkeyPatch) -> None:
     with _client_with_fake_delete(monkeypatch, deleted=True) as client:
         response = client.delete(
-            f"/goals/{uuid4()}", headers={"Authorization": f"Bearer {_token()}"}
+            f"/v1/goals/{uuid4()}", headers={"Authorization": f"Bearer {_token()}"}
         )
     assert response.status_code == 204
     assert response.content == b""

@@ -366,7 +366,7 @@ def test_goal_detail_requires_auth() -> None:
     """Per-user data ⇒ no token, no detail (401), same as the list."""
     app = create_app()
     with TestClient(app) as client:
-        response = client.get(f"/goals/{uuid4()}")
+        response = client.get(f"/v1/goals/{uuid4()}")
     assert response.status_code == 401
 
 
@@ -418,7 +418,7 @@ def test_unknown_goal_is_404(
     monkeypatch.setattr("app.api.goals.get_engine", lambda: FakeEngine())
     with TestClient(app) as client:
         response = client.get(
-            f"/goals/{uuid4()}", headers={"Authorization": f"Bearer {token}"}
+            f"/v1/goals/{uuid4()}", headers={"Authorization": f"Bearer {token}"}
         )
     app.dependency_overrides.clear()
     assert response.status_code == 404

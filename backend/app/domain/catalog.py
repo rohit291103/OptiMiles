@@ -132,8 +132,10 @@ class AwardChartEntry(_Frozen):
 class CatalogSnapshot(_Frozen):
     """One request = one snapshot. Only active rows; never mixes catalog states.
 
-    version = max(updated_at) across catalog tables at load time (MVP lineage,
-    D-2); persisted alongside every result so runs are byte-replayable.
+    version = a SHA-256 content hash over the snapshot's domain objects
+    (`cat-<hex>`, computed by `knowledge/versioning.py`) — identical content
+    yields an identical version whether loaded from YAML seeds or the DB
+    (D-2); persisted alongside every result so runs are byte-replayable.
     """
 
     version: str

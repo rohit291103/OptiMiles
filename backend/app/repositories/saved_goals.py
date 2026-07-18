@@ -76,7 +76,8 @@ _LIST_SQL = text(
       LIMIT 1
     ) r ON TRUE
     WHERE g.user_id = :user_id
-    ORDER BY g.created_at DESC
+    ORDER BY g.created_at DESC, g.id DESC
+    LIMIT :limit OFFSET :offset
     """
 )
 
@@ -213,11 +214,15 @@ async def get_saved_goal(
 
 
 async def list_saved_goals(
-    conn: AsyncConnection, *, user_id: UUID
+    conn: AsyncConnection, *, user_id: UUID, limit: int = 50, offset: int = 0
 ) -> tuple[SavedGoalRow, ...]:
     """The `user_id`'s saved goals, newest first, each with its latest
-    recommendation summary. Empty tuple when the user has saved nothing."""
-    result = await conn.execute(_LIST_SQL, {"user_id": user_id})
+    recommendation summary. Empty tuple when the user has saved nothing.
+    Paged (`limit`/`offset`, newest-first with an id tie-break for stable
+    pages) so the list query is never unbounded; the API bounds `limit`."""
+    result = await conn.execute(
+        _LIST_SQL, {"user_id": user_id, "limit": limit, "offset": offset}
+    )
     rows = result.mappings().all()
     return tuple(
         SavedGoalRow(

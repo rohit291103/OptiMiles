@@ -124,6 +124,12 @@ class RecommendationResponse(BaseModel):
         "chain was actually written. None on anonymous/non-persisting calls so "
         "the UI can tell a real save from a best-effort one that failed.",
     )
+    saved_goal_id: UUID | None = Field(
+        default=None,
+        description="The persisted goal's id, set only when `persisted` is "
+        "True — the client can navigate straight to the saved goal. Never set "
+        "on anonymous calls or failed saves.",
+    )
 
 
 class ProbeResponse(BaseModel):

@@ -12,8 +12,10 @@
  * `backend/app/api/schemas.py` when the simulator starts showing more.
  */
 
-const API_BASE_URL =
+const API_HOST =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+/** The product API is versioned under /v1 (health stays at the host root). */
+const API_BASE_URL = `${API_HOST}/v1`;
 
 // ── Request ──────────────────────────────────────────────────────────────
 
@@ -210,9 +212,16 @@ export type UnsupportedRoute = {
 };
 
 /** The `/simulations` response, discriminated on `kind`. `persisted` is set
- * only by the authenticated save endpoint: true iff the row actually landed. */
+ * only by the authenticated save endpoint: true iff the row actually landed;
+ * `saved_goal_id` accompanies a landed save so the UI can link straight to
+ * the saved goal. */
 export type SimulateResponse =
-  | { kind: "recommendation"; recommendation: FinalRecommendation; persisted?: boolean | null }
+  | {
+      kind: "recommendation";
+      recommendation: FinalRecommendation;
+      persisted?: boolean | null;
+      saved_goal_id?: string | null;
+    }
   | { kind: "clarification"; clarification: ClarificationRequest }
   | { kind: "unsupported_route"; unsupported_route: UnsupportedRoute }
   | { kind: "scope_refusal"; message: string | null };

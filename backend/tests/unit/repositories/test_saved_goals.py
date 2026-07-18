@@ -64,10 +64,22 @@ async def test_query_is_scoped_to_the_caller() -> None:
     await list_saved_goals(conn, user_id=user_id)  # type: ignore[arg-type]
 
     sql, params = conn.calls[0]
-    assert params == {"user_id": user_id}
+    assert params == {"user_id": user_id, "limit": 50, "offset": 0}
     assert "WHERE g.user_id = :user_id" in sql
     # Newest first, so a returning user sees their most recent goal on top.
-    assert "ORDER BY g.created_at DESC" in sql
+    # The id tie-break keeps pages stable when two goals share a timestamp.
+    assert "ORDER BY g.created_at DESC, g.id DESC" in sql
+    assert "LIMIT :limit OFFSET :offset" in sql
+
+
+async def test_pagination_binds_limit_and_offset() -> None:
+    """The page window is parameterized — the list is never unbounded."""
+    user_id = uuid4()
+    conn = CapturingConn([_row()])
+    await list_saved_goals(conn, user_id=user_id, limit=10, offset=20)  # type: ignore[arg-type]
+
+    _, params = conn.calls[0]
+    assert params == {"user_id": user_id, "limit": 10, "offset": 20}
 
 
 async def test_rows_map_onto_saved_goal_faithfully() -> None:

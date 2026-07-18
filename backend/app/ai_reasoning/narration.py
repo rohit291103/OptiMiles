@@ -23,8 +23,10 @@ Stage 9 still produced one (`recommended` set, misses_goal), alone when
 nothing was allocatable (`recommended is None`). Same echo-checking.
 """
 
+import asyncio
 import logging
 import re
+import time
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
@@ -226,17 +228,45 @@ async def narrate(
     *,
     alternatives: tuple[RankedStrategy, ...],
     model: ChatModel | None,
+    timeout_seconds: float = 10.0,
 ) -> RecommendationNarration:
     payload = build_narration_payload(recommended, verdict, context, alternatives)
 
     if model is not None:
+        # `timeout_seconds` is the TOTAL LLM budget for this narration — the
+        # draft and its one regeneration share a single deadline, so Stage 10
+        # can never consume more than this out of the 30s request budget
+        # (worst case with Stage 1's own bound: 10s intent + 10s narration).
+        # The bound exists because the provider client retries 429s internally
+        # honouring Retry-After sleeps (measured ~29s each on OpenRouter's
+        # free tier); a timed-out attempt goes straight to the template —
+        # retrying a stalled provider would just burn a second budget.
+        deadline = time.monotonic() + timeout_seconds
         for attempt in range(2):  # one draft + one regeneration
-            try:
-                draft = await model.complete(
-                    instructions=_instructions(),
-                    prompt=_prompt(payload),
-                    output_type=RecommendationNarration,
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                logger.warning(
+                    "narration budget (%.1fs) exhausted before attempt %d; using template",
+                    timeout_seconds,
+                    attempt + 1,
                 )
+                break
+            try:
+                draft = await asyncio.wait_for(
+                    model.complete(
+                        instructions=_instructions(),
+                        prompt=_prompt(payload),
+                        output_type=RecommendationNarration,
+                    ),
+                    timeout=remaining,
+                )
+            except TimeoutError:
+                logger.warning(
+                    "narration LLM call exceeded its %.1fs budget on attempt %d; using template",
+                    timeout_seconds,
+                    attempt + 1,
+                )
+                break
             except Exception:
                 logger.warning("narration LLM call failed on attempt %d", attempt + 1)
                 break

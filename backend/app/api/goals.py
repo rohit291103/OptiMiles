@@ -5,17 +5,20 @@ client holding the loop state (blueprint §8.4: server stays stateless). The
 recommendation run composes the whole pipeline and persists the lineage chain.
 
 The public simulator (`/simulations`) shares the pipeline via the same
-`_run_and_respond` helper, so there is one code path from goal to package.
+`recommend.run_and_respond` helper, so there is one code path from goal to
+package.
 """
 
+import logging
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.ai_reasoning.intent import ScopeRefusal, extract_intent
 from app.ai_reasoning.model import ChatModel
 from app.api.auth import require_user
 from app.api.deps import get_config, get_engine, get_model, get_snapshot, get_weights
+from app.api.recommend import run_and_respond
 from app.api.schemas import (
     ParseGoalRequest,
     ParseGoalResponse,
@@ -35,20 +38,9 @@ from app.api.schemas import (
     SavedTransferPlanItem,
 )
 from app.config import Settings
-from app.domain import (
-    CatalogSnapshot,
-    ClarificationRequest,
-    FinalRecommendation,
-    SpendProfile,
-)
+from app.domain import CatalogSnapshot, ClarificationRequest
 from app.optimization.ranking import RankingWeights
-from app.pipeline.run import (
-    ClarificationNeeded,
-    RouteUnsupported,
-    ScopeRefused,
-    run_goal_pipeline,
-)
-from app.repositories.results import delete_goal_lineage, persist_recommendation
+from app.repositories.results import delete_goal_lineage
 from app.repositories.saved_goals import (
     SavedGoalDetailRow,
     get_saved_goal,
@@ -56,19 +48,26 @@ from app.repositories.saved_goals import (
 )
 
 router = APIRouter(prefix="/goals", tags=["goals"])
+_log = logging.getLogger(__name__)
 
 
 @router.get("", response_model=SavedGoalsResponse)
-async def my_goals(user_id: UUID = Depends(require_user)) -> SavedGoalsResponse:
+async def my_goals(
+    user_id: UUID = Depends(require_user),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+) -> SavedGoalsResponse:
     """The signed-in user's saved goals, newest first — the "My Goals" view.
 
     Read-only, scoped to the verified `auth.users` id from the access token
     (the query never spans users; RLS is the second line of defence, D-4). Each
     goal carries its latest recommendation summary and the snapshot version it
     was computed against, straight from persisted rows — no recomputation, so
-    the list matches exactly what was saved."""
+    the list matches exactly what was saved. Paged via `limit`/`offset`
+    (newest-first, stable order); the default page covers any MVP-scale
+    dashboard in one call."""
     async with get_engine().connect() as conn:
-        rows = await list_saved_goals(conn, user_id=user_id)
+        rows = await list_saved_goals(conn, user_id=user_id, limit=limit, offset=offset)
     return SavedGoalsResponse(
         goals=tuple(
             SavedGoalSummary(
@@ -280,7 +279,7 @@ async def recommend(
     FK). Signed-in callers use `POST /goals/recommendation/save`, which persists
     the lineage chain under their verified id.
     """
-    return await _run_and_respond(
+    return await run_and_respond(
         request, snapshot, weights, model, settings, user_id=uuid4(), persist=False
     )
 
@@ -301,66 +300,6 @@ async def recommend_and_save(
     a real `user_id` and `persist=True`, which satisfies the
     `persist_recommendation` precondition (a `users → auth.users`-backed id).
     """
-    return await _run_and_respond(
+    return await run_and_respond(
         request, snapshot, weights, model, settings, user_id=user_id, persist=True
     )
-
-
-async def _run_and_respond(
-    request: RecommendationRequest,
-    snapshot: CatalogSnapshot,
-    weights: RankingWeights,
-    model: ChatModel | None,
-    settings: Settings,
-    *,
-    user_id: UUID,
-    persist: bool,
-) -> RecommendationResponse:
-    """Run the pipeline and map its outcome union to the HTTP response. Shared
-    by the recommendation and simulation endpoints."""
-    spend = (
-        SpendProfile(items=request.spend_items()) if request.spend_profile else None
-    )
-    outcome = await run_goal_pipeline(
-        text=request.text,
-        intent=request.intent,
-        snapshot=snapshot,
-        weights=weights,
-        buffer_pct=settings.requirement_buffer_pct,
-        user_id=user_id,
-        wallet=request.wallet_cards(),
-        spend_profile=spend,
-        total_spend_inr=request.total_spend_inr,
-        constraints=request.constraints,
-        profile_city=request.profile_city,
-        model=model,
-    )
-
-    if isinstance(outcome, ClarificationNeeded):
-        return RecommendationResponse(kind="clarification", clarification=outcome.request)
-    if isinstance(outcome, RouteUnsupported):
-        return RecommendationResponse(kind="unsupported_route", unsupported_route=outcome.route)
-    if isinstance(outcome, ScopeRefused):
-        return RecommendationResponse(kind="scope_refusal", message=outcome.refusal.message)
-
-    # A full recommendation (feasible or infeasible-with-adjustments).
-    persisted = await _persist(outcome, user_id) if persist else None
-    return RecommendationResponse(
-        kind="recommendation", recommendation=outcome, persisted=persisted
-    )
-
-
-async def _persist(recommendation: FinalRecommendation, user_id: UUID) -> bool:
-    """Best-effort lineage persistence (blueprint Stage 11: the response beats
-    bookkeeping). Returns True iff the write landed. A failure is logged and
-    reported (as `persisted=False`) so the UI never claims a save that didn't
-    happen — but it never turns the recommendation itself into an error."""
-    import logging
-
-    try:
-        async with get_engine().begin() as conn:
-            await persist_recommendation(conn, recommendation, user_id=user_id)
-        return True
-    except Exception:  # pragma: no cover - exercised in the DB-integration test
-        logging.getLogger(__name__).warning("recommendation persistence failed", exc_info=True)
-        return False

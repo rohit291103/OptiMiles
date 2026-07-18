@@ -163,6 +163,28 @@ async def test_llm_failure_falls_back_to_clarification(snapshot: CatalogSnapshot
     assert isinstance(result, ClarificationRequest)
 
 
+async def test_slow_model_is_abandoned_within_the_timeout(
+    snapshot: CatalogSnapshot,
+) -> None:
+    """The extraction call is time-bounded: a stalled provider (client-side
+    retry sleeps on a rate-limited upstream) degrades to the structured-form
+    clarification instead of hanging the request."""
+    import asyncio
+
+    class SlowModel:
+        async def complete(self, **kwargs: object) -> ParsedGoalIntent:
+            await asyncio.sleep(30)
+            return _llm_intent()
+
+    result = await _extract(
+        snapshot,
+        SlowModel(),
+        "business to Singapore from Hyderabad in 8 months, 2",
+        timeout_seconds=0.05,
+    )
+    assert isinstance(result, ClarificationRequest)
+
+
 # ── Determinism of the re-validation layer ────────────────────────────────
 
 

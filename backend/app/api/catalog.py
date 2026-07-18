@@ -13,7 +13,7 @@ from collections.abc import Callable
 from decimal import Decimal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from pydantic import BaseModel
 
 from app.ai_reasoning.education import EducationFacts, narrate_education
@@ -37,8 +37,17 @@ _FACT_NUMBER_RE = re.compile(r"\d[\d,]*(?:\.\d+)?")
 
 @router.get("/cards", response_model=CatalogCardsResponse)
 async def list_cards(
+    request: Request,
+    response: Response,
     snapshot: CatalogSnapshot = Depends(get_snapshot),
-) -> CatalogCardsResponse:
+) -> CatalogCardsResponse | Response:
+    # The snapshot version IS the ETag: the payload is a pure function of the
+    # snapshot, so a client (or CDN) holding the current version can revalidate
+    # with If-None-Match and skip the body entirely until the catalog changes.
+    etag = f'"{snapshot.version}"'
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": etag})
+    response.headers["ETag"] = etag
     cards = tuple(
         CardSummary(
             id=card.id,
