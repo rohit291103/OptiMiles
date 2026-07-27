@@ -1,0 +1,43 @@
+name: db-keepalive
+
+# Supabase free-tier projects pause after ~7 days with no DB/API activity.
+# This runs a trivial read every 3 days so the project never pauses.
+# Requires a repo secret DATABASE_URL (Settings → Secrets and variables →
+# Actions → New repository secret) — the same pooler URL used in backend/.env.
+on:
+  schedule:
+    - cron: "0 6 */3 * *" # 06:00 UTC every 3rd day
+  workflow_dispatch: {} # allow manual runs from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping the database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "DATABASE_URL secret not set — skipping (see this file's header)."
+            exit 0
+          fi
+          pip install --quiet "asyncpg>=0.29"
+          python - <<'PY'
+          import asyncio, os
+          # The app stores a SQLAlchemy URL (postgresql+asyncpg://...); asyncpg
+          # wants a plain libpq URL, and the Supabase pooler requires TLS.
+          dsn = os.environ["DATABASE_URL"].replace("+asyncpg", "")
+          if "sslmode=" not in dsn:
+              dsn += ("&" if "?" in dsn else "?") + "sslmode=require"
+
+          async def main() -> None:
+              # statement_cache_size=0 is required against the PgBouncer pooler.
+              conn = await asyncpg.connect(dsn, statement_cache_size=0)
+              now = await conn.fetchval("SELECT now()")
+              cards = await conn.fetchval("SELECT count(*) FROM cards")
+              await conn.close()
+              print(f"DB reachable at {now} — cards={cards}")
+
+          import asyncpg
+          asyncio.run(main())
+          PY
