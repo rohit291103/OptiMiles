@@ -113,7 +113,7 @@ export function PortfolioView({ catalog }: { catalog: CardSummary[] }) {
           <button
             type="button"
             onClick={() => setEditing((open) => !open)}
-            className="flex shrink-0 items-center gap-2 rounded-xl border border-hairline px-3.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:border-white/25 hover:text-foreground"
+            className="flex min-h-11 shrink-0 items-center gap-2 rounded-xl border border-hairline px-3.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:border-white/25 hover:text-foreground sm:min-h-0"
           >
             {editing ? (
               <Check className="size-4" />
@@ -135,7 +135,7 @@ export function PortfolioView({ catalog }: { catalog: CardSummary[] }) {
           <button
             type="button"
             onClick={() => setWallet(known)}
-            className="shrink-0 rounded-lg border border-destructive/40 px-3 py-1.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
+            className="min-h-11 shrink-0 rounded-lg border border-destructive/40 px-3 py-1.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 sm:min-h-0"
           >
             Remove {strayCount === 1 ? "it" : "them"}
           </button>
@@ -171,7 +171,7 @@ export function PortfolioView({ catalog }: { catalog: CardSummary[] }) {
             <button
               type="button"
               onClick={() => setWallet([])}
-              className="mt-5 flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-destructive"
+              className="mt-5 flex min-h-11 items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-destructive sm:min-h-0"
             >
               <Trash2 className="size-4" /> Clear my wallet
             </button>
@@ -289,7 +289,7 @@ function Summary({ portfolio }: { portfolio: WalletPortfolio }) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-hairline bg-input/[0.07] px-4 py-3">
-      <dt className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+      <dt className="text-xs sm:text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
         {label}
       </dt>
       <dd className="mt-1 font-heading text-lg tabular-nums text-foreground">
@@ -436,7 +436,7 @@ function CategoryTable({
                               card is on its base rate by definition. */}
                             {row?.is_accelerated ||
                             category.category_slug === "default" ? null : (
-                              <span className="ml-1 text-[11px] text-muted-foreground/70">
+                              <span className="ml-1 text-xs sm:text-[11px] text-muted-foreground/70">
                                 base
                               </span>
                             )}
@@ -834,7 +834,7 @@ function SectionHeading({
 
 function Subheading({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+    <p className="text-xs sm:text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
       {children}
     </p>
   );

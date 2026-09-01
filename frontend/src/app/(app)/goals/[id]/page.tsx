@@ -117,7 +117,7 @@ function GoalDetail({ detail }: { detail: SavedGoalDetail }) {
           <h2 className="font-heading text-2xl text-foreground sm:text-3xl">
             {detail.goal_name}
           </h2>
-          <span className="rounded-full border border-hairline px-2.5 py-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+          <span className="rounded-full border border-hairline px-2.5 py-0.5 text-xs sm:text-[11px] uppercase tracking-wide text-muted-foreground">
             {detail.status}
           </span>
         </div>

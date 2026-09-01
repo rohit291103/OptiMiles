@@ -42,7 +42,7 @@ export function HeroFlow() {
           <p className="text-xs uppercase tracking-[0.2em] text-gold">
             Your card strategy
           </p>
-          <span className="rounded-full border border-hairline bg-background/50 px-2.5 py-1 text-[11px] text-muted-foreground">
+          <span className="rounded-full border border-hairline bg-background/50 px-2.5 py-1 text-xs sm:text-[11px] text-muted-foreground">
             Explainable
           </span>
         </div>
@@ -91,7 +91,7 @@ export function HeroFlow() {
                   <Icon className="size-5" />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                  <p className="text-xs sm:text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                     {node.label}
                   </p>
                   <p className="truncate text-sm font-medium text-foreground">

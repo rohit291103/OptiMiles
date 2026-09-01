@@ -6,7 +6,9 @@ export function Brand({ className }: { className?: string }) {
   return (
     <Link
       href="/"
-      className={cn("flex items-center gap-2", className)}
+      // min-h-11 on phones: the wordmark is a link home, and 28px of height
+      // is not a thumb target.
+      className={cn("flex min-h-11 items-center gap-2 sm:min-h-0", className)}
       aria-label="OptiMiles home"
     >
       <span className="grid size-7 place-items-center rounded-lg bg-gold/15 ring-1 ring-gold/30">

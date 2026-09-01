@@ -54,7 +54,7 @@ export function SiteFooter() {
                   key={social.label}
                   href={social.href}
                   aria-label={social.label}
-                  className="grid size-9 place-items-center rounded-lg bg-gold/10 text-muted-foreground ring-1 ring-hairline transition-colors hover:bg-gold/15 hover:text-gold hover:ring-gold/30"
+                  className="grid size-11 place-items-center rounded-lg bg-gold/10 sm:size-9 text-muted-foreground ring-1 ring-hairline transition-colors hover:bg-gold/15 hover:text-gold hover:ring-gold/30"
                 >
                   <social.icon className="size-4" strokeWidth={1.75} />
                 </Link>
@@ -67,12 +67,14 @@ export function SiteFooter() {
               <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">
                 {group.title}
               </p>
-              <ul className="mt-4 space-y-3 text-sm">
+              {/* space-y collapses on mobile in favour of padded rows: an
+                  18px-tall text link is effectively un-tappable with a thumb. */}
+              <ul className="mt-4 space-y-1 text-sm sm:space-y-3">
                 {group.links.map((link) => (
                   <li key={link.label}>
                     <Link
                       href={link.href}
-                      className="text-muted-foreground transition-colors hover:text-foreground"
+                      className="-mx-2 inline-flex min-h-11 items-center px-2 text-muted-foreground transition-colors hover:text-foreground sm:mx-0 sm:min-h-0 sm:px-0"
                     >
                       {link.label}
                     </Link>

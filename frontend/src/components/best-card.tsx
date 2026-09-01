@@ -212,7 +212,7 @@ export function BestCard() {
                     setWallet(selectedIds);
                     setOverride(null);
                   }}
-                  className="mt-3 rounded-xl border border-gold/40 bg-gold/10 px-3.5 py-2 text-sm font-medium text-gold transition-colors hover:bg-gold/15"
+                  className="mt-3 min-h-11 rounded-xl border border-gold/40 bg-gold/10 px-3.5 py-2 text-sm font-medium text-gold transition-colors hover:bg-gold/15 sm:min-h-0"
                 >
                   Save these as my cards
                 </button>

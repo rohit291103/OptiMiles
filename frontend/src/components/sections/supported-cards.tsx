@@ -72,7 +72,7 @@ export function SupportedCards() {
             </div>
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground/70">
+                <p className="text-xs uppercase tracking-[0.15em] text-muted-foreground/70 sm:text-[0.65rem]">
                   {card.tier}
                 </p>
                 <p className="truncate font-heading text-sm text-foreground sm:text-base">

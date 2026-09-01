@@ -151,7 +151,7 @@ function CardTile({ card }: { card: CardSummary }) {
           </span>
         )}
         {!card.acquirable && (
-          <span className="absolute right-2 top-2 rounded-full border border-hairline bg-background/70 px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground backdrop-blur-sm">
+          <span className="absolute right-2 top-2 rounded-full border border-hairline bg-background/70 px-2 py-0.5 text-[11px] sm:text-[10px] uppercase tracking-wide text-muted-foreground backdrop-blur-sm">
             Existing holders
           </span>
         )}

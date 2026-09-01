@@ -144,7 +144,7 @@ export function Hero() {
           style={{ opacity }}
           className="group absolute bottom-8 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-2 lg:flex"
         >
-          <span className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground transition-colors group-hover:text-foreground">
+          <span className="text-xs sm:text-[11px] uppercase tracking-[0.22em] text-muted-foreground transition-colors group-hover:text-foreground">
             Try it now
           </span>
           <motion.span

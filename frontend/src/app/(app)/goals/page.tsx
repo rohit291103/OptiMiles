@@ -293,7 +293,7 @@ function GoalCard({
           </Link>
         </h3>
         <span
-          className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] uppercase tracking-wide ${
+          className={`shrink-0 rounded-full border px-2 py-0.5 text-xs sm:text-[11px] uppercase tracking-wide ${
             goal.status === "active"
               ? "border-gold/40 bg-gold/10 font-medium text-gold"
               : "border-hairline text-muted-foreground"

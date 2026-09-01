@@ -48,7 +48,7 @@ export function CardPicker({
                   type="button"
                   onClick={() => onToggle(card.id)}
                   aria-pressed={selected}
-                  className={`flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-medium transition-all ${
+                  className={`flex min-h-11 items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-medium transition-all sm:min-h-0 ${
                     selected
                       ? "border-gold/50 bg-gold/10 text-gold"
                       : "border-hairline bg-input/20 text-muted-foreground hover:border-white/25 hover:text-foreground"

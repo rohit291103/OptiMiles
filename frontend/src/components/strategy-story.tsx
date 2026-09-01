@@ -437,7 +437,7 @@ export function StrategyPlanTabs({
                     )}
                   </span>
                   {tier.acquisitionRole && acquisitionRoleLabel(tier.acquisitionRole) && (
-                    <span className="mt-1 inline-block rounded-full border border-gold/40 bg-gold/10 px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.08em] text-gold">
+                    <span className="mt-1 inline-block rounded-full border border-gold/40 bg-gold/10 px-2 py-0.5 text-xs sm:text-[11px] font-medium uppercase tracking-[0.08em] text-gold">
                       {acquisitionRoleLabel(tier.acquisitionRole)}
                     </span>
                   )}
@@ -1120,7 +1120,7 @@ export function EarnChart({
         </svg>
         {goalInRange && (
           <span
-            className="pointer-events-none absolute -top-1 flex -translate-x-1/2 items-center gap-1 rounded-full border border-gold/30 bg-background px-2 py-0.5 text-[10px] text-gold"
+            className="pointer-events-none absolute -top-1 flex -translate-x-1/2 items-center gap-1 rounded-full border border-gold/30 bg-background px-2 py-0.5 text-[11px] sm:text-[10px] text-gold"
             // Clamp so the centered pill never spills past the card edges
             // when the goal month sits at either end of the window.
             style={{
@@ -1369,7 +1369,7 @@ export function FinePrint({
         by AI.
       </p>
       {(snapshotVersion || engineVersion) && (
-        <p className="mt-1 text-[10px] text-muted-foreground/50">
+        <p className="mt-1 text-[11px] sm:text-[10px] text-muted-foreground/50">
           {[
             snapshotVersion ? `Catalog ${snapshotVersion.slice(0, 8)}` : null,
             engineVersion ? `engine ${engineVersion}` : null,

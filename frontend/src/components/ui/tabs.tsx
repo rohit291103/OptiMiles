@@ -42,7 +42,10 @@ function TabsTrigger({
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
       className={cn(
-        "inline-flex items-center justify-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium whitespace-nowrap text-muted-foreground transition-all outline-none",
+        // 44px tall on phones (Apple HIG floor), the design's 28px from sm: up.
+        // These are the primary way to switch content on the homepage and on
+        // the strategy result's route tabs, so they get thumbs, not cursors.
+        "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium whitespace-nowrap text-muted-foreground transition-all outline-none sm:min-h-0",
         "hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
         "data-[state=active]:bg-gold data-[state=active]:text-gold-foreground data-[state=active]:shadow-sm",
         "[&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",

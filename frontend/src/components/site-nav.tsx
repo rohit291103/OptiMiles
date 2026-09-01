@@ -1,12 +1,12 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import Link from "next/link"
-import { Menu, X } from "lucide-react"
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Menu, X } from "lucide-react";
 
-import { Button } from "@/components/ui/button"
-import { Brand } from "@/components/brand"
-import { signOut, useAuth } from "@/lib/use-auth"
+import { Button } from "@/components/ui/button";
+import { Brand } from "@/components/brand";
+import { signOut, useAuth } from "@/lib/use-auth";
 
 const LINKS = [
   { href: "/best-card", label: "Best card" },
@@ -15,19 +15,19 @@ const LINKS = [
   { href: "/#cards", label: "Supported cards" },
   { href: "/#features", label: "Features" },
   { href: "/#faq", label: "FAQ" },
-]
+];
 
 export function SiteNav() {
-  const [open, setOpen] = useState(false)
-  const [scrolled, setScrolled] = useState(false)
-  const { user } = useAuth()
+  const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24)
-    onScroll()
-    window.addEventListener("scroll", onScroll, { passive: true })
-    return () => window.removeEventListener("scroll", onScroll)
-  }, [])
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
     <header
@@ -59,7 +59,12 @@ export function SiteNav() {
         <div className="hidden items-center gap-3 sm:flex">
           {user ? (
             <>
-              <Button asChild variant="ghost" size="lg" className="text-foreground hover:bg-secondary">
+              <Button
+                asChild
+                variant="ghost"
+                size="lg"
+                className="text-foreground hover:bg-secondary"
+              >
                 <Link href="/goals">Dashboard</Link>
               </Button>
               <span className="max-w-56 truncate text-sm text-muted-foreground">
@@ -76,10 +81,19 @@ export function SiteNav() {
             </>
           ) : (
             <>
-              <Button asChild variant="ghost" size="lg" className="text-foreground hover:bg-secondary">
+              <Button
+                asChild
+                variant="ghost"
+                size="lg"
+                className="text-foreground hover:bg-secondary"
+              >
                 <Link href="/login">Log in</Link>
               </Button>
-              <Button asChild size="lg" className="bg-gold text-gold-foreground hover:bg-gold/90">
+              <Button
+                asChild
+                size="lg"
+                className="bg-gold text-gold-foreground hover:bg-gold/90"
+              >
                 <Link href="/signup">Get started</Link>
               </Button>
             </>
@@ -91,7 +105,9 @@ export function SiteNav() {
           aria-label="Toggle menu"
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
-          className="grid size-9 place-items-center rounded-lg border border-hairline text-foreground sm:hidden"
+          // 44px, not 36: this is the only way to reach navigation on a
+          // phone, and it is rendered exclusively at mobile widths.
+          className="grid size-11 place-items-center rounded-lg border border-hairline text-foreground sm:hidden"
         >
           {open ? <Menu className="hidden" /> : null}
           {open ? <X className="size-5" /> : <Menu className="size-5" />}
@@ -116,15 +132,19 @@ export function SiteNav() {
             {user ? (
               <>
                 <Button asChild variant="outline" className="border-hairline">
-                  <Link href="/goals" onClick={() => setOpen(false)}>Dashboard</Link>
+                  <Link href="/goals" onClick={() => setOpen(false)}>
+                    Dashboard
+                  </Link>
                 </Button>
-                <span className="px-2 text-sm text-muted-foreground">{user.email}</span>
+                <span className="px-2 text-sm text-muted-foreground">
+                  {user.email}
+                </span>
                 <Button
                   variant="outline"
                   className="border-hairline"
                   onClick={() => {
-                    setOpen(false)
-                    signOut()
+                    setOpen(false);
+                    signOut();
                   }}
                 >
                   Sign out
@@ -133,10 +153,17 @@ export function SiteNav() {
             ) : (
               <>
                 <Button asChild variant="outline" className="border-hairline">
-                  <Link href="/login" onClick={() => setOpen(false)}>Log in</Link>
+                  <Link href="/login" onClick={() => setOpen(false)}>
+                    Log in
+                  </Link>
                 </Button>
-                <Button asChild className="bg-gold text-gold-foreground hover:bg-gold/90">
-                  <Link href="/signup" onClick={() => setOpen(false)}>Get started</Link>
+                <Button
+                  asChild
+                  className="bg-gold text-gold-foreground hover:bg-gold/90"
+                >
+                  <Link href="/signup" onClick={() => setOpen(false)}>
+                    Get started
+                  </Link>
                 </Button>
               </>
             )}
@@ -144,5 +171,5 @@ export function SiteNav() {
         </div>
       )}
     </header>
-  )
+  );
 }
