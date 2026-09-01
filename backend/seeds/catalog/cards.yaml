@@ -1,3 +1,17 @@
+# LOUNGE COVERAGE IS DELIBERATELY PARTIAL (CLAUDE.md -> tiered coverage).
+# Only cards with a `lounge_access` block below have verified conditions; the
+# rest are "not covered yet", which the product states plainly. A card's
+# `has_lounge_access` boolean is the coarse fallback and stays until every
+# card has real rows -- dropping it now would turn "we have not researched
+# this" into the false claim "this card has no lounge access".
+#
+# WHY SO FEW ROWS: a 2026-08-31 research pass found the published figures for
+# Atlas irreconcilable across sources (8/12/18 domestic by tier vs a flat
+# 18 domestic + 12 international), Axis mid-year vendor switches, and search
+# results for "HSBC TravelOne lounge" that describe HSBC's UK and Singapore
+# products rather than the Indian card. Seeding those would have been
+# invention. They are listed in the research brief instead.
+
 # The 9 supported cards (mvp-scope-v2.md as amended by the 2026-07-04
 # catalog-expansion decision: Magnus standard → Magnus Burgundy, Amex
 # Platinum Charge added). earn rates are points per ₹100.
@@ -40,6 +54,35 @@
       verified_on: 2026-07-04
       needs_verification: true
   milestones: []
+  lounge_access:
+    - program: issuer-direct
+      scope: domestic
+      visits_per_period: null          # unlimited
+      period: annual
+      reset_anchor: not_applicable     # nothing to reset when it is unlimited
+      guest_visits_per_period: null    # guests are admitted complimentary
+      enrollment_required: false
+      conditions: >-
+        Swipe the Infinia card at the desk. HDFC charges Rs 2 per
+        complimentary visit for Visa cardholders.
+      source: HDFC "Airport Lounge Access Program" T&C PDF, effective 2026-07-02
+      verified_on: 2026-08-31
+      needs_verification: false
+    - program: priority-pass
+      scope: international
+      visits_per_period: null          # unlimited for the Priority Pass holder
+      period: annual
+      reset_anchor: not_applicable
+      guest_visits_per_period: 0       # zero complimentary, NOT unlimited
+      enrollment_required: true
+      conditions: >-
+        Complimentary only for primary and add-on holders presenting their OWN
+        Priority Pass card; the Priority Pass card itself must be presented at
+        the lounge. Guests are charged USD 27 + GST per visit. An add-on holder
+        without their own Priority Pass is treated as a guest.
+      source: HDFC "Airport Lounge Access Program" T&C PDF, effective 2026-07-02
+      verified_on: 2026-08-31
+      needs_verification: false
 
 - slug: hdfc-diners-black
   bank: HDFC
@@ -78,6 +121,37 @@
       source: docs/research/...krisflyer...research_v1.md §4
       verified_on: 2026-07-04
       needs_verification: false
+  lounge_access:
+    - program: issuer-direct
+      scope: domestic
+      visits_per_period: null          # unlimited
+      period: annual
+      reset_anchor: not_applicable
+      guest_visits_per_period: null    # add-on members get the same access
+      enrollment_required: false
+      # REVIEWER NOTE (not user-facing): per the sources reviewed this card was
+      # NOT touched by the mid-2026 HDFC revision that spend-gated Regalia Gold
+      # and Diners Club Privilege. That revision is recent — re-check this row
+      # first if HDFC moves again.
+      conditions: >-
+        Unlimited domestic access for you and your add-on members, with no
+        spend condition.
+      source: paisabazaar.com + cardexpert.in + 1finance.co.in Diners Club Black Metal reviews (2026), consistent across all three — VERIFY against HDFC T&C
+      verified_on: 2026-08-31
+      needs_verification: true
+    - program: diners-club
+      scope: international
+      visits_per_period: null          # unlimited
+      period: annual
+      reset_anchor: not_applicable
+      guest_visits_per_period: null
+      enrollment_required: false
+      conditions: >-
+        Unlimited worldwide access at 1,300+ participating lounges on the
+        Diners Club network, for primary and add-on members.
+      source: paisabazaar.com + cardexpert.in + 1finance.co.in Diners Club Black Metal reviews (2026) — VERIFY against HDFC T&C
+      verified_on: 2026-08-31
+      needs_verification: true
 
 - slug: hdfc-regalia-gold
   bank: HDFC
@@ -100,6 +174,39 @@
       verified_on: 2026-07-04
       needs_verification: true
   milestones: []
+  lounge_access:
+    # THE CASE MOST CARDHOLDERS GET WRONG: the visits are not granted, they
+    # are earned by last quarter's spend. Someone who spent nothing last
+    # quarter has zero visits this quarter, however premium the card.
+    - program: issuer-direct
+      scope: domestic
+      visits_per_period: 3
+      period: quarterly
+      reset_anchor: calendar_quarter
+      guest_visits_per_period: 0
+      spend_gate_inr: 60000
+      spend_gate_period: quarterly     # measured in the PRECEDING quarter
+      enrollment_required: false
+      conditions: >-
+        Introduced in a mid-2026 revision that replaced a flat annual
+        allowance — if you have held this card a while, the terms you
+        remember are no longer the terms you have.
+      source: cardexpert.in/hdfc-regalia-gold-2026-lounge-access-update (secondary) — VERIFY against HDFC T&C
+      verified_on: 2026-08-31
+      needs_verification: true
+    - program: priority-pass
+      scope: international
+      visits_per_period: 6
+      period: annual
+      reset_anchor: calendar_year      # VERIFY: may be membership year
+      guest_visits_per_period: 0
+      enrollment_required: true
+      conditions: >-
+        6 international visits a year via Priority Pass, with no spend
+        condition — unchanged by the 2026 domestic revision.
+      source: cardexpert.in/hdfc-regalia-gold-2026-lounge-access-update (secondary) — VERIFY against HDFC T&C
+      verified_on: 2026-08-31
+      needs_verification: true
 
 - slug: hsbc-travelone
   bank: HSBC
@@ -277,6 +384,45 @@
       description: Annual milestone tier 2 — VERIFY
       source: research §2 confirms structure; figures market knowledge
       verified_on: 2026-07-04
+      needs_verification: true
+  lounge_access:
+    # MODELING NOTE: Amex states TWO limits — 8 visits a year AND at most 2 a
+    # quarter. They are arithmetically consistent (2 x 4 = 8), but the
+    # quarterly one is the binding constraint in any given period: you cannot
+    # spend all 8 in one quarter. Seeding the quarterly limit is therefore the
+    # more restrictive and the more useful reading, with the annual total
+    # stated in conditions. Seeding "8 per year" would over-promise a traveller
+    # planning a single trip.
+    - program: issuer-direct
+      scope: domestic
+      visits_per_period: 2
+      period: quarterly
+      reset_anchor: calendar_quarter   # VERIFY: may be membership year quarters
+      guest_visits_per_period: 0
+      enrollment_required: false
+      conditions: >-
+        8 complimentary domestic visits a year, capped at 2 per quarter.
+        Further visits are charged at Rs 750 each.
+      source: americanexpress.com/in Platinum Travel Credit Card benefits pages (issuer primary source)
+      verified_on: 2026-08-31
+      needs_verification: true
+    - program: priority-pass
+      scope: international
+      visits_per_period: 0             # membership is free; the VISITS are not
+      period: annual
+      reset_anchor: calendar_year
+      guest_visits_per_period: 0
+      enrollment_required: true
+      # REVIEWER NOTE (not user-facing): seeded conservatively as zero
+      # complimentary visits because the per-visit charge is not yet confirmed
+      # against Amex T&C. If visits turn out to be included, raise the count —
+      # do not lower a promise we already made.
+      conditions: >-
+        Your Priority Pass membership is free (Amex waives the USD 99 fee) for
+        you and one supplementary cardmember — but that is the membership, not
+        the visits. Check the per-visit charge before you travel.
+      source: americanexpress.com/in Platinum Travel Credit Card benefits pages — per-visit charge NOT yet confirmed
+      verified_on: 2026-08-31
       needs_verification: true
 
 - slug: amex-platinum-charge

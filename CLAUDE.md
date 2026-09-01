@@ -18,9 +18,13 @@ The platform helps users achieve premium travel and lifestyle goals through:
 * reward accumulation simulations
 * explainable AI recommendations
 
-Example user goal:
+Example user goals — **plural, deliberately** (amended 2026-08-26, see *Scope: Breadth With Depth* below):
 
 > “I want to fly Singapore Airlines business class in 8 months.”
+> “Which of my cards should I use for this ₹40,000 flight booking?”
+> “What are my Amex points actually worth, and where should they go?”
+> “Which card gets me into the lounge at Delhi T3, and what do I have to activate?”
+> “I have 180,000 HDFC points — what is the best thing I can do with them?”
 
 The system should generate:
 
@@ -37,7 +41,7 @@ The system should generate:
 OptiMILES is NOT:
 
 * a generic chatbot
-* a card comparison website
+* **an unopinionated card comparison website** — we compare, but every comparison resolves to a recommendation with the maths shown; a sortable table that leaves the user to decide is the thing we are not
 * a broad fintech dashboard
 * an AI wrapper
 * a banking super app
@@ -55,73 +59,114 @@ The platform should feel like:
 
 ---
 
-# MVP Philosophy
+# Scope: Breadth With Depth
 
-## Build Narrow and Deep
+> **Amended 2026-08-26 — this section replaces "MVP Philosophy" and "Initial MVP Scope".** The MVP is built, demoed and user-tested. It is over. Decision log: `2026-08-26-scope-broadening-and-partner-choice.md`.
 
-The MVP should prioritize:
+## What changed
 
-* trustworthy calculations
-* explainable outputs
-* constrained optimization
-* deterministic reward logic
-* strong UX clarity
+The MVP was deliberately narrow: **one airline, one goal shape, eight cards**. That narrowness did its job — it forced trustworthy calculations before breadth — and it is now the binding constraint on the product's value. A user whose goal is not Singapore Airlines business class was, structurally, not our user. That has to stop being true.
 
-Avoid:
+**The goal is now the Indian rewards ecosystem, not one route through it:** broad card coverage, every meaningful transfer ecosystem, and enough surface area that a rewards question a user actually has is a question we can answer.
 
-* broad ecosystem support
-* feature explosion
-* excessive automation
-* unnecessary infrastructure complexity
+## The competitive frame
+
+PointsFly (launched 2026-08-16) is the reference competitor. They went broad first. We went deep first. **Breadth is the gap we are closing; depth is the thing we must not lose while closing it** — anyone can list cards, and the list is not defensible. What is defensible is that every number we show can be traced to a source and its maths displayed.
+
+So the target is: **as comprehensive as the competition, and the only one whose numbers you can check.**
+
+## The tension this creates — read this before adding data
+
+Breadth and line-by-line seed review do not scale together. "Every Indian credit card" and "every row human-verified against a published source" are in direct conflict, and pretending otherwise is how a rewards product ends up confidently wrong.
+
+**The resolution is tiered coverage, stated to the user, never a silent quality gradient:**
+
+* **Verified tier** — full review bar, `source` + `verified_on`, safe for the engine to optimize over and to state as fact. All optimization output must be built from this tier.
+* **Listed tier** — broader catalog coverage seeded from published sources but not yet line-by-line verified, carrying `needs_verification: true`. Usable for *informational* surfaces (browse, compare, "what does this card earn"), and the UI must say it is unverified.
+* **Not covered** — say so plainly. "We don't cover that card yet" is an acceptable answer; a guess is not.
+
+A card moves tiers by being verified, not by being needed. **No optimization recommendation may be built from unverified rows** — that is the line that keeps breadth from eating the moat.
+
+## Priorities, in order
+
+1. **Trustworthy calculations** — unchanged, and now more load-bearing, not less
+2. **Explainable outputs** — every number shows its working
+3. **Coverage** — cards, currencies, transfer partners, redemption sweet spots, lounge conditions
+4. **Informational depth** — answer the question even when there is no goal yet
+5. **Deterministic reward logic** — unchanged
+6. **UX clarity** — comprehensive must not become cluttered
+
+Still avoid: feature explosion, excessive automation, unnecessary infrastructure complexity.
 
 ---
 
-# Initial MVP Scope
-
-## Primary MVP Goal
-
-Singapore Airlines business-class optimization using Indian credit cards.
-
----
-
-## Initial Focus Areas
+# Focus Areas
 
 * travel reward optimization
-* KrisFlyer transfer ecosystem
+* **all major transfer ecosystems reachable from Indian cards** — KrisFlyer is no longer privileged, and **the product must never assume a target program the user has not chosen** (see *Never Assume the User's Goal* below)
+* reward valuation — what points are worth and where they are best spent
 * reward accumulation simulations
 * spend routing optimization
 * transfer partner intelligence
+* lounge and benefit intelligence
 * explainable recommendations
 
 ---
 
-## Initial Supported Cards
+# Never Assume the User's Goal
 
-* HDFC Infinia
-* HDFC Diners Black
-* HDFC Regalia Gold
-* HSBC TravelOne
-* Axis Atlas
-* Axis Magnus
-* Amex Platinum Travel
-* SBI Cashback
+> Added 2026-08-26 after a real defect: Best Card and Portfolio View priced every wallet in **KrisFlyer miles by default** and printed the program name in the UI, on pages where the user had never stated a goal. The scope document's example goal had leaked into user-facing copy.
+
+Points across issuers are genuinely incommensurable — HDFC Reward Points, EDGE Miles and Membership Rewards are different units, and the catalog carries no ₹-per-point valuation to convert them. Ranking therefore requires a common unit, and a transfer program is the only honest one available.
+
+**That is a reason to ask, not a licence to assume.** The rule:
+
+* Surfaces default to **what the catalog states directly** — points earned, earn rates, caps, benefits
+* A **target program is chosen by the user**, or inherited from a goal they actually set
+* Where no target is chosen, the product says the cards are not comparable and offers the choice — it does not pick one silently
+* A program name appears in the UI only when the user put it there
+
+The engine parameter (`target_program_id`) already existed; the failure was a UI that never surfaced it and a default that spoke with unearned confidence.
 
 ---
 
-# Explicit MVP Exclusions
+# Card Coverage
 
-DO NOT build initially:
+**Depth-verified core** (the MVP nine — full review bar, engine-eligible):
+
+* HDFC Infinia · HDFC Diners Club Black · HDFC Regalia Gold
+* HSBC TravelOne
+* Axis Atlas · Axis Magnus for Burgundy
+* Amex Platinum Travel · Amex Platinum Charge
+* SBI Cashback *(deliberate cashback contrast case — must yield zero transfer opportunities)*
+
+**Expansion is now a goal, not an exclusion.** Priority order for new cards: issuers whose currencies unlock transfer ecosystems we do not yet cover, then high-volume premium travel cards, then the broad mid-market. Every addition follows the tiered-coverage rule above.
+
+---
+
+# Exclusions
+
+> **Amended twice on 2026-08-26.** First by `docs/prd/product-roadmap-v1.md` (mobile, Q&A, spend tracking). Then again by the scope broadening above (`2026-08-26-scope-broadening-and-partner-choice.md`), which converts the two coverage exclusions into *goals*. What remains excluded is what we still refuse to build — not what we have not got to yet.
+
+Still excluded:
 
 * browser extensions
-* automatic spend tracking
-* OCR/SMS parsing
 * autonomous agents
-* full airline ecosystem support
-* every Indian credit card
-* mobile apps
-* financial aggregation systems
+* financial aggregation systems (bank / Account Aggregator integrations)
 * investment features
-* generic chatbot experiences
+* geofenced store alerts *(added 2026-08-26 — rejected after competitive triage)*
+* **unverified data inside optimization output** — breadth never earns the right to guess (see *Scope: Breadth With Depth*)
+
+No longer excluded — these are now the direction of travel:
+
+* ~~full airline ecosystem support~~ → **a goal.** Every transfer ecosystem reachable from an Indian card, added by coverage priority. KrisFlyer holds no special status.
+* ~~every Indian credit card~~ → **broad coverage is a goal**, governed by the tiered-coverage rule rather than by a card count. The exclusion was never really about card *count* — it was about not shipping numbers we could not defend, and that constraint now lives where it belongs.
+
+Overridden earlier the same day — now in the roadmap:
+
+* ~~mobile apps~~ → **Phase 4**, and only after Phases 1–3 land. Web-first → PWA → iOS via Capacitor → Android via TWA. **iOS first, deliberately** (our ICP skews iPhone despite India being ~95% Android). No React Native/Flutter rewrite.
+* ~~generic chatbot experiences~~ → **catalog-grounded Q&A is in scope** (Phase 3). Ungrounded chat is still excluded. Every factual claim must trace to a catalog row or engine output; no number is ever LLM-generated.
+* ~~automatic spend tracking / OCR-SMS parsing~~ → replaced by **statement/CSV upload + manual log** (Phase 2). The competitor's SMS-parsing version is still rejected — iOS cannot do it at all.
 
 ---
 
@@ -449,22 +494,35 @@ The product should feel:
 # Current Development Phase
 
 Current phase:
-Phase 1 — Backend Foundation (entered 2026-07-03; Phase 0 docs complete)
+**Post-MVP Expansion — Phase 1: Daily Surface**, now under the broadened scope (entered 2026-08-26, scope broadened later the same day). The MVP is **over**: built, demoed, user-tested, and no longer the frame. The backend build plan is complete through Phase 7. **Roadmap: `docs/prd/product-roadmap-v1.md`**; **scope: the *Scope: Breadth With Depth* section above, which supersedes the roadmap where they disagree on coverage.**
 
-Current priorities:
+**Why the phase changed:** user testing validated the goal engine but said "it should be an app"; a competitor (PointsFly, launched 2026-08-16) shipped a broad daily-use feature surface *including* a goal tracker. Goal orientation alone is not the moat — the deterministic, explainable optimization engine is. The MVP answers a once-per-8-months question and gives users no reason to return during accumulation. Phases 1–3 close that retention hole on web; mobile is Phase 4.
 
-* executing `docs/architecture/backend-build-plan-v1.md` phase by phase (skeleton → Knowledge Engine + validated seeds → Valuation → Simulation → Optimization → AI Reasoning → pipeline/API)
-* seed-data correctness (the highest-review-bar artifact in the repo)
-* fixture-tested engines (TDD mandatory for all calculation logic)
+**Why the scope broadened (same day, after the first two Phase-1 features shipped):** the narrow SIA/KrisFlyer frame stopped being a discipline and started being a ceiling. It surfaced as a real defect — Best Card and Portfolio View silently priced every wallet in KrisFlyer miles because the scope document said KrisFlyer was primary. The product must now be **valuable, informative and comprehensive across the Indian rewards ecosystem**, and must answer a user's question even when they have no goal yet.
+
+Current priorities (all web — **app conversion comes later**):
+
+* ~~**Best Card for this Spend**~~ — **SHIPPED 2026-08-26** (`valuation/best_card.py`, `GET /v1/best-card`, public `/best-card` page)
+* ~~**Portfolio View**~~ — **SHIPPED 2026-08-26** (`valuation/portfolio.py`, `GET /v1/portfolio`, `/cards` leads with it). Ships with a **shared per-device wallet** (`frontend/src/lib/wallet.ts`) that Best Card and the goal wizard also read. Still deferred inside it: cap **utilisation** and milestone **progress** (need Phase 2 spend data) and the fee **calendar** (needs a card-open date we don't collect) — decision log `2026-08-26-portfolio-view-and-shared-wallet.md`
+* **Points-first surfaces, user-chosen transfer partner** *(in progress — the fix for the assumed-KrisFlyer defect)*: Best Card and Portfolio View lead with what the catalog states directly (points, earn rates, caps), then *ask* whether the user wants to look at transferring, then let them choose the partner. See *Never Assume the User's Goal*
+* **Catalog breadth** — more cards, more currencies, more transfer partners, more redemption data, under the tiered-coverage rule. This is now a standing priority, not a one-off task
+* **Sourced ₹-per-point valuations** — the missing number that blocks any honest "what is this worth / what is my best return" answer. Must be seeded with `source` + `verified_on` like any other catalog row; **must never be invented**
+* **Lounge Access Intelligence (card side)** — replaces the `has_lounge_access` boolean with real conditions (program, domestic/international counts, quarterly caps, spend-gating, guest rules, enrollment). Needs a migration + seed pass over all 9 cards. Airport *directory* deferred; link out to the programs' own finders instead
+* **Mobile-first pass** on the goal wizard and dashboard (built desktop-first; most users reach them on a phone browser)
+* then Phase 2 (spend logging → real progress, milestone/cap alerts), then Phase 3 (catalog-grounded Q&A)
+* seed-data correctness (still the highest-review-bar artifact in the repo)
+* fixture-tested engines (TDD still mandatory for all calculation logic)
 * documentation discipline (tracker + decision log stay current as code lands)
 
 NOT:
 
-* more planning documents (the build plan is the last one — write further specs as docstrings + tests)
+* Phase 4 mobile work before Phases 1–3 land — wrapping a surface that isn't yet worth opening daily solves nothing
+* a React Native / Flutter rewrite (Capacitor over the existing Next.js app; one codebase)
+* live award-availability search (deferred pending evidence, not rejected)
+* **feature-parity racing for its own sake** — breadth is now a goal, but a feature still has to make a user's decision better. Note this is *narrower* than the old rule: informational surfaces that answer a question without routing to a goal are now legitimate (that was the SIA-era framing talking)
+* **inventing a number to fill a gap** — no ₹-per-point valuation, no transfer ratio, no cap, no lounge condition without a source. This is the one rule breadth may never bend
 * scaling infrastructure
-* advanced agents
-* production optimization
-* broad feature expansion
+* autonomous agents
 
 ---
 
@@ -508,13 +566,15 @@ This repo has dedicated skills (`.claude/skills/`) and subagents (`.claude/agent
 
 OptiMILES should become:
 
-> The most trustworthy AI reward strategist for Indian travel rewards.
+> The most trustworthy AI reward strategist for Indian rewards — and comprehensive enough that "trustworthy" is worth having.
+
+*(Amended 2026-08-26. The previous version rejected "the largest card database" outright. That was the right instinct at eight cards and the wrong one now: a product that can be trusted about a card you don't hold isn't much use. Breadth is a goal. What was actually being rejected — breadth **instead of** verifiability — still stands, and now lives in the tiered-coverage rule.)*
 
 NOT:
 
-* the largest card database
-* the broadest finance platform
+* a card database with no opinion — coverage that doesn't resolve to a recommendation is a table, not a product
+* the broadest finance platform (we are rewards, not banking)
 * the most feature-rich app
 * the smartest chatbot
 
-Depth, trust, explainability, and optimization quality are the core differentiators.
+Depth, trust, explainability, and optimization quality remain the differentiators. **Coverage is what makes them matter.** If the two ever conflict on a specific row, trust wins and we say we don't cover it yet.

@@ -19,6 +19,8 @@ from app.domain import (
     Card,
     CatalogSnapshot,
     CurrencyTransferLink,
+    LoungeAccess,
+    LoungeProgram,
     RewardCategoryRule,
     RewardCurrency,
     RewardMilestone,
@@ -67,9 +69,18 @@ def load_seed_snapshot(seed_dir: Path) -> CatalogSnapshot:
         for row in _rows(seed_dir / "transfer_links.yaml")
     )
 
+    # Lounge programmes are their own file — several cards ride the same one,
+    # and a programme goes stale independently of any card (issuers switch
+    # vendors mid-year), so it is not card-nested data.
+    lounge_programs = tuple(
+        LoungeProgram(id=seed_id("lounge_program", row["slug"]), **_fields(row))
+        for row in _rows(seed_dir / "lounge_programs.yaml")
+    )
+
     cards: list[Card] = []
     category_rules: list[RewardCategoryRule] = []
     milestones: list[RewardMilestone] = []
+    lounge_access: list[LoungeAccess] = []
     for row in _rows(seed_dir / "cards.yaml"):
         card_slug = str(row["slug"])
         card_id = seed_id("card", card_slug)
@@ -77,7 +88,10 @@ def load_seed_snapshot(seed_dir: Path) -> CatalogSnapshot:
             Card(
                 id=card_id,
                 reward_currency_id=seed_id("currency", row["currency"]),
-                **_fields(row, extra_drop=frozenset({"currency", "categories", "milestones"})),
+                **_fields(
+                    row,
+                    extra_drop=frozenset({"currency", "categories", "milestones", "lounge_access"}),
+                ),
             )
         )
         for category in row.get("categories", []):
@@ -94,6 +108,19 @@ def load_seed_snapshot(seed_dir: Path) -> CatalogSnapshot:
                     id=seed_id("milestone", f"{card_slug}:{index}"),
                     card_id=card_id,
                     **_fields(milestone),
+                )
+            )
+
+        # Coverage is deliberately partial: a card with no block here is "not
+        # covered yet", which the read surface must state rather than report
+        # as an absence of lounge access.
+        for index, access in enumerate(row.get("lounge_access", [])):
+            lounge_access.append(
+                LoungeAccess(
+                    id=seed_id("lounge_access", f"{card_slug}:{index}"),
+                    card_id=card_id,
+                    program_id=seed_id("lounge_program", access["program"]),
+                    **_fields(access, extra_drop=frozenset({"program"})),
                 )
             )
 
@@ -127,6 +154,8 @@ def load_seed_snapshot(seed_dir: Path) -> CatalogSnapshot:
                 category_rules,
                 milestones,
                 list(award_charts),
+                list(lounge_programs),
+                lounge_access,
             ]
         ),
         currencies=currencies,
@@ -136,6 +165,8 @@ def load_seed_snapshot(seed_dir: Path) -> CatalogSnapshot:
         category_rules=tuple(category_rules),
         milestones=tuple(milestones),
         award_charts=award_charts,
+        lounge_programs=lounge_programs,
+        lounge_access=tuple(lounge_access),
     )
 
 

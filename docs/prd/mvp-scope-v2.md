@@ -2,8 +2,10 @@
 
 **Document Path:** `/docs/prd/mvp-scope-v2.md`
 **Version:** v2.0
-**Status:** Approved for MVP — **canonical scope document** (supersedes `mvp_scope_1.md`)
+**Status:** Approved for MVP — **canonical scope document** for the goal engine (supersedes `mvp_scope_1.md`). **Amended 2026-08-26** — see banner below.
 **Source:** Mirrored from Notion "OptiMiles MVP Scope v2" (2026-06-28), reconciled against the built product and repo docs on 2026-07-03.
+
+> **AMENDMENT — 2026-08-26 (post-MVP expansion).** The MVP shipped and was user-tested. This document remains canonical for **what the goal engine does**; [`product-roadmap-v1.md`](product-roadmap-v1.md) is now canonical for **what gets built next and in what order**. Where the two conflict, the roadmap wins. Specifically, two exclusions below are **overridden**: *Platform Features → mobile applications* (mobile is now Phase 4 — web-first → PWA → iOS via Capacitor → Android via TWA) and *AI Features → conversational copilots* (a **catalog-grounded** Q&A surface is in scope; ungrounded chat remains excluded). *Advanced Reward Features → real-time award availability* is downgraded from excluded to **deferred pending evidence**. Rationale and the full competitive triage: decision log [`2026-08-26-post-mvp-expansion-and-mobile-strategy.md`](../decisions/2026-08-26-post-mvp-expansion-and-mobile-strategy.md).
 
 > **What changed from v1:** airline support narrowed to KrisFlyer + Air India Maharaja Club (Emirates/Qatar/Vistara dropped from MVP; Vistara merged into Air India, "Flying Returns" is now "Maharaja Club"); ICICI Rewards dropped from supported reward programs; primary-user definition added (₹50k–₹2L/month); "Maximize Existing Cards First" elevated to a scope principle; six core capabilities defined (adds Existing Portfolio Optimization); non-functional requirements added (30s strategy generation, config-over-code extensibility). The 8-card universe and Singapore/London/New York routes carry over from the v1 reconciliation unchanged.
 
@@ -216,13 +218,13 @@ The MVP consists of five primary backend systems (canonical decomposition — se
 budgeting · expense tracking · statement parsing · bank integrations
 
 ## Advanced Reward Features
-real-time award availability · automated transfer execution · cashback optimization · dynamic fare tracking · forex optimization
+real-time award availability *(**deferred, not rejected** — 2026-08-26; revisit only if it proves a conversion blocker)* · automated transfer execution · cashback optimization · dynamic fare tracking · forex optimization
 
 ## Platform Features
-mobile applications · community · referrals · enterprise accounts · social features
+~~mobile applications~~ *(**overridden 2026-08-26** — Phase 4 of the roadmap; web-first, then Capacitor/TWA wrap)* · community · referrals · enterprise accounts · social features
 
 ## AI Features
-autonomous agents · memory-heavy personalization · conversational copilots · autonomous financial advice
+autonomous agents · memory-heavy personalization · ~~conversational copilots~~ *(**overridden 2026-08-26** — catalog-grounded Q&A is in scope; ungrounded chat is not)* · autonomous financial advice
 
 ---
 

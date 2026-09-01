@@ -5,6 +5,8 @@ import { ArrowRight, Check, Pencil, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CardPicker } from "@/components/ui/card-picker";
+import { readWallet, saveWallet } from "@/lib/wallet";
 import { PlaneLoader } from "@/components/ui/plane-loader";
 import {
   ApiError,
@@ -150,18 +152,24 @@ export function GoalWizard() {
     });
   }, [activeStep]);
 
-  // Load the catalog for the wallet picker; pre-select the flagship cards.
+  // Load the catalog for the wallet picker. Pre-select the user's SAVED
+  // wallet when they have one (`lib/wallet.ts` — the same wallet Portfolio
+  // View and Best Card use), so a returning user isn't asked the same
+  // ownership question a third time; otherwise fall back to the flagship
+  // cards. Saved ids are filtered against the live catalog so a stale wallet
+  // can never post a card id the engine would 404 on.
   useEffect(() => {
     let active = true;
     fetchCards()
       .then((fetched) => {
         if (!active) return;
         setCards(fetched);
+        const saved = readWallet().filter((id) => fetched.some((c) => c.id === id));
         const defaults = fetched
           .filter((c) => /Infinia|Atlas/.test(c.card_name))
           .map((c) => c.id)
           .slice(0, 2);
-        setSelectedCardIds(defaults);
+        setSelectedCardIds(saved.length > 0 ? [...saved] : defaults);
       })
       .catch(() => {
         if (active) setCards([]);
@@ -476,50 +484,23 @@ export function GoalWizard() {
           stepRef={activeStep === "wallet" ? activeStepRef : undefined}
         >
           {cards.length > 0 ? (
-            <div className="mt-4 grid gap-x-8 gap-y-5 sm:grid-cols-2">
-              {groupByBank(cards).map(([bank, bankCards]) => (
-                <div key={bank}>
-                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground/80">
-                    {bank}
-                  </p>
-                  <div className="mt-2.5 flex flex-wrap gap-2">
-                    {bankCards.map((card) => {
-                      const selected = selectedCardIds.includes(card.id);
-                      return (
-                        <button
-                          key={card.id}
-                          type="button"
-                          onClick={() =>
-                            setSelectedCardIds((prev) =>
-                              prev.includes(card.id)
-                                ? prev.filter((c) => c !== card.id)
-                                : [...prev, card.id],
-                            )
-                          }
-                          aria-pressed={selected}
-                          className={`flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-medium transition-all ${
-                            selected
-                              ? "border-gold/50 bg-gold/10 text-gold"
-                              : "border-hairline bg-input/20 text-muted-foreground hover:border-white/25 hover:text-foreground"
-                          }`}
-                        >
-                          <span
-                            aria-hidden="true"
-                            className={`grid size-4 shrink-0 place-items-center rounded-full border transition-colors ${
-                              selected
-                                ? "border-gold bg-gold text-gold-foreground"
-                                : "border-white/25 text-transparent"
-                            }`}
-                          >
-                            <Check className="size-3" strokeWidth={3} />
-                          </span>
-                          {card.card_name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
+            <div className="mt-4">
+              <CardPicker
+                cards={cards}
+                selectedIds={selectedCardIds}
+                onToggle={(cardId) => {
+                  const next = selectedCardIds.includes(cardId)
+                    ? selectedCardIds.filter((c) => c !== cardId)
+                    : [...selectedCardIds, cardId];
+                  setSelectedCardIds(next);
+                  // This step asks the ownership question directly ("cards you
+                  // already hold"), so the answer IS the wallet — persist it
+                  // for Portfolio View and Best Card. Best Card deliberately
+                  // does NOT auto-save: its picker is a what-if, so it asks
+                  // before overwriting.
+                  saveWallet(next);
+                }}
+              />
             </div>
           ) : (
             <p className="mt-4 text-sm text-muted-foreground">
@@ -855,16 +836,6 @@ function WizardStep({
       {children}
     </div>
   );
-}
-
-function groupByBank(cards: CardSummary[]): [string, CardSummary[]][] {
-  const groups: [string, CardSummary[]][] = [];
-  for (const card of cards) {
-    const group = groups.find(([bank]) => bank === card.bank);
-    if (group) group[1].push(card);
-    else groups.push([card.bank, [card]]);
-  }
-  return groups;
 }
 
 /** A select disguised as the emphasized word in the goal sentence — the form

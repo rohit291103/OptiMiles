@@ -8,6 +8,14 @@ insight). This is a pure reshape of Knowledge Engine data over the pinned
 snapshot: no pipeline run, no LLM, no sixth engine. Deterministic by
 construction — cards in request order (deduped), earn rules by category slug,
 links and shared partners by program name.
+
+NOT to be confused with `valuation/portfolio.py`, which reshapes much of the
+same catalog data and deliberately looks similar. The split is by purpose:
+this module is narration-shaped (facts the education step and the LLM framing
+read), while Portfolio View's is *priced* — every rate and bonus converted
+into miles toward a chosen transfer program, which is Valuation's job. The
+duplicated part is iteration and DTO shape, never a calculation; Valuation
+may not import Knowledge (see `tests/unit/test_module_boundaries.py`).
 """
 
 from decimal import Decimal
@@ -99,9 +107,7 @@ class EducationPayload(_Frozen):
     shared_partners: tuple[SharedPartner, ...]
 
 
-def wallet_education(
-    snapshot: CatalogSnapshot, card_ids: tuple[UUID, ...]
-) -> EducationPayload:
+def wallet_education(snapshot: CatalogSnapshot, card_ids: tuple[UUID, ...]) -> EducationPayload:
     """Shape the snapshot into the wallet's reward story.
 
     Cards keep request order (duplicates collapse to first occurrence); an id
@@ -120,9 +126,7 @@ def wallet_education(
             ordered_ids.append(card_id)
 
     cards = tuple(
-        _card_education(
-            cards_by_id[card_id], snapshot, currencies_by_id, partners_by_id
-        )
+        _card_education(cards_by_id[card_id], snapshot, currencies_by_id, partners_by_id)
         for card_id in ordered_ids
     )
 
@@ -195,9 +199,7 @@ def _card_education(
     )
 
 
-def _link_education(
-    link: CurrencyTransferLink, partner: TransferPartner
-) -> TransferLinkEducation:
+def _link_education(link: CurrencyTransferLink, partner: TransferPartner) -> TransferLinkEducation:
     return TransferLinkEducation(
         partner_id=partner.id,
         partner_name=partner.partner_name,

@@ -6,10 +6,12 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.best_card import router as best_card_router
 from app.api.catalog import router as catalog_router
 from app.api.goals import router as goals_router
 from app.api.health import router as health_router
 from app.api.observability import log_requests
+from app.api.portfolio import router as portfolio_router
 from app.api.simulations import router as simulations_router
 from app.config import get_settings
 
@@ -19,9 +21,7 @@ def create_app() -> FastAPI:
     # config the app's INFO lines (request log, narration fallbacks) are
     # silently dropped in production. basicConfig is a no-op if the runner
     # already configured logging.
-    logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s"
-    )
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     app = FastAPI(
         title="OptiMiles API",
         version="0.1.0",
@@ -51,6 +51,8 @@ def create_app() -> FastAPI:
     app.include_router(goals_router, prefix="/v1")
     app.include_router(simulations_router, prefix="/v1")
     app.include_router(catalog_router, prefix="/v1")
+    app.include_router(best_card_router, prefix="/v1")
+    app.include_router(portfolio_router, prefix="/v1")
     return app
 
 

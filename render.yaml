@@ -1,0 +1,57 @@
+# Render Blueprint — OptiMiles backend (FastAPI).
+#
+# WHY A LONG-RUNNING INSTANCE, NOT SERVERLESS: `app/api/deps.py` caches the
+# catalog snapshot in module-level process memory and the pipeline runs to a
+# 30-second budget. A serverless function would rebuild that cache on every
+# cold start, so the API needs a process that stays up.
+#
+# FREE-TIER CAVEAT (deliberate choice, see docs/decisions/2026-08-26-backend-
+# deployment-render.md): free web services spin down after ~15 minutes idle and
+# a Python cold start runs 50s+, which exceeds the pipeline budget. The
+# `render-keepalive` workflow pings /health every 10 minutes to prevent that.
+# Free tier grants 750 instance-hours/month and a month is ~730 hours, so one
+# always-warm service fits — but only one.
+#
+# Deploy: Render dashboard → New → Blueprint → point at this repo.
+# Secrets are NOT in this file; set them in the Render dashboard (see envVars).
+
+services:
+  - type: web
+    name: optimiles-api
+    runtime: python
+    plan: free
+    region: singapore # closest Render region to Indian users
+    rootDir: backend
+    # `uv sync --frozen` installs exactly what uv.lock pins; --no-dev omits
+    # pytest/ruff/mypy, which the running service never needs.
+    buildCommand: pip install uv && uv sync --frozen --no-dev
+    startCommand: uv run uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13"
+      # ── Set these in the Render dashboard (Environment → Add) ──────────
+      # DATABASE_URL — Supabase TRANSACTION-MODE pooler (port 6543, user
+      #   postgres.<ref>). The direct host is IPv6-only and unreachable.
+      - key: DATABASE_URL
+        sync: false
+      # CORS_ALLOW_ORIGINS — the deployed frontend origin(s), comma-separated.
+      #   Must include the Vercel URL or every browser call fails preflight.
+      #   Never "*": the API is CORS-scoped on purpose.
+      - key: CORS_ALLOW_ORIGINS
+        sync: false
+      # SUPABASE_URL — enables JWKS verification of the frontend's access
+      #   token. Without it (and without SUPABASE_JWT_SECRET) auth fails
+      #   closed and /goals endpoints reject every request.
+      - key: SUPABASE_URL
+        sync: false
+      # LLM_API_KEY — optional. Empty ⇒ LLM disabled: the pipeline still runs
+      #   and stays correct, degrading only free-text intent and narration
+      #   eloquence (template fallback).
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_BASE_URL
+        value: https://openrouter.ai/api/v1
+      - key: LLM_PROVIDER
+        value: openai

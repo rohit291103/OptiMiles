@@ -126,6 +126,40 @@ _UPSERTS: dict[str, str] = {
           effective_date = EXCLUDED.effective_date,
           is_active = TRUE
     """,
+    "lounge_programs": """
+        INSERT INTO lounge_programs (id, program_name, operator, notes, is_active)
+        VALUES (:id, :program_name, :operator, :notes, TRUE)
+        ON CONFLICT (id) DO UPDATE SET
+          program_name = EXCLUDED.program_name,
+          operator = EXCLUDED.operator,
+          notes = EXCLUDED.notes,
+          is_active = TRUE
+    """,
+    "card_lounge_access": """
+        INSERT INTO card_lounge_access
+          (id, card_id, program_id, scope, visits_per_period, period, reset_anchor,
+           guest_visits_per_period, guests_share_allowance, spend_gate_inr,
+           spend_gate_period, enrollment_required, enrollment_url, conditions, is_active)
+        VALUES
+          (:id, :card_id, :program_id, :scope, :visits_per_period, :period, :reset_anchor,
+           :guest_visits_per_period, :guests_share_allowance, :spend_gate_inr,
+           :spend_gate_period, :enrollment_required, :enrollment_url, :conditions, TRUE)
+        ON CONFLICT (id) DO UPDATE SET
+          card_id = EXCLUDED.card_id,
+          program_id = EXCLUDED.program_id,
+          scope = EXCLUDED.scope,
+          visits_per_period = EXCLUDED.visits_per_period,
+          period = EXCLUDED.period,
+          reset_anchor = EXCLUDED.reset_anchor,
+          guest_visits_per_period = EXCLUDED.guest_visits_per_period,
+          guests_share_allowance = EXCLUDED.guests_share_allowance,
+          spend_gate_inr = EXCLUDED.spend_gate_inr,
+          spend_gate_period = EXCLUDED.spend_gate_period,
+          enrollment_required = EXCLUDED.enrollment_required,
+          enrollment_url = EXCLUDED.enrollment_url,
+          conditions = EXCLUDED.conditions,
+          is_active = TRUE
+    """,
 }
 
 
@@ -154,6 +188,19 @@ def _rows(snapshot: CatalogSnapshot) -> dict[str, list[dict[str, Any]]]:
                 "award_type": c.award_type.value,
             }
             for c in snapshot.award_charts
+        ],
+        "lounge_programs": [p.model_dump() for p in snapshot.lounge_programs],
+        "card_lounge_access": [
+            {
+                **a.model_dump(),
+                "scope": a.scope.value,
+                "period": a.period.value,
+                "reset_anchor": a.reset_anchor.value,
+                "spend_gate_period": (
+                    a.spend_gate_period.value if a.spend_gate_period else None
+                ),
+            }
+            for a in snapshot.lounge_access
         ],
     }
 

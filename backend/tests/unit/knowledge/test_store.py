@@ -6,7 +6,7 @@ makes the assertion exact and strong — DB rows carrying the same content as
 the YAML seeds must hydrate an EQUAL `CatalogSnapshot` with an IDENTICAL
 content-hash version (the module's documented invariant: "a DB load of
 identical data reports an identical version"). A column-mapping or
-enum-casting mistake in any of the seven queries breaks the equality.
+enum-casting mistake in any of the nine queries breaks the equality.
 """
 
 import re
@@ -24,6 +24,8 @@ _TABLE_TO_FIELD = {
     "reward_categories": "category_rules",
     "reward_milestones": "milestones",
     "award_charts": "award_charts",
+    "lounge_programs": "lounge_programs",
+    "card_lounge_access": "lounge_access",
 }
 
 _FROM_RE = re.compile(r"FROM\s+(\w+)")

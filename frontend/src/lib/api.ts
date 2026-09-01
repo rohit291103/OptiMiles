@@ -297,6 +297,14 @@ export type CardSummary = {
   card_name: string;
   annual_fee_inr: number;
   has_lounge_access: boolean;
+  /**
+   * "detailed"     — we hold real conditions for this card
+   * "not_detailed" — the card HAS lounge access, we haven't researched it yet
+   * "none"         — the card has no lounge access
+   * The middle state must never be rendered as "none".
+   */
+  lounge_coverage: "detailed" | "not_detailed" | "none";
+  lounge_access: PortfolioLoungeAccess[];
   acquirable: boolean;
 };
 
@@ -435,7 +443,9 @@ async function postJson<T>(
   body: unknown,
   token?: string | null,
 ): Promise<T> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
   if (token) headers.Authorization = `Bearer ${token}`;
   let response: Response;
   try {
@@ -486,7 +496,10 @@ export async function fetchEducation(
     throw new ApiError("Couldn't load your cards' reward story.");
   }
   if (!response.ok) {
-    throw new ApiError(`Education error (${response.status}).`, response.status);
+    throw new ApiError(
+      `Education error (${response.status}).`,
+      response.status,
+    );
   }
   return (await response.json()) as EducationPayload;
 }
@@ -515,7 +528,11 @@ export function simulateAndSave(
   request: SimulateRequest,
   token: string,
 ): Promise<SimulateResponse> {
-  return postJson<SimulateResponse>("/goals/recommendation/save", request, token);
+  return postJson<SimulateResponse>(
+    "/goals/recommendation/save",
+    request,
+    token,
+  );
 }
 
 /** The signed-in user's saved goals, newest first (needs a Supabase token). */
@@ -532,7 +549,10 @@ export async function fetchSavedGoals(token: string): Promise<SavedGoal[]> {
     throw new ApiError("Your session expired — please log in again.", 401);
   }
   if (!response.ok) {
-    throw new ApiError(`Couldn't load your goals (${response.status}).`, response.status);
+    throw new ApiError(
+      `Couldn't load your goals (${response.status}).`,
+      response.status,
+    );
   }
   const body = (await response.json()) as SavedGoalsResponse;
   return body.goals;
@@ -558,7 +578,10 @@ export async function fetchSavedGoal(
     throw new ApiError("We couldn't find that goal.", 404);
   }
   if (!response.ok) {
-    throw new ApiError(`Couldn't load this goal (${response.status}).`, response.status);
+    throw new ApiError(
+      `Couldn't load this goal (${response.status}).`,
+      response.status,
+    );
   }
   return (await response.json()) as SavedGoalDetail;
 }
@@ -584,7 +607,10 @@ export async function deleteSavedGoal(
     throw new ApiError("We couldn't find that goal.", 404);
   }
   if (!response.ok) {
-    throw new ApiError(`Couldn't delete this goal (${response.status}).`, response.status);
+    throw new ApiError(
+      `Couldn't delete this goal (${response.status}).`,
+      response.status,
+    );
   }
 }
 
@@ -597,8 +623,270 @@ export async function fetchCards(): Promise<CardSummary[]> {
     throw new ApiError("Couldn't load the card catalog.");
   }
   if (!response.ok) {
-    throw new ApiError(`Card catalog error (${response.status}).`, response.status);
+    throw new ApiError(
+      `Card catalog error (${response.status}).`,
+      response.status,
+    );
   }
   const body = (await response.json()) as CatalogCardsResponse;
   return body.cards;
+}
+
+/* ── Best Card for this Spend (roadmap Phase 1) ─────────────────────────── */
+
+/** Canonical category slugs — mirrors the backend `SpendCategory` enum. */
+export const SPEND_CATEGORIES = [
+  { slug: "default", label: "Everything else" },
+  { slug: "travel", label: "Travel" },
+  { slug: "dining", label: "Dining" },
+  { slug: "online", label: "Online shopping" },
+  { slug: "groceries", label: "Groceries" },
+  { slug: "fuel", label: "Fuel" },
+  { slug: "utilities", label: "Utilities" },
+  { slug: "international", label: "International" },
+] as const;
+
+export type SpendCategorySlug = (typeof SPEND_CATEGORIES)[number]["slug"];
+
+/**
+ * A transfer program the user's wallet can actually reach.
+ *
+ * Only these may be offered as a choice — the catalog's four partners are not
+ * evenly reachable (both Axis currencies reach only KrisFlyer, and Maharaja
+ * Club only from HDFC's Infinia/Diners tier), so an unfiltered list would be
+ * full of dead ends.
+ */
+export type PartnerReach = {
+  partner_id: string;
+  partner_name: string;
+  program_name: string;
+  partner_type: string;
+  is_target: boolean;
+  card_ids: string[];
+  best_miles_per_1000_points: number;
+};
+
+export type CardSpendOption = {
+  card_id: string;
+  bank: string;
+  card_name: string;
+  currency_name: string;
+  category_label: string;
+  is_accelerated: boolean;
+  effective_earn_rate: string;
+  monthly_cap_inr: number | null;
+  cap_exceeded: boolean;
+  points_earned: number;
+  /** null exactly when the card has no transfer route to the target program. */
+  miles_earned: number | null;
+  miles_per_100: string | null;
+};
+
+export type BestCardResult = {
+  catalog_snapshot_version: string;
+  amount_inr: number;
+  category: SpendCategorySlug;
+  /**
+   * How much the order of `ranked` means. "miles" is a real ranking in a unit
+   * the user chose. "points" is a listing across incomparable currencies —
+   * the UI must NOT crown a winner on it.
+   */
+  ranking_basis: "miles" | "points";
+  /** null until the user picks a program. Never defaulted. */
+  target_program_id: string | null;
+  target_program_name: string | null;
+  ranked: CardSpendOption[];
+  unroutable: CardSpendOption[];
+  partner_reach: PartnerReach[];
+};
+
+/** Which card to swipe for one purchase. Anonymous — no token needed. */
+export async function fetchBestCard(args: {
+  amountInr: number;
+  category: SpendCategorySlug;
+  cardIds: string[];
+  targetProgramId?: string;
+}): Promise<BestCardResult> {
+  const params = new URLSearchParams({
+    amount_inr: String(args.amountInr),
+    category: args.category,
+  });
+  for (const id of args.cardIds) params.append("card_ids", id);
+  if (args.targetProgramId)
+    params.set("target_program_id", args.targetProgramId);
+
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}/best-card?${params}`);
+  } catch {
+    throw new ApiError("Couldn't work out the best card right now.");
+  }
+  if (!response.ok) {
+    throw new ApiError(
+      `Best-card error (${response.status}).`,
+      response.status,
+    );
+  }
+  return (await response.json()) as BestCardResult;
+}
+
+/* ── Portfolio View (roadmap Phase 1) ───────────────────────────────────── */
+
+export type PortfolioEarnRule = {
+  category_slug: SpendCategorySlug;
+  category_label: string;
+  earn_rate: string;
+  /** null exactly when the card has no transfer route to the target program. */
+  miles_per_100: string | null;
+  is_accelerated: boolean;
+  monthly_cap_inr: number | null;
+  quarterly_cap_inr: number | null;
+  annual_cap_inr: number | null;
+  notes: string | null;
+};
+
+export type PortfolioMilestone = {
+  milestone_type: string;
+  period: string;
+  spend_threshold_inr: number | null;
+  bonus_points: number;
+  bonus_miles: number | null;
+  description: string | null;
+};
+
+export type PortfolioTransferLink = {
+  partner_id: string;
+  partner_name: string;
+  program_name: string;
+  partner_type: string;
+  is_target: boolean;
+  ratio_from: number;
+  ratio_to: number;
+  miles_per_1000_points: number;
+  min_transfer_points: number;
+  max_transfer_points: number | null;
+  /** What the link's yearly points cap is worth in the target program. */
+  annual_ceiling_miles: number | null;
+  transfer_fee_inr: number;
+  processing_days_min: number;
+  processing_days_max: number;
+  notes: string | null;
+};
+
+export type PortfolioLoungeAccess = {
+  program_name: string;
+  scope: "domestic" | "international";
+  /** null means UNLIMITED. 0 means none granted. Opposite answers — never
+   *  render a null as "no access". */
+  visits_per_period: number | null;
+  is_unlimited: boolean;
+  period: string;
+  reset_anchor: string;
+  guest_visits_per_period: number | null;
+  guests_share_allowance: boolean;
+  /** Visits unlocked only by spending this much in the PRECEDING period. */
+  spend_gate_inr: number | null;
+  spend_gate_period: string | null;
+  needs_activation: boolean;
+  enrollment_url: string | null;
+  conditions: string | null;
+};
+
+export type PortfolioCard = {
+  card_id: string;
+  bank: string;
+  card_name: string;
+  card_network: string;
+  currency_id: string;
+  currency_name: string;
+  currency_expiry_rules: string | null;
+  annual_fee_inr: number;
+  joining_fee_inr: number;
+  base_earn_rate: string;
+  has_lounge_access: boolean;
+  /**
+   * "detailed"     — we hold real conditions for this card
+   * "not_detailed" — the card HAS lounge access, we haven't researched it yet
+   * "none"         — the card has no lounge access
+   * The middle state must never be rendered as "none".
+   */
+  lounge_coverage: "detailed" | "not_detailed" | "none";
+  lounge_access: PortfolioLoungeAccess[];
+  acquirable: boolean;
+  /** null when no program has been chosen — not false, which would read as
+   *  "no route", a claim we haven't been asked to make. */
+  reaches_target: boolean | null;
+  earn_rules: PortfolioEarnRule[];
+  milestones: PortfolioMilestone[];
+  transfer_links: PortfolioTransferLink[];
+};
+
+export type PortfolioCategoryRow = {
+  card_id: string;
+  card_name: string;
+  category_label: string;
+  earn_rate: string;
+  miles_per_100: string | null;
+  is_accelerated: boolean;
+  monthly_cap_inr: number | null;
+};
+
+export type PortfolioCategory = {
+  category_slug: SpendCategorySlug;
+  category_label: string;
+  /** null when no program is chosen, and when a chosen program is reachable
+   *  by no card in the wallet. Either way: no honest winner to name. */
+  leader_card_id: string | null;
+  rows: PortfolioCategoryRow[];
+};
+
+export type WalletPortfolio = {
+  catalog_snapshot_version: string;
+  /** null until the user picks a program. Never defaulted. */
+  target_program_id: string | null;
+  target_program_name: string | null;
+  cards: PortfolioCard[];
+  categories: PortfolioCategory[];
+  partner_reach: PartnerReach[];
+  /** null when no program is chosen — the question has no answer yet. */
+  cards_reaching_target: number | null;
+  lounge_cards_detailed: number;
+  lounge_cards_undetailed: number;
+  total_annual_fees_inr: number;
+  total_joining_fees_inr: number;
+  /** False until Phase 2 spend logging — caps/milestones are targets, not progress. */
+  spend_data_available: boolean;
+  caveat: string;
+};
+
+/** The user's own wallet, priced against a transfer program. Anonymous. */
+export async function fetchPortfolio(args: {
+  cardIds: readonly string[];
+  targetProgramId?: string;
+}): Promise<WalletPortfolio> {
+  const params = new URLSearchParams();
+  for (const id of args.cardIds) params.append("card_ids", id);
+  if (args.targetProgramId)
+    params.set("target_program_id", args.targetProgramId);
+
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}/portfolio?${params}`);
+  } catch {
+    throw new ApiError("Couldn't load your portfolio.");
+  }
+  if (response.status === 404) {
+    // A card id we hold no longer exists in the catalog — the wallet is stale.
+    throw new ApiError(
+      "One of your saved cards is no longer in the catalog. Edit your wallet to fix it.",
+      404,
+    );
+  }
+  if (!response.ok) {
+    throw new ApiError(
+      `Portfolio error (${response.status}).`,
+      response.status,
+    );
+  }
+  return (await response.json()) as WalletPortfolio;
 }

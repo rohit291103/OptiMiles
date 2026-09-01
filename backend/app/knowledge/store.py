@@ -14,6 +14,8 @@ from app.domain import (
     Card,
     CatalogSnapshot,
     CurrencyTransferLink,
+    LoungeAccess,
+    LoungeProgram,
     RewardCategoryRule,
     RewardCurrency,
     RewardMilestone,
@@ -75,6 +77,23 @@ async def load_snapshot(conn: AsyncConnection) -> CatalogSnapshot:
             " FROM reward_milestones WHERE is_active ORDER BY id"
         )
     )
+    lounge_programs = tuple(
+        LoungeProgram.model_validate(r)
+        for r in await rows(
+            "SELECT id, program_name, operator, notes"
+            " FROM lounge_programs WHERE is_active ORDER BY id"
+        )
+    )
+    lounge_access = tuple(
+        LoungeAccess.model_validate(r)
+        for r in await rows(
+            "SELECT id, card_id, program_id, scope, visits_per_period, period,"
+            " reset_anchor, guest_visits_per_period, guests_share_allowance,"
+            " spend_gate_inr, spend_gate_period, enrollment_required,"
+            " enrollment_url, conditions"
+            " FROM card_lounge_access WHERE is_active ORDER BY id"
+        )
+    )
     award_charts = tuple(
         AwardChartEntry.model_validate(r)
         for r in await rows(
@@ -86,7 +105,17 @@ async def load_snapshot(conn: AsyncConnection) -> CatalogSnapshot:
 
     return CatalogSnapshot(
         version=content_version(
-            [currencies, partners, transfer_links, cards, category_rules, milestones, award_charts]
+            [
+                currencies,
+                partners,
+                transfer_links,
+                cards,
+                category_rules,
+                milestones,
+                list(award_charts),
+                list(lounge_programs),
+                list(lounge_access),
+            ]
         ),
         currencies=currencies,
         partners=partners,
@@ -95,4 +124,6 @@ async def load_snapshot(conn: AsyncConnection) -> CatalogSnapshot:
         category_rules=category_rules,
         milestones=milestones,
         award_charts=award_charts,
+        lounge_programs=lounge_programs,
+        lounge_access=lounge_access,
     )

@@ -9,6 +9,7 @@ import { Brand } from "@/components/brand"
 import { signOut, useAuth } from "@/lib/use-auth"
 
 const LINKS = [
+  { href: "/best-card", label: "Best card" },
   { href: "/#simulate", label: "Simulator" },
   { href: "/#how", label: "How it works" },
   { href: "/#cards", label: "Supported cards" },

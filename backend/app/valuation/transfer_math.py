@@ -23,6 +23,15 @@ Formulas (units in brackets):
 
   points_to_miles(P, link) [miles] = floor(P / ratio_from) × ratio_to
 
+  marginal_miles(P, link) [miles] = floor(P × ratio_to / ratio_from)
+      the MARGINAL worth of P points — what they add to a balance that gets
+      transferred in whole blocks later. Differs from points_to_miles only
+      when P is not a whole number of blocks — but there it matters a lot:
+      150 HDFC Regalia RP into Marriott (100:33) are worth 49 marginal miles,
+      against the 33 that block-flooring 150 as a standalone send would give.
+      Price a purchase or a bonus with this; model an actual send with
+      points_to_miles.
+
   whole_block_transfer(P, link) [(pts, miles)]:
       blocks = floor(P / ratio_from)
       → (blocks × ratio_from, blocks × ratio_to)
@@ -57,6 +66,17 @@ def transferable_points(points: int, link: CurrencyTransferLink) -> int:
 def points_to_miles(points: int, link: CurrencyTransferLink) -> int:
     """Whole-block conversion: floor(points / ratio_from) × ratio_to."""
     return (points // link.ratio_from) * link.ratio_to
+
+
+def marginal_miles(points: int, link: CurrencyTransferLink) -> int:
+    """Marginal worth of `points` in the partner program — see module docstring.
+
+    NOT a transfer: no min/max limits and no whole-block flooring, because
+    the points being priced join a balance that is transferred in blocks at
+    some later date. `points_to_miles` models the send itself.
+    """
+    exact = Decimal(points) * link.ratio_to / Decimal(link.ratio_from)
+    return int(exact.quantize(Decimal(1), rounding=ROUND_DOWN))
 
 
 def whole_block_transfer(points: int, link: CurrencyTransferLink) -> tuple[int, int]:

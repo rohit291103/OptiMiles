@@ -160,4 +160,4 @@ def test_db_read_queries_are_order_deterministic() -> None:
     import app.knowledge.store as store
 
     source = Path(store.__file__).read_text()
-    assert source.count("WHERE is_active ORDER BY id") == 7
+    assert source.count("WHERE is_active ORDER BY id") == 9

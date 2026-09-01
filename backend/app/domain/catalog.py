@@ -13,11 +13,14 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.domain.enums import (
+    AllowancePeriod,
     AwardType,
     CabinClass,
+    LoungeScope,
     MilestonePeriod,
     MilestoneType,
     PartnerType,
+    ResetAnchor,
     SpendCategory,
 )
 
@@ -114,6 +117,75 @@ class RewardMilestone(_Frozen):
     valid_until: date | None = None
 
 
+class LoungeProgram(_Frozen):
+    """A network airport lounge access rides on.
+
+    The programme is not the lounge and not the airport — it is the thing that
+    decides whether a given lounge will let this card in. Indian cards ride on
+    Priority Pass, DreamFolks, LoungeOne, the Visa/Mastercard lounge
+    programmes, or the issuer's own arrangement.
+    """
+
+    id: UUID
+    program_name: str
+    operator: str | None = None
+    notes: str | None = None
+
+
+class LoungeAccess(_Frozen):
+    """One card's entitlement, in one programme, for one scope.
+
+    A card typically has SEVERAL of these — Regalia Gold has a domestic row
+    (3 visits a quarter, gated on last quarter's spend) and an international
+    row (6 a year, ungated). Tiered cards get one row per tier, distinguished
+    by `spend_gate_inr`.
+
+    VOCABULARY, deliberately not "cap": a reward cap is a ₹-spend ceiling on
+    accelerated earning (`RewardCategoryRule`). A lounge limit counts visits.
+    Same English word, unrelated concepts — so this is an *allowance*.
+
+    `visits_per_period = None` means unlimited, never zero. Zero is a real and
+    different answer: Infinia grants no complimentary GUEST visits (they are
+    chargeable), which is not the same as an unlimited guest entitlement.
+    """
+
+    id: UUID
+    card_id: UUID
+    program_id: UUID
+    scope: LoungeScope
+
+    visits_per_period: int | None = Field(
+        default=None, ge=0, description="None = unlimited; 0 = none granted"
+    )
+    period: AllowancePeriod
+    reset_anchor: ResetAnchor
+
+    guest_visits_per_period: int | None = Field(default=None, ge=0)
+    guests_share_allowance: bool = Field(
+        default=False,
+        description="True when a guest visit consumes the cardholder's own allowance",
+    )
+
+    spend_gate_inr: int | None = Field(
+        default=None,
+        ge=0,
+        description="Visits unlock only after this spend in `spend_gate_period`",
+    )
+    spend_gate_period: AllowancePeriod | None = None
+
+    enrollment_required: bool = Field(
+        default=False,
+        description="The benefit does not exist until the holder activates it",
+    )
+    enrollment_url: str | None = None
+
+    conditions: str | None = Field(
+        default=None,
+        description="Anything the structured fields cannot carry — per-visit "
+        "charges, add-on-holder rules, foreign-currency guest fees",
+    )
+
+
 class AwardChartEntry(_Frozen):
     """Redemption cost for one (partner, route-region, cabin, award type)."""
 
@@ -146,3 +218,8 @@ class CatalogSnapshot(_Frozen):
     category_rules: tuple[RewardCategoryRule, ...]
     milestones: tuple[RewardMilestone, ...]
     award_charts: tuple[AwardChartEntry, ...]
+    # Coverage is deliberately partial (CLAUDE.md → tiered coverage): a card
+    # with no rows here is "not covered yet", which the read surface states
+    # rather than reporting as "no lounge access".
+    lounge_programs: tuple[LoungeProgram, ...] = ()
+    lounge_access: tuple[LoungeAccess, ...] = ()

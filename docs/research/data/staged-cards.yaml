@@ -1,0 +1,207 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# STAGED DATA — NOT SEEDED, NOT LOADED, NOT IN THE PIPELINE.
+#
+# Four cards OUTSIDE the MVP nine, captured because they carry category earn
+# rates that are directly usable for spend-routing strategy once card coverage
+# expands. Staged here so that expansion is a lift, not a re-research job.
+#
+# SCHEMA: mirrors backend/seeds/catalog/cards.yaml so rows move across with
+# minimal edits. Per that file's convention, `earn_rate` is REWARD UNITS PER
+# ₹100 and `monthly_cap_inr` is SPEND in INR per month (beyond the cap, spend
+# earns the base rate).
+#
+# CONVERSION NOTE: cashback cards are expressed on the same axis — a 10%
+# cashback card is earn_rate 10.0 with a unit worth ₹1. This keeps one
+# comparable number for spend routing across cashback and points cards.
+#
+# CONSERVATISM: cards.yaml seeds earn rates conservatively so projections
+# under-promise. Figures below are the RAW published/claimed values. Apply that
+# conservatism at promotion time, not here — this file is the record of what
+# was actually claimed.
+# ─────────────────────────────────────────────────────────────────────────────
+
+meta:
+  captured_on: 2026-08-10
+  origin: >-
+    CreditCardTalks "fee recovery" infographics supplied by the user 2026-08-10.
+    Attributable publisher but undated. All arithmetic in the images was
+    independently recomputed and passes (see
+    ../fee-recovery-card-infographics-v1.md §2); the INPUTS are largely
+    unverified.
+  scope_status: >-
+    ALL FOUR ARE OUT OF MVP SCOPE. backend/seeds/catalog/cards.yaml holds the
+    nine supported cards; root CLAUDE.md excludes "every Indian credit card".
+    Nothing here is a seeding candidate until card coverage expands.
+  gst_assumption: "0.18"
+
+cards:
+
+  # ── HSBC Live+ ─────────────────────────────────────────────────────────────
+  # The best-verified card in this set — cap structure checked against HSBC's
+  # own product page and confirmed to support the headline claim.
+
+  - slug: hsbc-live-plus
+    bank: HSBC
+    card_name: Live+
+    card_network: Visa Signature
+    currency: cashback-inr
+    annual_fee_inr: 999
+    annual_fee_incl_gst_inr: 1179
+    fee_waiver_annual_spend_inr: 200000
+    base_earn_rate: "1.5"
+    reward_unit_value_inr: "1.00"
+    source: CreditCardTalks infographic; hsbc.co.in/credit-cards/products/live-plus/; paisabazaar (2026-08-10)
+    verified_on: 2026-08-10
+    needs_verification: false
+    categories:
+      - category_slug: default
+        category_label: All other spend
+        earn_rate: "1.5"
+        notes: Unlimited, no cap. Amazon/Flipkart/Myntra earn this base rate, not the accelerated rate.
+        needs_verification: false
+      - category_slug: dining-grocery-delivery
+        category_label: Dining, groceries, food delivery
+        earn_rate: "10.0"
+        monthly_cap_inr: 12000
+        notes: >-
+          Cap is published as ₹1,200 CASHBACK per statement cycle; converted to
+          ₹12,000 SPEND/month for cards.yaml semantics. VERIFIED to support the
+          infographic's ₹11.8K break-even claim with ~2% headroom.
+          As of 2026-07-26 the 10% band reportedly widened to include utilities
+          and shopping (excl. Amazon/Flipkart/Myntra) under the SAME shared
+          ₹1,200 cap — confirm before using either category list.
+        needs_verification: true
+
+  # ── SBI PhonePe Select Black ───────────────────────────────────────────────
+
+  - slug: sbi-phonepe-select-black
+    bank: SBI Card
+    card_name: PhonePe Select Black
+    currency: sbi-reward-points
+    annual_fee_inr: 1499
+    annual_fee_incl_gst_inr: 1769
+    base_earn_rate: null
+    reward_unit_value_inr: "1.00"
+    source: CreditCardTalks infographic (publisher states 1 RP = ₹1 and an ASSUMED 1% convenience fee)
+    verified_on: null
+    needs_verification: true
+    categories:
+      - category_slug: phonepe-app
+        category_label: Eligible spends inside the PhonePe app
+        earn_rate: "10.0"
+        effective_earn_rate: "8.82"
+        notes: >-
+          Gross 10%, less an assumed 1% convenience fee + GST (1.18%) = 8.82%
+          net. The convenience fee is the PUBLISHER'S ASSUMPTION, not an
+          observed figure — verify before using either number. No cap data
+          captured; a 10% band almost certainly has one.
+        needs_verification: true
+      - category_slug: online
+        category_label: Eligible online spends
+        earn_rate: "5.0"
+        notes: No cap data captured. Verify.
+        needs_verification: true
+
+  # ── Axis Horizon ───────────────────────────────────────────────────────────
+
+  - slug: axis-horizon
+    bank: Axis Bank
+    card_name: Horizon
+    currency: axis-edge-miles
+    annual_fee_inr: 3000
+    annual_fee_incl_gst_inr: 3540
+    base_earn_rate: "2.0"
+    reward_unit_value_inr: "1.00"
+    source: CreditCardTalks infographic
+    verified_on: null
+    needs_verification: true
+    categories:
+      - category_slug: default
+        category_label: All other spend
+        earn_rate: "2.0"
+        needs_verification: true
+      - category_slug: travel
+        category_label: Travel EDGE portal and direct airline spends
+        earn_rate: "5.0"
+        notes: No cap data captured. Verify.
+        needs_verification: true
+    warnings:
+      - >-
+        The ₹1.00 EDGE Mile valuation is OPTIMISTIC and redemption-dependent.
+        EDGE Miles moved with the Apr-2026 Axis devaluation already recorded in
+        backend/seeds/catalog/transfer_links.yaml. Do not carry ₹1 across
+        without re-deriving it from current transfer ratios.
+      - >-
+        Uses the axis-edge-miles currency, which IS already seeded — so this
+        card's transfer entitlements come free if it is ever added.
+
+  # ── HDFC BizBlack ──────────────────────────────────────────────────────────
+  # Business card. Highest claimed rates in the set and the least plausible.
+
+  - slug: hdfc-bizblack
+    bank: HDFC
+    card_name: BizBlack Metal
+    card_network: Diners Club International
+    currency: hdfc-rp-premium
+    annual_fee_inr: 10000
+    annual_fee_incl_gst_inr: 11800
+    base_earn_rate: "3.33"
+    reward_unit_value_inr: "1.00"
+    card_type: business
+    source: CreditCardTalks infographic
+    verified_on: null
+    needs_verification: true
+    categories:
+      - category_slug: default
+        category_label: All other spend
+        earn_rate: "3.33"
+        notes: 5 RP per ₹150.
+        needs_verification: true
+      - category_slug: tax-payments
+        category_label: Tax payments
+        earn_rate: "16.67"
+        notes: >-
+          5X = 25 RP per ₹150. The distinguishing feature of this card — tax
+          payments usually earn ZERO on Indian cards, so if this holds it is a
+          genuinely unusual routing option for business spend.
+        needs_verification: true
+      - category_slug: hotels
+        category_label: Hotels via SmartBuy
+        earn_rate: "33.33"
+        notes: >-
+          10X = 50 RP per ₹150. LEAST PLAUSIBLE FIGURE IN THIS FILE. A 33.3%
+          effective rate is extraordinary and SmartBuy 10X categories carry
+          tight monthly caps on every other HDFC card in the catalog. Assume a
+          cap exists and find it before trusting this.
+        needs_verification: true
+      - category_slug: flights
+        category_label: Flights via SmartBuy
+        earn_rate: "16.67"
+        notes: 5X = 25 RP per ₹150. Cap unknown.
+        needs_verification: true
+      - category_slug: vouchers
+        category_label: Vouchers via SmartBuy
+        earn_rate: "10.0"
+        notes: 3X = 15 RP per ₹150. Cap unknown.
+        needs_verification: true
+    warnings:
+      - >-
+        Uses hdfc-rp-premium, an ALREADY-SEEDED currency — so this card inherits
+        the full existing HDFC transfer entitlement (KrisFlyer 1:1 etc.) if
+        added. That makes it the cheapest of the four to introduce.
+      - >-
+        NO CAPS captured for ANY category. Every accelerated rate here is
+        therefore an upper bound, not an expected value.
+
+# ── What is missing across all four ──────────────────────────────────────────
+# Ordered by how much it distorts spend routing if left unknown:
+#
+# 1. CAPS. Only HSBC Live+ has a verified cap. Uncapped accelerated rates make
+#    a card look arbitrarily good to an optimizer — this is the single biggest
+#    source of wrong spend-routing advice.
+# 2. FEE WAIVER THRESHOLDS. Only Live+ captured (₹2L). For most holders the
+#    waiver, not reward accrual, is how a fee is actually offset.
+# 3. REWARD UNIT VALUES. 1 RP = ₹1 and 1 EDGE Mile = ₹1 are both flat
+#    assumptions from the publisher and both are redemption-dependent.
+# 4. EXCLUSIONS / MCC RULES. All four infographics footnote them; none quantify.
+# 5. MILESTONE BENEFITS. Not covered by these infographics at all.

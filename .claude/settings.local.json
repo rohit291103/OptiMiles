@@ -9,7 +9,8 @@
       "Read(//private/tmp/**)",
       "Bash(node -e \"const l=require\\('lucide-react'\\); ['Plane','CreditCard','ArrowRight','Sparkles','Target','LineChart','ShieldCheck','Zap','TrendingUp','Check','ChevronLeft','ChevronRight','Quote','Menu','Star','Wallet','Route','Lock','Mail'].forEach\\(n=>console.log\\(n, typeof l[n]\\)\\)\")",
       "mcp__notion__notion-fetch",
-      "Bash(uv run *)"
+      "Bash(uv run *)",
+      "WebSearch"
     ]
   }
 }

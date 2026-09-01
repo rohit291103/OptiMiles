@@ -1,0 +1,41 @@
+name: render-keepalive
+
+# Render free web services spin down after ~15 minutes with no traffic, and a
+# Python cold start runs 50s+ — longer than the pipeline's 30s budget, so the
+# first visitor after a quiet period would time out. A cheap /health ping every
+# 10 minutes keeps the instance (and its cached catalog snapshot) warm.
+#
+# Requires a repo VARIABLE (not secret) API_BASE_URL — the Render service URL,
+# e.g. https://optimiles-api.onrender.com. Settings → Secrets and variables →
+# Actions → Variables → New repository variable.
+#
+# HONEST LIMITS: GitHub's scheduled workflows are best-effort and get delayed
+# or dropped under load, so this reduces cold starts rather than eliminating
+# them. If cold starts still bite, the fix is the paid tier, not a tighter cron.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /health
+        env:
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+        run: |
+          if [ -z "$API_BASE_URL" ]; then
+            echo "API_BASE_URL variable not set — skipping (see this file's header)."
+            exit 0
+          fi
+          # --max-time 120 tolerates a cold start we happen to catch mid-spin-up.
+          code=$(curl -sS -o /tmp/health.json -w '%{http_code}' --max-time 120 \
+                   "${API_BASE_URL%/}/health") || true
+          echo "HTTP $code"
+          cat /tmp/health.json || true
+          # Never fail the workflow on a transient blip: a red X every 10
+          # minutes trains you to ignore the one that actually matters.
+          if [ "$code" != "200" ]; then
+            echo "::warning::health check returned $code"
+          fi

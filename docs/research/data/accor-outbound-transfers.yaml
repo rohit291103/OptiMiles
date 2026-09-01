@@ -1,0 +1,223 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# STAGED DATA — NOT SEEDED, NOT LOADED, NOT IN THE PIPELINE.
+#
+# This file lives under docs/research/data/ deliberately. It is NOT part of
+# backend/seeds/catalog/ and nothing reads it. It exists so that when multi-hop
+# transfer paths are introduced, this data is a straight lift rather than a
+# re-research job.
+#
+# WHY IT IS NOT SEEDED: these are partner → partner links. The current schema
+# (v1.1) models transfers as currency → partner, single hop only. Representing
+# these rows requires a schema decision that has not been made — see
+# ../accor-outbound-transfer-partners-v1.md §6.
+#
+# SCHEMA: mirrors backend/seeds/catalog/transfer_links.yaml so rows can be moved
+# with minimal edits. ratio_from : ratio_to = points consumed : miles credited.
+# The one difference is `partner_from` in place of `currency`.
+#
+# VERIFICATION: every row below was checked against Accor's own published
+# conversion conditions on 2026-08-10 — a primary source, not an aggregator.
+#   https://all.accor.com/a/en/loyalty-program/partners/conditions/airlines.html
+# Rows NOT on that page are marked needs_verification: true and carry no ratio.
+# ─────────────────────────────────────────────────────────────────────────────
+
+meta:
+  captured_on: 2026-08-10
+  verified_on: 2026-08-10
+  primary_source: https://all.accor.com/a/en/loyalty-program/partners/conditions/airlines.html
+  origin: >-
+    Social infographics supplied by the user 2026-08-10, then verified against
+    Accor's published conditions. The infographics' tier labels were wrong for
+    Flying Blue, Qatar and Finnair; ratios below are Accor's, not theirs.
+  accor_point_value_inr: "2.00"
+  accor_point_value_note: >-
+    USER DECISION 2026-08-10: value Accor points at ₹2.00/point for calculation
+    purposes. NOTE this is a working assumption, NOT a guaranteed floor — the
+    infographic's "₹2 guaranteed, no dynamic pricing" claim is wrong; Accor
+    redemption value IS dynamic. There is no point-value field anywhere in the
+    catalog schema today, so this has no seed home yet.
+
+# ── Accor ALL → airline programs ─────────────────────────────────────────────
+
+transfers:
+
+  # --- 1:1 tier (the genuinely good ones) ---
+
+  - partner_from: accor-all
+    partner_to: iberia-plus
+    ratio_from: 1
+    ratio_to: 1
+    min_transfer_points: 3000
+    notes: >-
+      Published as "3,000 Reward points = 3,000 Avios points". The best Accor
+      outbound link and the entry point for the Avios cluster below — this is
+      the row that makes Accor → Qatar worth 2x the direct link.
+    source: Accor airline conversion conditions (primary)
+    verified_on: 2026-08-10
+    needs_verification: false
+
+  - partner_from: accor-all
+    partner_to: air-europa-suma
+    ratio_from: 1
+    ratio_to: 1
+    min_transfer_points: 2000
+    notes: Published as "2000 Reward points = 2000 Suma Miles".
+    source: Accor airline conversion conditions (primary)
+    verified_on: 2026-08-10
+    needs_verification: false
+
+  - partner_from: accor-all
+    partner_to: virgin-australia-velocity
+    ratio_from: 1
+    ratio_to: 1
+    min_transfer_points: 4000
+    notes: Published as "4,000 Reward points = 4,000 Velocity points".
+    source: Accor airline conversion conditions (primary)
+    verified_on: 2026-08-10
+    needs_verification: false
+
+  # --- better-than-2:1 but not 1:1 ---
+
+  - partner_from: accor-all
+    partner_to: finnair-plus
+    ratio_from: 20
+    ratio_to: 13
+    min_transfer_points: 2000
+    notes: >-
+      Published as "2,000 Reward points = 1,300 Avios" (1:0.65). The infographic
+      filed this under "GOOD VALUE, near 1:1" — WRONG, but it is still better
+      than the 2:1 tier and is a second entry point into the Avios cluster.
+    source: Accor airline conversion conditions (primary)
+    verified_on: 2026-08-10
+    needs_verification: false
+
+  # --- 2:1 tier ---
+
+  - partner_from: accor-all
+    partner_to: krisflyer
+    ratio_from: 2
+    ratio_to: 1
+    min_transfer_points: 2000
+    notes: >-
+      Published as "2,000 Reward points = 1,000 Miles". Infographic agreed.
+      NOTE krisflyer already exists in backend/seeds/catalog/partners.yaml — this
+      is an INBOUND link to an already-modeled partner and would be the easiest
+      first multi-hop row to introduce.
+    source: Accor airline conversion conditions (primary)
+    verified_on: 2026-08-10
+    needs_verification: false
+
+  - partner_from: accor-all
+    partner_to: qatar-privilege-club
+    ratio_from: 2
+    ratio_to: 1
+    min_transfer_points: 2000
+    notes: >-
+      Published as "2,000 Reward points = 1,000 Miles". The infographic claimed
+      4:3 ("lose ~25%") — WRONG, the real direct loss is 50%. This makes the
+      Accor → Iberia → Qatar route 2x better than direct, not 1.33x.
+    source: Accor airline conversion conditions (primary)
+    verified_on: 2026-08-10
+    needs_verification: false
+
+  - partner_from: accor-all
+    partner_to: british-airways-executive-club
+    ratio_from: 2
+    ratio_to: 1
+    min_transfer_points: 4000
+    notes: Published as "4,000 Reward points = 2,000 air Miles".
+    source: Accor airline conversion conditions (primary)
+    verified_on: 2026-08-10
+    needs_verification: false
+
+  - partner_from: accor-all
+    partner_to: flying-blue
+    ratio_from: 2
+    ratio_to: 1
+    min_transfer_points: 2000
+    requires_subscription: ALL x Flying Blue
+    notes: >-
+      Published as "2,000 Reward points = 1,000 Miles", and available ONLY to
+      members with an active ALL x Flying Blue subscription. The infographic
+      claimed 1:1 and omitted the subscription — WRONG on both counts, which
+      collapses its "Hack #2" per-point math from ~₹4 to ~₹2.
+    source: Accor airline conversion conditions (primary)
+    verified_on: 2026-08-10
+    needs_verification: false
+
+  # --- unresolved ---
+
+  - partner_from: accor-all
+    partner_to: qantas-frequent-flyer
+    ratio_from: 4
+    ratio_to: 5
+    min_transfer_points: 2000
+    notes: >-
+      CONFLICTING SOURCES — do not use without resolving. Accor's Qantas partner
+      page advertises "2,000 ALL Reward Points = 2,500 Qantas Points" (1:1.25),
+      but Accor's GLOBAL airline-conditions page lists Qantas automatic
+      conversion as DISCONTINUED as of 2021-12-08. Third-party coverage frames
+      the partnership as Asia-Pacific / Australian. OPEN QUESTION: can an
+      India-registered ALL account execute this at all? Binary and unanswered.
+    source: https://all.accor.com/loyalty-program/partners/qantas/index.en.shtml (conflicts with the conditions page)
+    verified_on: 2026-08-10
+    needs_verification: true
+
+# ── The Avios cluster ────────────────────────────────────────────────────────
+# Avios is ONE currency shared across five programs. Movement between them is
+# free and 1:1. This is why the multi-hop routes work at all, and it is the
+# strongest argument for modeling Avios as a single reward currency with member
+# programs rather than building general path search.
+#
+# TOPOLOGY CAVEAT: British Airways is the hub. Qatar and Finnair are NOT
+# directly connected to Iberia — those moves route via BA in two stages. The
+# "Combine My Avios" tool at avios.com hides this, but a path model must not.
+
+avios_cluster:
+  currency: avios
+  hub: british-airways-executive-club
+  members:
+    - british-airways-executive-club
+    - iberia-plus
+    - qatar-privilege-club
+    - finnair-plus
+    - aer-lingus-aerclub
+  movement:
+    ratio_from: 1
+    ratio_to: 1
+    fee: none
+    speed: usually instant, up to 24h
+    direct_pairs_only_via_hub:
+      - qatar-privilege-club
+      - finnair-plus
+  constraints:
+    - All accounts must be in the same person's name with matching details.
+    - Two-factor authentication required on every account involved.
+    - Practical reports of BA<->Iberia linking failures persist despite matching
+      details. Treat as real-world friction, not a guaranteed path.
+  source: onemileatatime.com/guides/transfer-avios-between-accounts/; nerdwallet.com Avios transfer guide; headforpoints.com 2026-07-13
+  verified_on: 2026-08-10
+  needs_verification: false
+
+# ── Worked example: why this matters ─────────────────────────────────────────
+# Goal: Accor points -> Qatar Privilege Club Avios.
+#
+#   Modeled today (single hop):  accor-all -> qatar-privilege-club   @ 2:1
+#   Real best route (2 hops):    accor-all -> iberia-plus            @ 1:1
+#                                iberia-plus -> (BA) -> qatar        @ 1:1 free
+#
+#   10,000 Accor points  ->  5,000 Avios   (modeled)
+#   10,000 Accor points  -> 10,000 Avios   (actual best)
+#
+# A single-hop optimizer recommends the route that destroys half the value. This
+# is the exact failure mode OptiMILES exists to prevent, which is why the data is
+# staged here rather than discarded.
+
+# ── Not yet checked ──────────────────────────────────────────────────────────
+# Named on the infographic, absent from this file because they were not verified:
+# Air China PhoenixMiles, Emirates Skywards, Etihad Guest, Air Canada Aeroplan,
+# Avianca LifeMiles, United MileagePlus, Delta SkyMiles, Cathay Asia Miles,
+# IndiGo BluChip, Vietnam Lotusmiles, Kenya Asante Rewards, Aegean Miles+Bonus,
+# LATAM Pass, Thai Royal Orchid Plus, TAP Miles&Go, Smiles GOL, JAL Mileage
+# Bank, Korean Air SKYPASS, Juneyao Air Club, Air New Zealand Airpoints.
+# Most relevant to an India-focused product: Emirates, Cathay, Etihad, IndiGo.

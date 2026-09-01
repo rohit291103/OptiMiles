@@ -4,8 +4,9 @@ loudly and completely (all issues at once), never as silent zeros downstream.
 """
 
 from fractions import Fraction
+from uuid import UUID
 
-from app.domain import CatalogSnapshot, SpendCategory
+from app.domain import CatalogSnapshot, ResetAnchor, SpendCategory
 
 # A transfer ratio outside 1:4 … 5:1 is a typo until a human proves otherwise.
 _RATIO_BEST = Fraction(1, 4)  # 1 point → 4 miles
@@ -59,6 +60,59 @@ def validate_catalog(snapshot: CatalogSnapshot) -> None:
     for chart in snapshot.award_charts:
         if chart.partner_id not in partner_by_id:
             issues.append(f"orphan FK: award chart {chart.id} references unknown partner")
+
+    # ── Lounge access (LA-01 … LA-05) ────────────────────────────────────
+    # Lounge conditions are the most perishable rows in the catalog and the
+    # most consequential when wrong: a bad condition sends someone to a lounge
+    # desk to be turned away, which is precisely the trust failure the product
+    # exists to avoid. These rules reject rows that cannot be READ correctly,
+    # independently of whether their figures are right.
+    program_by_id = {p.id: p for p in snapshot.lounge_programs}
+    seen_allowances: dict[tuple[UUID, UUID, str, int | None, str | None], int] = {}
+    for access in snapshot.lounge_access:
+        if access.card_id not in card_by_id:
+            issues.append(f"LA-01 orphan FK: lounge access {access.id} references unknown card")
+        if access.program_id not in program_by_id:
+            issues.append(
+                f"LA-02 orphan FK: lounge access {access.id} references unknown lounge programme"
+            )
+        # A gate is only actionable as an amount AND a window: "Rs 60,000" on
+        # its own tells a cardholder nothing about which period to spend it in.
+        if (access.spend_gate_inr is None) != (access.spend_gate_period is None):
+            issues.append(
+                f"LA-03 lounge access {access.id} has a spend gate missing its amount or "
+                "period — both are required, or neither"
+            )
+        # The user's standing decision (2026-08-26): the reset anchor is seeded
+        # per card, never defaulted. Issuers reset on the calendar quarter, the
+        # card anniversary and the statement cycle, so a silent assumption is
+        # the likeliest source of a wrong visit count.
+        if (
+            access.visits_per_period is not None
+            and access.reset_anchor is ResetAnchor.NOT_APPLICABLE
+        ):
+            issues.append(
+                f"LA-04 lounge access {access.id} counts {access.visits_per_period} visits per "
+                f"{access.period} but declares no reset anchor — seed the real anchor "
+                "(calendar quarter / card anniversary / statement cycle), never assume one"
+            )
+        # Two rows for one card+programme+scope only make sense as different
+        # spend tiers; otherwise one is a duplicate that would double-count
+        # somebody's entitlement.
+        key = (
+            access.card_id,
+            access.program_id,
+            str(access.scope),
+            access.spend_gate_inr,
+            str(access.spend_gate_period) if access.spend_gate_period else None,
+        )
+        seen_allowances[key] = seen_allowances.get(key, 0) + 1
+        if seen_allowances[key] > 1:
+            issues.append(
+                f"LA-05 duplicate lounge allowance for card {access.card_id} "
+                f"({access.scope}, same spend tier) — rows for one scope must differ by "
+                "spend gate, or they double-count the entitlement"
+            )
 
     # ── Card completeness ─────────────────────────────────────────────────
     for card in snapshot.cards:

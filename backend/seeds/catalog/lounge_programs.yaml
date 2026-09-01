@@ -1,0 +1,80 @@
+# The networks airport lounge access rides on.
+#
+# The programme is not the lounge and not the airport — it is what decides
+# whether a given lounge desk will let this card in. A cardholder who knows
+# "my card is on Priority Pass" can use the programme's own lounge finder,
+# which is why we link out to those rather than mirroring their directories.
+#
+# MOST PERISHABLE DATA IN THE CATALOG. Indian issuers have repeatedly switched
+# lounge vendors mid-year — Axis moved Atlas international access from
+# DreamFolks to Priority Pass during 2026 — so a programme row can go stale
+# without the card changing at all. Re-verify these more often than earn rates.
+
+- slug: priority-pass
+  program_name: Priority Pass
+  operator: Collinson Group
+  notes: >-
+    The international default for Indian premium cards. Access needs the
+    Priority Pass card itself, not the credit card — which is why cards on
+    this programme almost always carry enrollment_required.
+  source: prioritypass.com; referenced by HDFC/Axis card terms
+  verified_on: 2026-08-31
+  needs_verification: false
+
+- slug: dreamfolks
+  program_name: DreamFolks
+  operator: DreamFolks Services Ltd
+  notes: >-
+    Indian aggregator sitting between issuers and domestic lounges. Widely
+    used for domestic access; issuers have been moving away from it.
+  source: dreamfolks.in; referenced by multiple Indian issuer card terms
+  verified_on: 2026-08-31
+  needs_verification: true
+
+- slug: loungeone
+  program_name: LoungeOne
+  operator: LoungeOne
+  notes: >-
+    Reported as Axis Bank's domestic lounge partner after the 2026 switch away
+    from DreamFolks. VERIFY before relying on it — sourced from secondary
+    coverage only.
+  source: secondary coverage of the 2026 Axis lounge programme switch — VERIFY
+  verified_on: 2026-08-31
+  needs_verification: true
+
+- slug: issuer-direct
+  program_name: Issuer lounge programme
+  operator: null
+  notes: >-
+    The issuer's own arrangement, entered by swiping the credit card at the
+    desk rather than presenting a programme membership. HDFC runs Infinia
+    domestic access this way.
+  source: HDFC Infinia Airport Lounge Access Program T&C (effective 2026-07-02)
+  verified_on: 2026-08-31
+  needs_verification: false
+
+- slug: visa-lounge
+  program_name: Visa lounge programme
+  operator: Visa
+  notes: Network-level domestic lounge access, tied to the card's network.
+  source: network lounge programmes referenced in Indian issuer card terms
+  verified_on: 2026-08-31
+  needs_verification: true
+
+- slug: mastercard-lounge
+  program_name: Mastercard lounge programme
+  operator: Mastercard
+  notes: Network-level domestic lounge access, tied to the card's network.
+  source: network lounge programmes referenced in Indian issuer card terms
+  verified_on: 2026-08-31
+  needs_verification: true
+
+- slug: diners-club
+  program_name: Diners Club International lounge programme
+  operator: Diners Club International
+  notes: >-
+    Diners Club-network cards enter participating lounges on the card itself.
+    Distinct from Priority Pass, though the lounge lists overlap heavily.
+  source: HDFC Diners Club Black Metal card terms; Diners Club International lounge programme
+  verified_on: 2026-08-31
+  needs_verification: true

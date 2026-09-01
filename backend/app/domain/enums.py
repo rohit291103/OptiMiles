@@ -41,6 +41,52 @@ class MilestoneType(StrEnum):
     CATEGORY_BONUS = "category_bonus"
 
 
+class LoungeScope(StrEnum):
+    """Domestic and international entitlements are ALWAYS counted separately.
+
+    They almost never match on an Indian card — Regalia Gold gives 3 domestic
+    visits a quarter behind a spend gate and 6 international a year with no
+    gate — so one combined number could only ever be wrong.
+    """
+
+    DOMESTIC = "domestic"
+    INTERNATIONAL = "international"
+
+
+class AllowancePeriod(StrEnum):
+    """The window a lounge visit allowance (or its spend gate) is counted over.
+
+    Deliberately NOT `MilestonePeriod`, despite the overlap: a milestone
+    period bounds an accrual of points and needs ONE_TIME; an allowance period
+    bounds a count of visits and needs STATEMENT_CYCLE. Sharing one enum would
+    let a nonsense combination typecheck.
+    """
+
+    MONTHLY = "monthly"
+    QUARTERLY = "quarterly"
+    HALF_YEARLY = "half_yearly"
+    ANNUAL = "annual"
+    STATEMENT_CYCLE = "statement_cycle"
+    LIFETIME = "lifetime"
+
+
+class ResetAnchor(StrEnum):
+    """What an allowance period is measured against.
+
+    Seeded explicitly per card, never defaulted (roadmap decision 2026-08-26).
+    Issuers variously reset on the calendar quarter, the card anniversary, or
+    the statement cycle, and assuming the calendar quarter would produce a
+    confidently wrong visit count — worse than no count at all, because it
+    sends someone to a lounge desk to be turned away.
+    """
+
+    CALENDAR_QUARTER = "calendar_quarter"
+    CALENDAR_YEAR = "calendar_year"
+    CARD_ANNIVERSARY = "card_anniversary"
+    STATEMENT_CYCLE = "statement_cycle"
+    NOT_APPLICABLE = "not_applicable"
+
+
 class MilestonePeriod(StrEnum):
     MONTHLY = "monthly"
     QUARTERLY = "quarterly"

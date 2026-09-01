@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { CreditCard, Landmark } from "lucide-react";
 
+import { PortfolioView } from "@/components/app/portfolio-view";
 import { fetchCards, type CardSummary } from "@/lib/api";
 
 /**
@@ -34,9 +35,14 @@ const CARD_DISPLAY_NAMES: Record<string, string> = {
 const HIDDEN_CARDS = new Set(["SBI|Cashback"]);
 
 /**
- * The supported-card catalog, inside the app shell — every card the engine
- * can reason about, straight from GET /catalog/cards (the same live source the
- * simulator's wallet picker uses). Read-only; a future "my wallet" lives here.
+ * `/cards` — the user's portfolio first, the supported-card catalog second
+ * (roadmap Phase 1). The page leads with what THEIR cards are worth (priced
+ * by the Valuation Engine against a transfer program) and keeps the full
+ * catalog below as the browse-and-add surface.
+ *
+ * The wallet itself lives in `lib/wallet.ts` — one wallet shared with Best
+ * Card and the goal wizard, so the same person never gets answers computed
+ * over three different wallets in one session.
  */
 
 type LoadState =
@@ -94,16 +100,23 @@ export default function CardsPage() {
 
   return (
     <div className="space-y-8">
-      <p className="max-w-2xl text-sm text-muted-foreground">
-        Every card the strategy engine can reason about today — earn rates,
-        transfer partners, milestones and caps, all verified against published
-        sources.
-      </p>
+      <PortfolioView catalog={state.cards} />
+
+      <section className="border-t border-hairline pt-8">
+        <h2 className="font-heading text-xl text-foreground sm:text-2xl">
+          Every supported card
+        </h2>
+        <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
+          Every card the strategy engine can reason about today — earn rates,
+          transfer partners, milestones and caps, all verified against published
+          sources.
+        </p>
+      </section>
       {[...byBank.entries()].map(([bank, cards]) => (
         <section key={bank}>
-          <h2 className="flex items-center gap-2 text-xs uppercase tracking-[0.12em] text-muted-foreground">
+          <h3 className="flex items-center gap-2 text-xs uppercase tracking-[0.12em] text-muted-foreground">
             <Landmark className="size-3.5 text-gold" /> {bank}
-          </h2>
+          </h3>
           <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {cards.map((card) => (
               <CardTile key={card.id} card={card} />
