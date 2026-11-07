@@ -33,9 +33,15 @@
   currency_name: HSBC Reward Points
   issuer: HSBC
   expiry_rules: 3 years from earning
-  source: market knowledge — HSBC TravelOne programme
-  verified_on: 2026-07-04
-  needs_verification: true
+  # VERIFIED 2026-11-06: "The validity of reward points is 3 years for
+  # Platinum and TravelOne credit cards." On voluntary card closure, points
+  # must be redeemed within one month or they lapse (service guide §11).
+  source: >-
+    hsbc.bank.in "How to redeem credit card reward points"
+    https://www.hsbc.bank.in/credit-cards/how-to-redeem-credit-card-reward-points/
+    (2026-11-06)
+  verified_on: 2026-11-06
+  needs_verification: false
 
 - slug: axis-edge-miles
   currency_name: EDGE Miles

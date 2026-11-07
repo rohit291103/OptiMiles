@@ -6,6 +6,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.activity import router as activity_router
 from app.api.best_card import router as best_card_router
 from app.api.catalog import router as catalog_router
 from app.api.goals import router as goals_router
@@ -53,6 +54,7 @@ def create_app() -> FastAPI:
     app.include_router(catalog_router, prefix="/v1")
     app.include_router(best_card_router, prefix="/v1")
     app.include_router(portfolio_router, prefix="/v1")
+    app.include_router(activity_router, prefix="/v1")
     return app
 
 

@@ -153,6 +153,10 @@ COMMENT ON COLUMN reward_categories.category_slug IS 'Canonical slug matching th
 COMMENT ON COLUMN reward_categories.monthly_cap_inr IS 'Maximum eligible spend per month at this earn rate. Spend beyond the cap earns at base_earn_rate.';
 ```
 
+> **Amended 2026-11-02 (migration 0009, decision log `2026-11-02-cap-overflow-earn.md`):** "spend beyond the cap earns base_earn_rate" is no longer the schema's assumption. `reward_categories.over_cap_earn` (`'base_rate'` | `'nothing'`, NULL iff the rule is uncapped, enforced by CHECK) states per row what spend above the cap earns, sourced from the issuer's terms. SBI Cashback pays nothing past its caps; Axis Atlas pays the base rate.
+
+> **Amended 2026-11-07 (migration 0011, decision log `2026-11-07-best-card-verdicts.md`):** `reward_categories.requires_portal TEXT NULL` names the booking channel a bonus rate needs (e.g. `'HDFC SmartBuy'`, `'Axis Travel EDGE'`); booked directly, the same spend earns the card's `base_earn_rate`. NULL = the rate applies however you pay. A CHECK forbids a blank value; `validate_catalog` CR-04 allows it only on bonus rates (earn_rate > base). Because NULL is the permissive default, a DB migrated but not reseeded is logged at startup (`deps.warn_on_seed_version_drift`).
+
 **Canonical `category_slug` values (enforced at application layer):**
 
 ```

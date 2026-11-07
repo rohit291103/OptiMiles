@@ -148,8 +148,9 @@ def test_golden_one_new_card_burgundy(snapshot: CatalogSnapshot) -> None:
 
 
 def test_one_new_card_only_meaningful_improvements(snapshot: CatalogSnapshot) -> None:
-    """BR-02: HSBC/Regalia/Amex additions don't beat the wallet's own rates —
-    Burgundy is the only justifiable acquisition on this fixture."""
+    """BR-02: HSBC/Regalia additions don't beat the wallet's own rates (and both
+    Amex cards are acquirable: false) — Burgundy is the only justifiable
+    acquisition on this fixture."""
     candidates = _generate(_context(snapshot))
     acquiring = [c for c in candidates if c.cards_to_acquire]
     assert {card for c in acquiring for card in c.cards_to_acquire} == {
@@ -188,6 +189,44 @@ def test_atlas_in_wallet_is_still_used(snapshot: CatalogSnapshot) -> None:
     assert all(c.cards_used == (_card("axis-atlas"),) for c in candidates)
 
 
+def test_amex_cards_are_never_recommended_for_acquisition(snapshot: CatalogSnapshot) -> None:
+    """Amex India has paused new card applications ("We are temporarily
+    pausing the acceptance of new card applications in India" — both product
+    pages, 2026-11-02), so both Amex cards are acquirable: false. The
+    ₹5,000-fee-cap / empty-wallet fixture is the sharp case: Platinum Travel
+    (₹5,000) was one of only two cards that fit the cap by fee."""
+    amex = {_card("amex-platinum-travel"), _card("amex-platinum-charge")}
+    for context in (
+        _context(snapshot),
+        _context(snapshot, spend={SpendCategory.TRAVEL: 100_000}),
+        _context(
+            snapshot,
+            spend={SpendCategory.TRAVEL: 40_000, SpendCategory.DINING: 30_000},
+            wallet={},
+            horizon_months=12,
+            num_passengers=1,
+            constraints=ConstraintSet(max_annual_fees_inr=5_000),
+        ),
+    ):
+        for candidate in _generate(context):
+            assert not amex & set(candidate.cards_to_acquire)
+
+
+def test_amex_in_wallet_is_still_used(snapshot: CatalogSnapshot) -> None:
+    """Existing Amex holders keep full support: an in-wallet Platinum Travel
+    is still allocated spend."""
+    candidates = _generate(
+        _context(
+            snapshot,
+            wallet={"amex-platinum-travel": 10_000},
+            constraints=NO_NEW_CARDS,
+            num_passengers=1,
+        )
+    )
+    assert candidates
+    assert all(c.cards_used == (_card("amex-platinum-travel"),) for c in candidates)
+
+
 # ── Constraints (BR-03/BR-04: user constraints are never violated) ────────
 
 
@@ -199,11 +238,11 @@ def test_no_new_cards_constraint(snapshot: CatalogSnapshot) -> None:
 
 
 def test_max_annual_fee_constraint(snapshot: CatalogSnapshot) -> None:
-    """Fee cap 10,000 removes Burgundy (30,000) and Plat Charge (66,000).
-    Travel raised to 60k so the wallet alone clears the gate (8 × 10,989 +
-    20,000 = 107,912 ≥ 90,000). The affordable additions (DCB ties Infinia's
-    rates; Amex PT's milestone play claims 99,530 < 96,923 × 1.05) all fail
-    BR-02 → the wallet plan is the only candidate, and nothing acquires."""
+    """Fee cap 10,000 removes Burgundy (30,000); both Amex cards are
+    acquirable: false (application pause, 2026-11-02). Travel raised to 60k so
+    the wallet alone clears the gate (8 × 10,989 + 20,000 = 107,912 ≥ 90,000).
+    The affordable additions (DCB ties Infinia's rates; HSBC/Regalia earn less)
+    all fail BR-02 → the wallet plan is the only candidate, nothing acquires."""
     candidates = _generate(
         _context(
             snapshot,
@@ -394,9 +433,10 @@ def test_cheapest_viable_absent_when_no_single_new_card_alone_clears_the_goal(
 
 def test_cheapest_viable_respects_no_new_cards_and_fee_cap(snapshot: CatalogSnapshot) -> None:
     """`no_new_cards` with an empty wallet leaves nothing to allocate at all.
-    A ₹5,000 cap excludes DCB (₹10,000) — only HSBC/Amex Platinum Travel
-    (≤₹5,000) qualify by fee, and neither alone clears this fixture's goal
-    (hand-computed above: HSBC 33,000 / Amex PT 30,500 < 45,000 required) —
+    A ₹5,000 cap excludes DCB (₹10,000) — HSBC TravelOne is the only
+    acquirable card at ≤₹5,000 (Amex Platinum Travel also fits by fee but is
+    acquirable: false since 2026-11-02, Amex India's application pause), and it
+    alone does not clear this fixture's goal (HSBC 33,000 < 45,000 required) —
     so every acquiring candidate is an honest best-effort (claim short of the
     requirement, fee cap respected); cheapest/simplest_viable must not
     fabricate a goal-clearing plan."""

@@ -10,6 +10,23 @@
 # materially wrong (35,000 vs 45,000 business to SEA; 84,500 vs 117,000 to
 # North America).
 #
+# 2026-11-06 re-check (all rows stay needs_verification — singaporeair.com's
+# chart pages 404 to automated fetches and the official PDF was not found):
+# - India ↔ Singapore Saver 19,000 / 45,000 / 61,500 (Y / J / F) re-confirmed
+#   on the same chart dump ("India ↔ Singapore") and by cardexpress.in's
+#   points planner ("Business Saver is 45,000 miles … same from every city in
+#   India", citing the 1-Nov-2025 chart). These rows are labelled "Southeast
+#   Asia" but the figures are India ↔ SINGAPORE specifically.
+# - SOURCE DEFECT in the Europe and North America rows: the suitesmile chart
+#   prices ONLY routes to/from Singapore. 108,500 (Zone 11 Europe) and
+#   117,000 (Zone 13 US East) are SINGAPORE-origin Saver prices, not India-
+#   origin. pointsmax.in separately claims 108,500 for India→Europe via SIN
+#   (secondary, unverified); no source was found for India→US. Values are
+#   left as-is rather than replaced with a guess, and the rows are annotated.
+# - The 2026-03-26 "Saver awards gone" scare (suitesmile) was an inventory
+#   blip — availability was restored within days; the 2026-03-28 change
+#   devalued ACCESS awards only, not Saver.
+#
 # Maharaja Club rows are deliberately ABSENT: no verified data yet, and an
 # absent row fails honestly as "unsupported route" while a wrong row lies.
 # Hotel partners (Marriott/Accor) have no award-chart rows by design —
@@ -59,7 +76,10 @@
   miles_required: 108500
   taxes_fees_inr: 32000
   effective_date: 2025-11-01
-  source: suitesmile.com KrisFlyer award charts (2026-03-28), Zone 6 → Europe saver (corroborated by pointsmax.in) — VERIFY
+  # SOURCE DEFECT (2026-11-06): 108,500 is the SINGAPORE → Europe (Zone 11)
+  # Saver price on the suitesmile chart, which lists no India-origin Europe
+  # fare. Only pointsmax.in (secondary) claims it for India → Europe via SIN.
+  source: suitesmile.com KrisFlyer award charts (2026-03-28) — Singapore→Europe (Zone 11) saver, NOT India-origin; pointsmax.in claims the same figure India→Europe via SIN — VERIFY India-origin price
   verified_on: 2026-07-04
   needs_verification: true
 
@@ -71,6 +91,8 @@
   miles_required: 117000
   taxes_fees_inr: 38000
   effective_date: 2025-11-01
-  source: suitesmile.com KrisFlyer award charts (2026-03-28), Zone 6 → USA EAST coast saver (west coast is 112,500; NYC = MVP route, so the higher east-coast figure is seeded) — VERIFY
+  # SOURCE DEFECT (2026-11-06): 117,000 / 112,500 are SINGAPORE → USA East /
+  # West Saver prices (Zones 13 / 12). No India-origin US price was found.
+  source: suitesmile.com KrisFlyer award charts (2026-03-28) — Singapore→USA EAST coast (Zone 13) saver, NOT India-origin (west coast 112,500) — VERIFY India-origin price
   verified_on: 2026-07-04
   needs_verification: true

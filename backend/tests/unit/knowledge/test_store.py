@@ -26,6 +26,7 @@ _TABLE_TO_FIELD = {
     "award_charts": "award_charts",
     "lounge_programs": "lounge_programs",
     "card_lounge_access": "lounge_access",
+    "card_fee_waivers": "fee_waivers",
 }
 
 _FROM_RE = re.compile(r"FROM\s+(\w+)")
@@ -89,3 +90,21 @@ async def test_reads_only_active_rows_in_deterministic_order(
     for sql in conn.queries:
         assert "WHERE is_active" in sql
         assert "ORDER BY id" in sql
+
+
+def test_every_category_rule_field_is_read_and_written() -> None:
+    """Column drift guard (2026-11-07 review). A RewardCategoryRule field
+    missing from the snapshot SELECT or the catalog upsert silently takes its
+    default — for `requires_portal` that default re-introduces the portal
+    overstatement this field exists to fix."""
+    import inspect
+
+    from app.domain import RewardCategoryRule
+    from app.knowledge import store
+    from app.repositories.catalog_admin import _UPSERTS
+
+    select_sql = inspect.getsource(store.load_snapshot)
+    upsert_sql = _UPSERTS["reward_categories"]
+    for field in RewardCategoryRule.model_fields:
+        assert field in select_sql, f"load_snapshot does not SELECT {field}"
+        assert f":{field}" in upsert_sql, f"catalog upsert does not write {field}"

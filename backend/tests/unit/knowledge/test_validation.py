@@ -3,7 +3,7 @@ loudly at load time — never become silent zeros downstream."""
 
 import pytest
 
-from app.domain import CatalogSnapshot, CurrencyTransferLink, SpendCategory
+from app.domain import CatalogSnapshot, CurrencyTransferLink, OverCapEarn, SpendCategory
 from app.knowledge.seed_catalog import seed_id
 from app.knowledge.validation import CatalogValidationError, validate_catalog
 
@@ -135,4 +135,76 @@ def test_milestone_validity_window_rejected_until_projector_enforces_it(
     expired = snapshot.milestones[0].model_copy(update={"valid_until": date(2025, 12, 31)})
     broken = snapshot.model_copy(update={"milestones": (expired, *snapshot.milestones[1:])})
     with pytest.raises(CatalogValidationError, match="validity window"):
+        validate_catalog(broken)
+
+
+# ── CR-01 / CR-02: a cap's overflow behaviour is stated, never assumed ──
+
+
+def _with_rule(snapshot: CatalogSnapshot, rule_key: str, **update: object) -> CatalogSnapshot:
+    rules = tuple(
+        rule.model_copy(update=update) if rule.id == seed_id("category", rule_key) else rule
+        for rule in snapshot.category_rules
+    )
+    return snapshot.model_copy(update={"category_rules": rules})
+
+
+def test_rejects_capped_rule_that_does_not_state_its_overflow(
+    snapshot: CatalogSnapshot,
+) -> None:
+    """The 2026-11-02 defect: overflow was silently priced at the base rate.
+    A capped rule must say what spend above the cap earns."""
+    broken = _with_rule(snapshot, "sbi-cashback:online", over_cap_earn=None)
+    with pytest.raises(CatalogValidationError, match="CR-01"):
+        validate_catalog(broken)
+
+
+def test_rejects_uncapped_rule_that_states_an_overflow(snapshot: CatalogSnapshot) -> None:
+    """An uncapped rule has no overflow; a value there is a seeding mistake
+    (usually a cap that was meant to be entered and wasn't)."""
+    broken = _with_rule(snapshot, "hdfc-infinia:default", over_cap_earn=OverCapEarn.NOTHING)
+    with pytest.raises(CatalogValidationError, match="CR-02"):
+        validate_catalog(broken)
+
+
+def test_quarterly_cap_also_requires_an_overflow_statement(snapshot: CatalogSnapshot) -> None:
+    broken = _with_rule(snapshot, "hdfc-infinia:default", quarterly_cap_inr=500_000)
+    with pytest.raises(CatalogValidationError, match="CR-01"):
+        validate_catalog(broken)
+
+
+@pytest.mark.parametrize("field", ["quarterly_cap_inr", "annual_cap_inr"])
+def test_rejects_a_cap_period_the_engines_do_not_meter(
+    snapshot: CatalogSnapshot, field: str
+) -> None:
+    """CR-03: Best Card, Stage 5 and the projector meter MONTHLY caps only.
+    A quarterly/annual cap — alone or beside a monthly one — would be
+    ignored by the blend and so earn uncapped. Refuse it until it is metered."""
+    for update in (
+        {field: 500_000, "over_cap_earn": OverCapEarn.BASE_RATE},  # alone
+        {field: 500_000},  # beside SBI online's monthly cap
+    ):
+        key = "hdfc-infinia:default" if "over_cap_earn" in update else "sbi-cashback:online"
+        with pytest.raises(CatalogValidationError, match="CR-03"):
+            validate_catalog(_with_rule(snapshot, key, **update))
+
+
+# ── CR-04: a portal requirement belongs only on a bonus rate ──────────────
+
+
+def test_rejects_portal_requirement_on_a_non_accelerated_rule(
+    snapshot: CatalogSnapshot,
+) -> None:
+    """`requires_portal` says "this BONUS rate needs that booking channel".
+    On a base-rate or zero-earn rule there is no bonus to gate, so the
+    value is a seeding mistake — and Best Card would price a phantom
+    'booked direct' alternative against it."""
+    broken = _with_rule(snapshot, "hdfc-infinia:default", requires_portal="HDFC SmartBuy")
+    with pytest.raises(CatalogValidationError, match="CR-04"):
+        validate_catalog(broken)
+
+
+def test_rejects_a_blank_portal_name(snapshot: CatalogSnapshot) -> None:
+    broken = _with_rule(snapshot, "hdfc-infinia:travel", requires_portal="  ")
+    with pytest.raises(CatalogValidationError, match="CR-04"):
         validate_catalog(broken)

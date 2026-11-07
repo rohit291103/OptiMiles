@@ -7,9 +7,12 @@ constant here corrupts every downstream number.
 from decimal import Decimal
 from uuid import uuid4
 
-from app.domain import CurrencyTransferLink
+import pytest
+
+from app.domain import CurrencyTransferLink, OverCapEarn, RewardCategoryRule, SpendCategory
 from app.valuation.transfer_math import (
     blended_earn_rate,
+    category_points_exact,
     convert_balance,
     miles_per_100,
     points_to_miles,
@@ -112,45 +115,95 @@ def test_nonterminating_division_quantizes_down() -> None:
     assert miles_per_100(Decimal("1.00"), _link(3, 1)) == Decimal("0.3333")
 
 
-# ── blended_earn_rate: cap-aware marginal economics ───────────────────────
+# ── category_points_exact / blended_earn_rate: the ONE cap-overflow rule ──
+# Spend above a cap earns whatever the rule's `over_cap_earn` says — the
+# card's base rate (Atlas, HDFC SmartBuy) or NOTHING (SBI Cashback). Before
+# 2026-11-02 every overflow was priced at base, which overstated SBI.
+
+
+def _rule(
+    rate: str,
+    cap: int | None,
+    over_cap_earn: OverCapEarn | None,
+) -> RewardCategoryRule:
+    return RewardCategoryRule(
+        id=uuid4(),
+        card_id=uuid4(),
+        category_slug=SpendCategory.TRAVEL,
+        category_label="test",
+        earn_rate=Decimal(rate),
+        monthly_cap_inr=cap,
+        over_cap_earn=over_cap_earn,
+    )
+
+
+_INFINIA_TRAVEL = _rule("16.65", 150_000, OverCapEarn.BASE_RATE)
+_SBI_ONLINE = _rule("5.00", 40_000, OverCapEarn.NOTHING)
 
 
 def test_spend_within_cap_earns_accelerated_rate() -> None:
-    assert blended_earn_rate(
-        monthly_spend_inr=40_000,
-        accelerated_rate=Decimal("16.65"),
-        base_rate=Decimal("3.33"),
-        monthly_cap_inr=150_000,
-    ) == Decimal("16.65")
+    assert blended_earn_rate(40_000, _INFINIA_TRAVEL, Decimal("3.33")) == Decimal("16.65")
 
 
-def test_spend_beyond_cap_blends_exactly() -> None:
-    """₹200k into a ₹150k cap: (1500×16.65 + 500×3.33) / 2000
+def test_spend_beyond_cap_blends_down_to_base_when_rule_says_base() -> None:
+    """₹200k into a ₹150k cap, overflow at base: (1500×16.65 + 500×3.33) / 2000
     = (24,975 + 1,665) / 2,000 = 13.32 pts/₹100 — hand-computed."""
-    assert blended_earn_rate(
-        monthly_spend_inr=200_000,
-        accelerated_rate=Decimal("16.65"),
-        base_rate=Decimal("3.33"),
-        monthly_cap_inr=150_000,
-    ) == Decimal("13.32")
+    assert blended_earn_rate(200_000, _INFINIA_TRAVEL, Decimal("3.33")) == Decimal("13.32")
+
+
+def test_spend_beyond_cap_earns_nothing_when_rule_says_nothing() -> None:
+    """THE DEFECT. SBI online ₹50,000 into a ₹40,000 cap (₹2,000 cashback
+    ÷ 5%), overflow earns NOTHING: (400×5.00 + 100×0) / 500 = 2,000/500
+    = 4.00/₹100. The old base-rate rule gave (2,000 + 100×1.00)/500 = 4.20."""
+    assert blended_earn_rate(50_000, _SBI_ONLINE, Decimal("1.00")) == Decimal("4.00")
+
+
+def test_points_exact_beyond_cap_earning_nothing_is_the_cap_itself() -> None:
+    """SBI online ₹1,00,000: min(1,00,000, 40,000)/100 × 5.00 = 2,000 —
+    exactly the ₹2,000 per-cycle cashback ceiling; the other ₹60,000 adds 0.
+    (Old rule: 2,000 + 600 × 1.00 = 2,600.)"""
+    assert category_points_exact(100_000, _SBI_ONLINE, Decimal("1.00")) == Decimal("2000")
+
+
+def test_points_exact_beyond_cap_at_base_is_unfloored() -> None:
+    """Infinia ₹150,100: 1,500×16.65 + 1×3.33 = 24,975 + 3.33 = 24,978.33 —
+    exact, NOT floored (callers floor once per card-month)."""
+    assert category_points_exact(150_100, _INFINIA_TRAVEL, Decimal("3.33")) == Decimal(
+        "24978.33"
+    )
 
 
 def test_spend_exactly_at_cap_is_boundary_not_blend() -> None:
-    assert blended_earn_rate(
-        monthly_spend_inr=150_000,
-        accelerated_rate=Decimal("16.65"),
-        base_rate=Decimal("3.33"),
-        monthly_cap_inr=150_000,
-    ) == Decimal("16.65")
+    assert blended_earn_rate(150_000, _INFINIA_TRAVEL, Decimal("3.33")) == Decimal("16.65")
+    # SBI at exactly ₹40,000: 400 × 5.00 = 2,000 — the full rate, nothing lost.
+    assert category_points_exact(40_000, _SBI_ONLINE, Decimal("1.00")) == Decimal("2000")
 
 
 def test_no_cap_means_accelerated_rate() -> None:
-    assert blended_earn_rate(
-        monthly_spend_inr=10_000_000,
-        accelerated_rate=Decimal("5.00"),
-        base_rate=Decimal("2.00"),
-        monthly_cap_inr=None,
-    ) == Decimal("5.00")
+    uncapped = _rule("5.00", None, None)
+    assert blended_earn_rate(10_000_000, uncapped, Decimal("2.00")) == Decimal("5.00")
+
+
+def test_capped_rule_that_does_not_state_its_overflow_fails_loudly() -> None:
+    """Never silently default: a capped rule with no `over_cap_earn` is a
+    catalog integrity failure (validate_catalog rejects it too), not a
+    licence to assume the base rate."""
+    unstated = _rule("5.00", 40_000, None)
+    with pytest.raises(ValueError, match="over_cap_earn"):
+        category_points_exact(50_000, unstated, Decimal("1.00"))
+    # ...even when the spend fits under the cap: the row itself is broken.
+    with pytest.raises(ValueError, match="over_cap_earn"):
+        blended_earn_rate(10_000, unstated, Decimal("1.00"))
+
+
+def test_non_monthly_cap_is_refused_not_ignored() -> None:
+    """Only monthly caps are metered. A quarterly/annual cap must raise
+    rather than silently earn uncapped (validate_catalog CR-03 keeps such a
+    row out of the catalog; this is the belt to that braces)."""
+    for field in ("quarterly_cap_inr", "annual_cap_inr"):
+        rule = _rule("5.00", None, OverCapEarn.NOTHING).model_copy(update={field: 100_000})
+        with pytest.raises(ValueError, match="quarterly/annual"):
+            category_points_exact(10_000, rule, Decimal("1.00"))
 
 
 def test_round_number_rates_never_serialize_as_scientific_notation() -> None:
@@ -162,10 +215,7 @@ def test_round_number_rates_never_serialize_as_scientific_notation() -> None:
     assert "e" not in str(atlas_rate).lower()
 
     exact_ten_blend = blended_earn_rate(
-        monthly_spend_inr=100_000,
-        accelerated_rate=Decimal("10.00"),
-        base_rate=Decimal("10.00"),
-        monthly_cap_inr=50_000,
+        100_000, _rule("10.00", 50_000, OverCapEarn.BASE_RATE), Decimal("10.00")
     )
     assert "e" not in str(exact_ten_blend).lower()
 

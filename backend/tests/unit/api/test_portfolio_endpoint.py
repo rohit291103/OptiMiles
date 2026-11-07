@@ -83,11 +83,44 @@ def test_accepts_an_explicit_target_program(client: TestClient) -> None:
 
 def test_compares_by_miles_not_points(client: TestClient) -> None:
     """The endpoint-level guard on the central invariant — once a program is
-    chosen, the comparison happens in ITS unit, not in points."""
+    chosen, the comparison happens in ITS unit, not in points. Provenance is
+    pinned empty here so this tests ranking alone."""
+    client.app.dependency_overrides[deps.get_unverified_ids] = lambda: frozenset()
     body = _get(client, card_ids=[REGALIA, TRAVELONE], target_program_id=KRISFLYER)
     default = next(c for c in body["categories"] if c["category_slug"] == "default")
     leader = next(row for row in default["rows"] if row["card_id"] == default["leader_card_id"])
     assert leader["card_name"] == "TravelOne"
+
+
+def test_real_seeds_withhold_a_leader_resting_on_an_unverified_route(
+    client: TestClient,
+) -> None:
+    """Default category in KrisFlyer miles/₹100: Atlas 2.00 × 2/1 = 4.00,
+    TravelOne 2.00 × 1/1 = 2.00. Atlas would win, but the reviewed seeds
+    still flag its KrisFlyer link — so no leader is named, and the VERIFIED
+    runner-up (TravelOne, issuer-confirmed 2026-11-06) is not promoted in
+    its place."""
+    body = _get(client, card_ids=[ATLAS, TRAVELONE], target_program_id=KRISFLYER)
+    default = next(c for c in body["categories"] if c["category_slug"] == "default")
+    assert default["leader_card_id"] is None
+    assert default["leader_withheld_unverified"] is True
+    atlas = next(r for r in default["rows"] if r["card_id"] == ATLAS)
+    assert atlas["miles_per_100"] == "4.0000"
+    assert atlas["needs_verification"] is True
+    travelone = next(r for r in default["rows"] if r["card_id"] == TRAVELONE)
+    assert travelone["miles_per_100"] == "2.0000"
+    assert travelone["needs_verification"] is False
+
+
+def test_real_seeds_name_a_leader_once_its_route_is_verified(client: TestClient) -> None:
+    """Regalia 2.50 × 1/2 = 1.25 vs TravelOne 2.00 × 1/1 = 2.00. TravelOne's
+    currency and KrisFlyer link were confirmed on HSBC India's own pages
+    (2026-11-06), so the real seeds now name it — the same wallet that was
+    withheld before verification."""
+    body = _get(client, card_ids=[REGALIA, TRAVELONE], target_program_id=KRISFLYER)
+    default = next(c for c in body["categories"] if c["category_slug"] == "default")
+    assert default["leader_card_id"] == TRAVELONE
+    assert default["leader_withheld_unverified"] is False
 
 
 def test_unroutable_card_is_priced_at_null_not_zero(client: TestClient) -> None:
@@ -149,3 +182,103 @@ def test_wallet_larger_than_the_cap_is_422(client: TestClient) -> None:
     a portfolio to price."""
     response = client.get("/v1/portfolio", params={"card_ids": [INFINIA] * 21})
     assert response.status_code == 422
+
+
+# ── Verification tier + the progress join key ─────────────────────────────
+
+
+def test_unverified_rows_are_labelled_in_the_payload(snapshot: CatalogSnapshot) -> None:
+    """The endpoint threads the provenance index into the engine; which rows
+    the real seeds flag is the knowledge tests' concern, so pin a known set."""
+    app = create_app()
+    app.dependency_overrides[deps.get_snapshot] = lambda: snapshot
+    app.dependency_overrides[deps.get_unverified_ids] = lambda: frozenset(
+        {seed_id("category", "hdfc-infinia:travel")}
+    )
+    with TestClient(app) as test_client:
+        body = _get(test_client, card_ids=[INFINIA])
+    flags = {
+        rule["category_slug"]: rule["needs_verification"] for rule in body["cards"][0]["earn_rules"]
+    }
+    assert flags == {"default": False, "travel": True}
+    assert body["cards"][0]["needs_verification"] is False
+
+
+def test_milestones_carry_the_id_activity_progress_reports(client: TestClient) -> None:
+    body = _get(client, card_ids=[ATLAS])
+    assert {m["milestone_id"] for m in body["cards"][0]["milestones"]} == {
+        str(seed_id("milestone", f"axis-atlas:{index}")) for index in range(4)
+    }
+
+
+def test_default_provenance_is_the_reviewed_seed_files(seed_dir) -> None:
+    """Unoverridden, the dependency reads the same YAML the seed tests load —
+    never an empty set that would present every row as verified."""
+    from app.knowledge.seed_catalog import load_unverified_ids
+
+    deps.get_unverified_ids.cache_clear()
+    assert deps.get_unverified_ids() == load_unverified_ids(seed_dir)
+
+
+def test_etag_changes_when_the_verification_tier_does(snapshot: CatalogSnapshot) -> None:
+    """A row can be verified (or re-flagged) without its values changing, so
+    the snapshot version alone would serve a stale label as a 304."""
+
+    def etag_for(unverified: frozenset) -> str:
+        app = create_app()
+        app.dependency_overrides[deps.get_snapshot] = lambda: snapshot
+        app.dependency_overrides[deps.get_unverified_ids] = lambda: unverified
+        with TestClient(app) as test_client:
+            return test_client.get("/v1/portfolio", params={"card_ids": [INFINIA]}).headers["ETag"]
+
+    flagged = frozenset({seed_id("category", "hdfc-infinia:travel")})
+    assert etag_for(flagged) != etag_for(frozenset())
+    assert etag_for(flagged) == etag_for(frozenset(flagged))
+
+
+# ── Provenance plumbing: cached digest, drift warning ─────────────────────
+
+
+def test_tier_digest_is_cached_per_unverified_set() -> None:
+    """Computed once per distinct set (once per process in production), not
+    per request."""
+    flagged = frozenset({seed_id("category", "hdfc-infinia:travel")})
+    deps.tier_digest.cache_clear()
+    first = deps.tier_digest(flagged)
+    assert deps.tier_digest(frozenset(flagged)) == first
+    assert deps.tier_digest.cache_info().hits == 1
+    assert deps.tier_digest(frozenset()) != first
+
+
+def test_drift_between_snapshot_and_seed_flags_is_logged(
+    snapshot: CatalogSnapshot, caplog: pytest.LogCaptureFixture
+) -> None:
+    stray = seed_id("card", "no-such-card")
+    with caplog.at_level("WARNING", logger="app.api.deps"):
+        deps.warn_on_provenance_drift(snapshot, frozenset({stray, seed_id("card", "hdfc-infinia")}))
+    assert len(caplog.records) == 1
+    assert str(stray) in caplog.records[0].getMessage()
+
+    caplog.clear()
+    with caplog.at_level("WARNING", logger="app.api.deps"):
+        deps.warn_on_provenance_drift(snapshot, frozenset({seed_id("card", "hdfc-infinia")}))
+    assert caplog.records == []
+
+
+def test_a_db_not_reloaded_from_these_seeds_is_logged(
+    snapshot: CatalogSnapshot, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Fail-open guard (2026-11-07 review): a field like `requires_portal`
+    defaults to None = "applies however you pay". A DB migrated but not
+    reseeded would silently price direct bookings at the portal rate again.
+    The DB snapshot's content version equals the seed snapshot's after a
+    reload, so a mismatch is the signal."""
+    with caplog.at_level("WARNING", logger="app.api.deps"):
+        deps.warn_on_seed_version_drift(snapshot, snapshot.version)
+    assert caplog.records == []
+
+    with caplog.at_level("WARNING", logger="app.api.deps"):
+        stale = snapshot.model_copy(update={"version": "cat-stale"})
+        deps.warn_on_seed_version_drift(stale, snapshot.version)
+    assert len(caplog.records) == 1
+    assert "cat-stale" in caplog.records[0].getMessage()

@@ -38,6 +38,9 @@ class CapturingConn:
         return FakeResult(self._rows)
 
 
+_KRISFLYER = uuid4()
+
+
 def _row(**overrides: object) -> dict:
     base = {
         "goal_id": uuid4(),
@@ -48,6 +51,7 @@ def _row(**overrides: object) -> dict:
         "target_miles": 92_000,
         "target_date": date(2027, 3, 4),
         "status": "active",
+        "partner_id": _KRISFLYER,
         "created_at": datetime(2026, 7, 6, 12, 0, 0),
         "summary": "Route travel spend through HDFC Infinia to KrisFlyer.",
         "confidence_score": Decimal("0.62"),
@@ -96,6 +100,8 @@ async def test_rows_map_onto_saved_goal_faithfully() -> None:
     assert goal.confidence_score == 0.62
     assert isinstance(goal.confidence_score, float)
     assert goal.catalog_snapshot_version == "cat-b63f738db960"
+    # The goal's program, so Best Card can lead with what the user chose.
+    assert goal.partner_id == _KRISFLYER
 
 
 async def test_goal_without_recommendation_still_lists() -> None:

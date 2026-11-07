@@ -6,7 +6,7 @@ loudly and completely (all issues at once), never as silent zeros downstream.
 from fractions import Fraction
 from uuid import UUID
 
-from app.domain import CatalogSnapshot, ResetAnchor, SpendCategory
+from app.domain import CatalogSnapshot, FeeWaiverKind, ResetAnchor, SpendCategory
 
 # A transfer ratio outside 1:4 … 5:1 is a typo until a human proves otherwise.
 _RATIO_BEST = Fraction(1, 4)  # 1 point → 4 miles
@@ -112,6 +112,93 @@ def validate_catalog(snapshot: CatalogSnapshot) -> None:
                 f"LA-05 duplicate lounge allowance for card {access.card_id} "
                 f"({access.scope}, same spend tier) — rows for one scope must differ by "
                 "spend gate, or they double-count the entitlement"
+            )
+
+    # ── Annual-fee waivers (FW-01 … FW-03) ───────────────────────────────
+    # A waiver row is read as progress toward a threshold, so it must be
+    # readable completely or not at all: a threshold with no window, or a
+    # "no waiver" row that also carries a threshold, is two answers at once.
+    waivers_per_card: dict[UUID, int] = {}
+    for waiver in snapshot.fee_waivers:
+        if waiver.card_id not in card_by_id:
+            issues.append(f"FW-01 orphan FK: fee waiver {waiver.id} references unknown card")
+        waivers_per_card[waiver.card_id] = waivers_per_card.get(waiver.card_id, 0) + 1
+        if waivers_per_card[waiver.card_id] == 2:
+            issues.append(
+                f"FW-02 card {waiver.card_id} has more than one fee waiver — one card, "
+                "one answer (mirrors DB uq_card_fee_waiver)"
+            )
+        terms = (waiver.threshold_inr, waiver.threshold_comparison, waiver.window_kind)
+        if waiver.kind is FeeWaiverKind.SPEND_BASED:
+            if any(term is None for term in terms):
+                issues.append(
+                    f"FW-03 spend-based fee waiver {waiver.id} must state its threshold, "
+                    "whether the threshold itself counts, and the window it is measured over"
+                )
+            if not (waiver.waives_renewal_fee or waiver.waives_joining_fee):
+                issues.append(f"FW-03 spend-based fee waiver {waiver.id} waives no fee")
+        elif (
+            any(term is not None for term in terms)
+            or waiver.waives_renewal_fee
+            or waiver.waives_joining_fee
+            or waiver.excluded_categories
+            or waiver.unmodelled_exclusions
+        ):
+            issues.append(
+                f"FW-03 'no waiver' row {waiver.id} carries waiver terms — a card either "
+                "has a waiver or it does not"
+            )
+
+    # ── Cap overflow (CR-01, CR-02 — decision log 2026-11-02-cap-overflow-earn) ─
+    # What spend ABOVE a cap earns differs by issuer (Atlas: base rate; SBI
+    # Cashback: nothing). It used to be assumed as base for every cap, which
+    # overstated SBI. A capped rule must state it; an uncapped one must not.
+    for rule in snapshot.category_rules:
+        capped = (
+            rule.monthly_cap_inr is not None
+            or rule.quarterly_cap_inr is not None
+            or rule.annual_cap_inr is not None
+        )
+        if capped and rule.over_cap_earn is None:
+            issues.append(
+                f"CR-01 category rule '{rule.category_label}' ({rule.id}) is capped but does "
+                "not state over_cap_earn — seed what spend above the cap earns (base_rate "
+                "or nothing) from the issuer's terms, never assume it"
+            )
+        if rule.quarterly_cap_inr is not None or rule.annual_cap_inr is not None:
+            # Best Card, Stage 5 and the projector meter MONTHLY caps only; a
+            # quarterly/annual cap would be ignored by the blend and earn
+            # uncapped. Refuse it until an engine actually meters the period.
+            issues.append(
+                f"CR-03 category rule '{rule.category_label}' ({rule.id}) carries a "
+                "quarterly/annual cap — only monthly caps are metered; seed it as a "
+                "monthly cap or implement the period first"
+            )
+        if not capped and rule.over_cap_earn is not None:
+            issues.append(
+                f"CR-02 category rule '{rule.category_label}' ({rule.id}) states over_cap_earn "
+                "but has no cap — either the cap is missing or the value is a mistake"
+            )
+
+    # ── Portal-gated bonus rates (CR-04 — decision log 2026-11-07) ─────────
+    # `requires_portal` gates a BONUS: booked direct, the purchase earns the
+    # base rate instead. On a rule that is not above base there is nothing to
+    # gate, and Best Card would price a phantom 'booked direct' alternative.
+    base_by_card = {card.id: card.base_earn_rate for card in snapshot.cards}
+    for rule in snapshot.category_rules:
+        if rule.requires_portal is None:
+            continue
+        if not rule.requires_portal.strip():
+            issues.append(
+                f"CR-04 category rule '{rule.category_label}' ({rule.id}) has a blank "
+                "requires_portal — name the portal or leave it null"
+            )
+        base = base_by_card.get(rule.card_id)
+        if base is not None and rule.earn_rate <= base:
+            issues.append(
+                f"CR-04 category rule '{rule.category_label}' ({rule.id}) names a portal "
+                "but is not a bonus rate (earn_rate <= the card's base) — only a bonus "
+                "can depend on how you book"
             )
 
     # ── Card completeness ─────────────────────────────────────────────────

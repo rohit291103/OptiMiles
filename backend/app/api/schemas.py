@@ -181,6 +181,8 @@ class SavedGoalSummary(BaseModel):
     target_date: date | None
     status: str
     saved_at: datetime
+    partner_id: UUID | None
+    """The goal's program — lets Best Card lead with what the user chose."""
     summary: str | None
     confidence_score: float | None
     catalog_snapshot_version: str | None

@@ -80,6 +80,7 @@ async def my_goals(
                 target_date=row.target_date,
                 status=row.status,
                 saved_at=row.created_at,
+                partner_id=row.partner_id,
                 summary=row.summary,
                 confidence_score=row.confidence_score,
                 catalog_snapshot_version=row.catalog_snapshot_version,

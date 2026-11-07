@@ -30,7 +30,7 @@ from app.domain.catalog import (
     RewardCurrency,
     TransferPartner,
 )
-from app.domain.enums import PartnerType, SpendCategory
+from app.domain.enums import OverCapEarn, PartnerType, SpendCategory
 
 
 class UnknownCardId(LookupError):
@@ -55,6 +55,7 @@ class EarnRuleEducation(_Frozen):
     monthly_cap_inr: int | None = None
     quarterly_cap_inr: int | None = None
     annual_cap_inr: int | None = None
+    over_cap_earn: OverCapEarn | None = None
     notes: str | None = None
 
 
@@ -170,6 +171,7 @@ def _card_education(
             monthly_cap_inr=rule.monthly_cap_inr,
             quarterly_cap_inr=rule.quarterly_cap_inr,
             annual_cap_inr=rule.annual_cap_inr,
+            over_cap_earn=rule.over_cap_earn,
             notes=rule.notes,
         )
         for rule in sorted(

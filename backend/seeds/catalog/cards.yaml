@@ -19,8 +19,13 @@
 # SEEDING POLICY (decision-logged 2026-07-04): earn rates are seeded
 # CONSERVATIVELY — every card gets a `default` category at its base rate;
 # accelerated categories are added only where documented, so projections
-# under-promise rather than over-promise. Caps are spend-INR per month
-# (schema semantics: beyond the cap, spend earns base rate).
+# under-promise rather than over-promise. Caps are spend-INR per month.
+# EVERY capped rule must state `over_cap_earn` (migration 0009, decision log
+# 2026-11-02-cap-overflow-earn.md): `base_rate` = spend above the cap earns
+# the card's base_earn_rate; `nothing` = it earns zero. It is sourced per row
+# from the issuer's terms — validate_catalog CR-01 rejects a capped rule that
+# leaves it out, because "beyond the cap earns base" was an assumption that
+# overstated SBI Cashback. Uncapped rules must NOT carry it (CR-02).
 
 - slug: hdfc-infinia
   bank: HDFC
@@ -35,6 +40,41 @@
   source: docs/research/singapore_airlines_krisflyer_indian_credit_card_research_v1.md §1 (5 RP per ₹150 ≈ 3.33/₹100); fee per db-schema-v1 example
   verified_on: 2026-07-04
   needs_verification: false
+  # ANNUAL-FEE WAIVER (decision log 2026-11-02-fee-waiver-progress). Its own
+  # provenance: reviewed separately from the card's fee and earn rate.
+  fee_waiver:
+    kind: spend_based
+    threshold_inr: 1000000
+    threshold_comparison: at_least     # "Spend Rs. 10,00,000" — met at the figure
+    window_kind: preceding_card_year   # "Retail spends in preceding 12 months"
+    waives_renewal_fee: true
+    waives_joining_fee: false          # the first-year fee has a separate voucher offer, not a waiver
+    excluded_categories: []
+    # HDFC MITC (updated 29 Oct 2026) fee-table footnote: "* Exclude
+    # transactions - Cash on Call, Balance Transfer, Cash Withdrawal". None is
+    # a category we log, so all three are unmodelled.
+    unmodelled_exclusions: [Cash on Call, balance transfers, cash withdrawals]
+    conditions: >-
+      Retail spends in the 12 months before your renewal; HDFC excludes Cash on
+      Call, balance transfers and cash withdrawals. HDFC also words the window
+      as "12 billing cycles of your anniversary year", so counts near the start
+      of the window may differ from HDFC's by a few days.
+    source: >-
+      HDFC Bank credit card fee-waiver page ("Pricing MID for Oct 2026"), table
+      column "RENEWAL FEE WAIVER (Retail spends in preceding 12 months)", row
+      "Infinia Metal Card Rs. 12,500 … Spend Rs. 10,00,000"; T&C: "Renewal Fee shall be levied at
+      the start of every anniversary year if the card … does not meet Renewal
+      fee waiver condition". https://www.hdfcbank.com/personal/pay/cards/credit-cards/credit-card-fee-waiver-condition
+      ; HDFC MITC "Minimum Spend for waiver of annual membership fee / renewal
+      charges for next year *" + footnote "* Exclude transactions - Cash on
+      Call, Balance Transfer, Cash Withdrawal" https://www.hdfc.bank.in/content/dam/hdfcbankpws/in/en/personal-banking/discover-products/cards/credit-cards/personal-mitc/mitc-in-english.pdf
+      ; Regalia Gold fees page "Retail spends of ₹4 lakh within 12 billing
+      cycles of your anniversary year".
+    # REVIEWER NOTE: flagged because the billing-cycle wording leaves the
+    # window's alignment to the renewal unstated — the month-only subset
+    # proof (periods.renewal_window) is not established for HDFC.
+    verified_on: 2026-11-02
+    needs_verification: true
   categories:
     - category_slug: default
       category_label: All other spend
@@ -44,14 +84,50 @@
       needs_verification: false
     - category_slug: travel
       category_label: Travel via SmartBuy portal
+      # PORTAL-GATED (2026-11-07): the 5X/10X applies to flights and hotels
+      # BOOKED ON SMARTBUY. hdfc.bank.in Diners Club Black Metal page:
+      # "Hotels booked via SmartBUY earn 10X points, and flights booked via
+      # SmartBUY earn 5X points." Booked directly with an airline the same
+      # spend earns the 3.33 base rate. Best Card prices both.
+      requires_portal: HDFC SmartBuy
       earn_rate: "16.65"
-      monthly_cap_inr: 150000
+      # CAP UNIT CORRECTED 2026-11-06. HDFC caps SmartBuy BONUS points, not
+      # spend: Infinia 15,000 bonus RP per calendar month (daily cap removed;
+      # gift vouchers carry a 3,000 RP sub-cap inside it from 2026-07-01).
+      # The old ₹1,50,000 figure read the 1.5L-RP REDEMPTION ceiling as an
+      # earn cap. Converted to spend at the seeded 5X (flights) rate:
+      #   5X = 25 RP per ₹150, of which 20 RP per ₹150 is bonus
+      #   15,000 bonus RP ÷ 20 × ₹150 = ₹1,12,500 of spend per month.
+      # Hotels earn 10X and hit the points cap sooner (₹50,000), but this row
+      # also earns only 5X on them, so for any spend it never overstates:
+      # below ₹1,12,500 it earns less than the real 10X, and above it both
+      # land on base rate + the same 15,000 bonus RP.
+      # FRAGILE MARGIN: that last step holds only because 16.65 and 3.33 are
+      # rounded DOWN from the true 25/150 and 5/150 (at the cap: seeded 18,731
+      # vs real 18,745 RP). Never round either rate up.
+      monthly_cap_inr: 112500
+      # over_cap_earn NOT issuer-sourced: hdfcbank.com / offers.smartbuy
+      # return 403 to automated fetches (re-tried 2026-11-06). Secondary
+      # sources agree the cap binds only the bonus, so base keeps accruing
+      # (cardadvisor: caps "apply only to the bonus (extra) reward points").
+      over_cap_earn: base_rate
+      over_cap_earn_source: >-
+        secondary: https://insideflyer.com/posts/hdfc-caps-voucher-rewards-at-3-000-points-monthly/ ;
+        https://magnify.club/guides/hdfc-smartbuy-gift-voucher-points-cap (2026-11-02) ;
+        https://cardadvisor.in/articles/hdfc-smartbuy-guide (2026-11-06)
       notes: >-
-        5X of base via SmartBuy (research §2 says "up to 10X"; 5X seeded
-        conservatively). Cap seeded as ₹1.5L/month spend — research §1's
-        "1.5L RP monthly cap" reads as a POINTS cap; VERIFY unit and value.
-      source: docs/research/...krisflyer...research_v1.md §1–2 (SmartBuy multiplier)
-      verified_on: 2026-07-04
+        5X of base via SmartBuy flights; hotels earn 10X but 5X is seeded
+        conservatively. HDFC caps the BONUS at 15,000 RP per calendar month,
+        seeded as the equivalent ₹1,12,500 of 5X spend. Above that, spend keeps
+        earning the 3.33 base rate (secondary sources; HDFC's SmartBuy T&C was
+        unreachable).
+      source: >-
+        cap: livefromalounge.com SmartBuy voucher-cap article (2026-07-01,
+        "Infinia / Infinia Metal 15,000 pts" overall, unchanged) +
+        cardadvisor.in/articles/hdfc-smartbuy-guide (Infinia 15,000 RP, flights
+        5X, hotels 10X, calendar-month reset) — both secondary; multiplier:
+        docs/research/...krisflyer...research_v1.md §1–2
+      verified_on: 2026-11-06
       needs_verification: true
   milestones: []
   lounge_access:
@@ -97,6 +173,41 @@
   source: docs/research/...krisflyer...research_v1.md §1 (rate + ₹10,000 fee)
   verified_on: 2026-07-04
   needs_verification: false
+  # ANNUAL-FEE WAIVER (decision log 2026-11-02-fee-waiver-progress). Its own
+  # provenance: reviewed separately from the card's fee and earn rate.
+  fee_waiver:
+    kind: spend_based
+    threshold_inr: 800000
+    threshold_comparison: at_least     # "Spend Rs. 8,00,000" — met at the figure
+    window_kind: preceding_card_year   # "Retail spends in preceding 12 months"
+    waives_renewal_fee: true
+    waives_joining_fee: false          # the first-year fee has a separate voucher offer, not a waiver
+    excluded_categories: []
+    # HDFC MITC (updated 29 Oct 2026) fee-table footnote: "* Exclude
+    # transactions - Cash on Call, Balance Transfer, Cash Withdrawal". None is
+    # a category we log, so all three are unmodelled.
+    unmodelled_exclusions: [Cash on Call, balance transfers, cash withdrawals]
+    conditions: >-
+      Retail spends in the 12 months before your renewal; HDFC excludes Cash on
+      Call, balance transfers and cash withdrawals. HDFC also words the window
+      as "12 billing cycles of your anniversary year", so counts near the start
+      of the window may differ from HDFC's by a few days.
+    source: >-
+      HDFC Bank credit card fee-waiver page ("Pricing MID for Oct 2026"), table
+      column "RENEWAL FEE WAIVER (Retail spends in preceding 12 months)", row
+      "Diners Club Black Metal Card Rs. 10,000 … Spend Rs. 8,00,000"; T&C: "Renewal Fee shall be levied at
+      the start of every anniversary year if the card … does not meet Renewal
+      fee waiver condition". https://www.hdfcbank.com/personal/pay/cards/credit-cards/credit-card-fee-waiver-condition
+      ; HDFC MITC "Minimum Spend for waiver of annual membership fee / renewal
+      charges for next year *" + footnote "* Exclude transactions - Cash on
+      Call, Balance Transfer, Cash Withdrawal" https://www.hdfc.bank.in/content/dam/hdfcbankpws/in/en/personal-banking/discover-products/cards/credit-cards/personal-mitc/mitc-in-english.pdf
+      ; Regalia Gold fees page "Retail spends of ₹4 lakh within 12 billing
+      cycles of your anniversary year".
+    # REVIEWER NOTE: flagged because the billing-cycle wording leaves the
+    # window's alignment to the renewal unstated — the month-only subset
+    # proof (periods.renewal_window) is not established for HDFC.
+    verified_on: 2026-11-02
+    needs_verification: true
   categories:
     - category_slug: default
       category_label: All other spend
@@ -106,11 +217,33 @@
       needs_verification: false
     - category_slug: travel
       category_label: Travel via SmartBuy portal
+      # PORTAL-GATED (2026-11-07): the 5X/10X applies to flights and hotels
+      # BOOKED ON SMARTBUY. hdfc.bank.in Diners Club Black Metal page:
+      # "Hotels booked via SmartBUY earn 10X points, and flights booked via
+      # SmartBUY earn 5X points." Booked directly with an airline the same
+      # spend earns the 3.33 base rate. Best Card prices both.
+      requires_portal: HDFC SmartBuy
       earn_rate: "16.65"
-      monthly_cap_inr: 150000
-      notes: 5X via SmartBuy, seeded conservatively — same caveats as Infinia
-      source: docs/research/...krisflyer...research_v1.md §2
-      verified_on: 2026-07-04
+      # CAP UNIT CORRECTED 2026-11-06 — same reasoning as hdfc-infinia:travel.
+      # Diners Club Black METAL caps SmartBuy bonus at 10,000 RP per calendar
+      # month (the older non-metal Diners Club Black is 7,500 — not this card).
+      #   10,000 bonus RP ÷ 20 bonus RP per ₹150 × ₹150 = ₹75,000 per month.
+      monthly_cap_inr: 75000
+      # over_cap_earn NOT issuer-sourced — same basis as Infinia's travel row
+      # (secondary sources: SmartBuy cap binds the bonus, base still accrues).
+      over_cap_earn: base_rate
+      over_cap_earn_source: >-
+        secondary: same as hdfc-infinia:travel (insideflyer, magnify.club, cardadvisor — 2026-11-06)
+      notes: >-
+        5X via SmartBuy flights (hotels 10X, seeded at 5X conservatively). HDFC
+        caps the BONUS at 10,000 RP per calendar month, seeded as the equivalent
+        ₹75,000 of 5X spend; base rate continues above it (secondary sources).
+      source: >-
+        multipliers: hdfc.bank.in Diners Club Black Metal Edition page ("10X"
+        hotels, "5X" flights via SmartBUY — issuer, 2026-11-06); cap:
+        livefromalounge.com 2026-07-01 ("Diners Black Metal 10,000 pts") +
+        cardadvisor.in SmartBuy guide (10,000 RP) — secondary
+      verified_on: 2026-11-06
       needs_verification: true
   milestones:
     - milestone_type: spend_bonus
@@ -118,8 +251,11 @@
       bonus_points: 10000
       period: quarterly
       description: 10,000 RP on ₹4L quarterly spend
-      source: docs/research/...krisflyer...research_v1.md §4
-      verified_on: 2026-07-04
+      source: >-
+        hdfc.bank.in Diners Club Black Metal Edition page ("Spend 4 Lakh or
+        more in a calendar quarter to get 10,000 Bonus Reward Points",
+        2026-11-06); docs/research/...krisflyer...research_v1.md §4
+      verified_on: 2026-11-06
       needs_verification: false
   lounge_access:
     - program: issuer-direct
@@ -136,9 +272,18 @@
       conditions: >-
         Unlimited domestic access for you and your add-on members, with no
         spend condition.
-      source: paisabazaar.com + cardexpert.in + 1finance.co.in Diners Club Black Metal reviews (2026), consistent across all three — VERIFY against HDFC T&C
-      verified_on: 2026-08-31
-      needs_verification: true
+      # VERIFIED 2026-11-06 on the issuer page: "Unlimited lounge access to
+      # 1,300+ lounges in India and abroad for primary and add-on card
+      # members." No spend condition is stated there. Guest (non-cardholder)
+      # terms are not stated — guest_visits_per_period stays null (not stated),
+      # which the UI renders as silence, never as "guests included".
+      source: >-
+        hdfc.bank.in Diners Club Black Metal Edition product page
+        https://www.hdfc.bank.in/credit-cards/diners-club-black-metal-edition-credit-card
+        (2026-11-06); consistent with paisabazaar.com + cardexpert.in +
+        1finance.co.in reviews (2026)
+      verified_on: 2026-11-06
+      needs_verification: false
     - program: diners-club
       scope: international
       visits_per_period: null          # unlimited
@@ -149,8 +294,17 @@
       conditions: >-
         Unlimited worldwide access at 1,300+ participating lounges on the
         Diners Club network, for primary and add-on members.
-      source: paisabazaar.com + cardexpert.in + 1finance.co.in Diners Club Black Metal reviews (2026) — VERIFY against HDFC T&C
-      verified_on: 2026-08-31
+      # KEPT FLAGGED (reviewer, 2026-11-06): the issuer sentence confirms
+      # unlimited access abroad for primary + add-on members, but the
+      # attribution to the Diners Club International programme is inferred
+      # from the page pointing to the Diners Travel Tool app, not stated.
+      source: >-
+        hdfc.bank.in Diners Club Black Metal Edition product page ("Unlimited
+        lounge access to 1,300+ lounges in India and abroad for primary and
+        add-on card members"; international list via the Diners Travel Tool
+        app) https://www.hdfc.bank.in/credit-cards/diners-club-black-metal-edition-credit-card
+        (2026-11-06)
+      verified_on: 2026-11-06
       needs_verification: true
 
 - slug: hdfc-regalia-gold
@@ -160,19 +314,69 @@
   currency: hdfc-rp-regalia
   annual_fee_inr: 2500
   joining_fee_inr: 2500
-  base_earn_rate: "2.67"
+  # 2.50 = 5 RP per ₹200 (HDFC revision effective 15 May 2026; was 4 RP per
+  # ₹150 ≈ 2.67). min_income 12L = the salaried-Govt floor (NMI > ₹1L/month);
+  # non-Govt salaried and self-employed floors are ₹18L.
+  base_earn_rate: "2.50"
   min_income_inr: 1200000
   has_lounge_access: true
-  source: market knowledge (4 RP per ₹150 ≈ 2.67/₹100) — NOT in the research doc
-  verified_on: 2026-07-04
-  needs_verification: true
+  source: >-
+    hdfcbank.com Regalia Gold product page ("5 Reward Points on every Rs. 200
+    spent (On retail spends)"; "Joining/ Renewal Membership Fee of Rs. 2500";
+    changes "effective 15th May 2026")
+    https://www.hdfcbank.com/personal/pay/cards/credit-cards/regalia-gold-credit-card
+  verified_on: 2026-11-02
+  needs_verification: false
+  # ANNUAL-FEE WAIVER (decision log 2026-11-02-fee-waiver-progress). Its own
+  # provenance: reviewed separately from the card's fee and earn rate.
+  fee_waiver:
+    kind: spend_based
+    threshold_inr: 400000
+    threshold_comparison: at_least     # "Spend Rs. 4,00,000" — met at the figure
+    window_kind: preceding_card_year   # "Retail spends in preceding 12 months"
+    waives_renewal_fee: true
+    waives_joining_fee: false          # the first-year fee has a separate voucher offer, not a waiver
+    excluded_categories: []
+    # HDFC MITC (updated 29 Oct 2026) fee-table footnote: "* Exclude
+    # transactions - Cash on Call, Balance Transfer, Cash Withdrawal". None is
+    # a category we log, so all three are unmodelled.
+    unmodelled_exclusions: [Cash on Call, balance transfers, cash withdrawals]
+    conditions: >-
+      Retail spends in the 12 months before your renewal; HDFC excludes Cash on
+      Call, balance transfers and cash withdrawals. HDFC also words the window
+      as "12 billing cycles of your anniversary year", so counts near the start
+      of the window may differ from HDFC's by a few days.
+    source: >-
+      HDFC Bank credit card fee-waiver page ("Pricing MID for Oct 2026"), table
+      column "RENEWAL FEE WAIVER (Retail spends in preceding 12 months)", row
+      "Regalia Gold Rs. 2,500 … Spend Rs. 4,00,000"; T&C: "Renewal Fee shall be levied at
+      the start of every anniversary year if the card … does not meet Renewal
+      fee waiver condition". https://www.hdfcbank.com/personal/pay/cards/credit-cards/credit-card-fee-waiver-condition
+      ; HDFC MITC "Minimum Spend for waiver of annual membership fee / renewal
+      charges for next year *" + footnote "* Exclude transactions - Cash on
+      Call, Balance Transfer, Cash Withdrawal" https://www.hdfc.bank.in/content/dam/hdfcbankpws/in/en/personal-banking/discover-products/cards/credit-cards/personal-mitc/mitc-in-english.pdf
+      ; Regalia Gold fees page "Retail spends of ₹4 lakh within 12 billing
+      cycles of your anniversary year".
+    # REVIEWER NOTE: flagged because the billing-cycle wording leaves the
+    # window's alignment to the renewal unstated — the month-only subset
+    # proof (periods.renewal_window) is not established for HDFC.
+    verified_on: 2026-11-02
+    needs_verification: true
   categories:
     - category_slug: default
-      category_label: All other spend
-      earn_rate: "2.67"
-      source: market knowledge — VERIFY
-      verified_on: 2026-07-04
-      needs_verification: true
+      category_label: All other retail spend
+      earn_rate: "2.50"
+      notes: >-
+        5 RP per ₹200 on retail spends. The 50,000 RP per statement cycle
+        ceiling (≈ ₹20L of spend) and the 5X partner-merchant rates are not
+        modelled.
+      source: https://www.hdfcbank.com/personal/pay/cards/credit-cards/regalia-gold-credit-card
+      verified_on: 2026-11-02
+      needs_verification: false
+  # Milestones are VOUCHERS, not points ("Rs. 5,000 worth flight vouchers on
+  # spends of Rs. 5 lakh and Rs. 7.5 lakh"; "Rs 1500 worth Myntra/Nykaa
+  # vouchers on quarterly spends of Rs 1.5 lakhs" — issuer page 2026-11-02).
+  # The milestone schema carries bonus_points only, so none are seeded.
   milestones: []
   lounge_access:
     # THE CASE MOST CARDHOLDERS GET WRONG: the visits are not granted, they
@@ -191,21 +395,35 @@
         Introduced in a mid-2026 revision that replaced a flat annual
         allowance — if you have held this card a while, the terms you
         remember are no longer the terms you have.
-      source: cardexpert.in/hdfc-regalia-gold-2026-lounge-access-update (secondary) — VERIFY against HDFC T&C
-      verified_on: 2026-08-31
+      # REVIEWER NOTE: visits, quarter, ₹60,000 gate and "preceding calendar
+      # quarter" confirmed on the issuer page 2026-11-02 ("3 Lounge visits
+      # within India per calendar quarter on spends of ₹60,000 or more in the
+      # preceding calendar quarter"). Guest rule NOT on the page and the HDFC
+      # lounge T&C PDF did not download — hence still needs_verification.
+      source: >-
+        hdfcbank.com Regalia Gold product page
+        https://www.hdfcbank.com/personal/pay/cards/credit-cards/regalia-gold-credit-card
+        (guest rule: cardexpert.in secondary, unverified)
+      verified_on: 2026-11-02
       needs_verification: true
     - program: priority-pass
       scope: international
       visits_per_period: 6
       period: annual
-      reset_anchor: calendar_year      # VERIFY: may be membership year
+      reset_anchor: calendar_year      # issuer: "per calendar year"
       guest_visits_per_period: 0
       enrollment_required: true
       conditions: >-
         6 international visits a year via Priority Pass, with no spend
         condition — unchanged by the 2026 domestic revision.
-      source: cardexpert.in/hdfc-regalia-gold-2026-lounge-access-update (secondary) — VERIFY against HDFC T&C
-      verified_on: 2026-08-31
+      # REVIEWER NOTE: "6 Complimentary Lounge Access per calendar year outside
+      # India using Priority Pass" confirmed on the issuer page 2026-11-02;
+      # guest charge not stated there — hence still needs_verification.
+      source: >-
+        hdfcbank.com Regalia Gold product page
+        https://www.hdfcbank.com/personal/pay/cards/credit-cards/regalia-gold-credit-card
+        (guest rule: cardexpert.in secondary, unverified)
+      verified_on: 2026-11-02
       needs_verification: true
 
 - slug: hsbc-travelone
@@ -216,11 +434,59 @@
   annual_fee_inr: 4999
   joining_fee_inr: 4999
   base_earn_rate: "2.00"
-  min_income_inr: 1500000
+  # CORRECTED 2026-11-06 (was 1,500,000 — not on any issuer page). HSBC:
+  # "minimum income of INR600,000 per year for salaried individuals" and
+  # "INR12,00,000 per year for self-employed individuals". The lower,
+  # salaried figure is seeded because it is the card's actual entry bar.
+  min_income_inr: 600000
   has_lounge_access: true
-  source: hsbc.co.in TravelOne rewards page + magnify.club review 2026 (fee ₹4,999 confirmed)
-  verified_on: 2026-07-04
+  source: >-
+    hsbc.bank.in TravelOne product page (fee ₹4,999; income ₹6L salaried /
+    ₹12L self-employed) https://www.hsbc.bank.in/credit-cards/products/travelone/
+    (2026-11-06); magnify.club review 2026
+  verified_on: 2026-11-06
   needs_verification: false
+  # ANNUAL-FEE WAIVER (decision log 2026-11-02-fee-waiver-progress).
+  # STRICT: "exceeds ₹800,000" — exactly ₹8,00,000 does not qualify.
+  fee_waiver:
+    kind: spend_based
+    threshold_inr: 800000
+    # CONSERVATIVE: the service guide says "exceeds ₹800,000"; the KFS says
+    # "Waived off for annual spends of ₹800,000 or more". The issuer's own
+    # documents disagree, so the stricter reading is seeded (it can only make
+    # a REACHED harder to prove) and the row is flagged.
+    threshold_comparison: more_than
+    window_kind: current_card_year     # the fee charged for a card year is reversed by spend IN that year
+    waives_renewal_fee: true           # "Annual fees second year onwards"
+    waives_joining_fee: true           # "Standard Annual fees for the first year" — same reversal
+    excluded_categories: []
+    unmodelled_exclusions:
+      - anything HSBC does not treat as eligible spend (not defined in the documents we checked)
+    conditions: >-
+      The annual fee, including GST, is fully reversed when eligible spend on
+      the primary and add-on cards during that anniversary year exceeds
+      ₹8,00,000. Add-on spend counts, so log it against this card too.
+      During your renewal month we show the card year that has just closed —
+      it decides whether the fee charged at its start is reversed. The year
+      now beginning becomes the one we track once that month is over.
+    source: >-
+      HSBC TravelOne service guide (Most Important Terms and Conditions and
+      Tariff Sheet): "Annual fees second year onwards (The annual fee including
+      applicable GST will be fully reversed if total eligible spend across the
+      primary and add-on cards during the relevant anniversary year exceeds
+      ₹800,000)" and the identical clause for "Standard Annual fees for the
+      first year".
+      https://www.hsbc.co.in/content/dam/hsbc/in/documents/aw-travel-one-sevice-guide-11-12-2025.pdf
+      ; KFS: "Travel One … ₹4,999 (Waived off for annual spends of ₹800,000 or
+      more)" https://www.hsbc.co.in/content/dam/hsbc/in/documents/credit-card-key-fact-statement.pdf
+      ; product page (2026-11-06): "free if you spend more than INR 800,000 a
+      year" https://www.hsbc.bank.in/credit-cards/products/travelone/
+    # REVIEWER NOTE: flagged — "eligible spend" is still not defined for the
+    # fee reversal in any HSBC document checked. On strict vs inclusive, two
+    # of three issuer documents (service guide, product page) now say "more
+    # than", so the seeded strict reading is the majority wording too.
+    verified_on: 2026-11-06
+    needs_verification: true
   categories:
     - category_slug: default
       category_label: All other spend
@@ -232,11 +498,99 @@
     - category_slug: travel
       category_label: Flights, travel aggregators and foreign-currency spend
       earn_rate: "4.00"
-      notes: 4 RP/₹100 on flights/OTA/forex, uncapped (confirmed 2026-07-04 web pass)
-      source: hsbc.co.in TravelOne rewards page; magnify.club TravelOne review 2026
-      verified_on: 2026-07-04
+      # CAP ADDED 2026-11-06 — this row previously said "uncapped" and was
+      # marked verified. HSBC's own service guide caps it per calendar month:
+      #   §2b "2X Reward Points … subject to a maximum capping of 50,000
+      #   reward points in a calendar month"
+      #   Rewards Programme §2 "maximum capping of 50,000 accelerated reward
+      #   points in a calendar month … after reaching capping of 15,000
+      #   accelerated reward points"   ← same paragraph, two numbers
+      #   §6 "Accelerated Reward Points i.e 4 RP for every INR 100 Spends"
+      # So the cap counts all 4 RP. The guide gives 50,000 twice and 15,000
+      # once; the STRICTER reading is seeded (same precedent as this card's
+      # fee waiver) and the row is flagged until HSBC resolves it:
+      #   15,000 RP ÷ 4 RP per ₹100 = ₹3,75,000 of spend per month
+      #   (the 50,000 reading would be ₹12,50,000).
+      monthly_cap_inr: 375000
+      # ISSUER-SOURCED: "Credit cardholder will earn reward points at the
+      # regular earn rate of 2 reward points for every purchase of ₹100 after
+      # reaching capping".
+      over_cap_earn: base_rate
+      # (service guide §2b and Rewards Programme §2 — quoted above)
+      over_cap_earn_source: https://www.hsbc.co.in/content/dam/hsbc/in/documents/aw-travel-one-sevice-guide-11-12-2025.pdf
+      notes: >-
+        4 RP/₹100 on airlines (listed MCCs) and travel aggregators (MCC 4111,
+        4131, 4722, 4723) and foreign-currency spend. HSBC caps these points
+        per calendar month and its guide gives two figures (50,000 and 15,000
+        points); the lower is seeded, as ₹3,75,000 of spend. Above it, spend
+        earns the 2 RP base rate.
+      source: >-
+        HSBC TravelOne service guide (MITC, dated 11-12-2025)
+        https://www.hsbc.co.in/content/dam/hsbc/in/documents/aw-travel-one-sevice-guide-11-12-2025.pdf
+        ; product page "Earn 4 reward points for every INR100 spent on flights,
+        travel aggregators and in foreign currency"
+        https://www.hsbc.bank.in/credit-cards/products/travelone/ (2026-11-06)
+      verified_on: 2026-11-06
+      needs_verification: true
+    # Zero-earn labels are deliberately NEUTRAL ("Fuel", not "Fuel (earns
+    # nothing)"): Portfolio can name a category by any card's rule label, and
+    # an "earns nothing" heading above another card's winning rate would lie.
+    # The 0.00 rate and the notes carry the fact.
+    # ZERO-EARN ROWS (2026-11-06). Without them fuel and utility spend fell to
+    # the `default` row and earned 2 RP it never earns. Issuer text, service
+    # guide: "No reward points will be earned for spends in the below
+    # categories: Utilities(4900) … Fuel(5541,5542, 5172,5983,5552) …". The
+    # rest of that list (insurance, wallets, rent, tax, education/government,
+    # jewellery, money transfer) has no category in our vocabulary — those
+    # still fall to `default` and are listed here so the gap is visible.
+    - category_slug: fuel
+      category_label: Fuel
+      earn_rate: "0.00"
+      notes: HSBC excludes fuel MCCs 5541, 5542, 5172, 5983, 5552 from reward points.
+      source: >-
+        HSBC TravelOne service guide, Rewards Programme §4
+        https://www.hsbc.co.in/content/dam/hsbc/in/documents/aw-travel-one-sevice-guide-11-12-2025.pdf
+      verified_on: 2026-11-06
       needs_verification: false
-  milestones: []
+    - category_slug: utilities
+      category_label: Utilities
+      earn_rate: "0.00"
+      notes: >-
+        HSBC excludes utilities (MCC 4900) from reward points. Also excluded
+        but not modelled (no category): insurance, e-wallets, rent/real estate,
+        tax, education & government, jewellery, money transfer.
+      source: >-
+        HSBC TravelOne service guide, Rewards Programme §4
+        https://www.hsbc.co.in/content/dam/hsbc/in/documents/aw-travel-one-sevice-guide-11-12-2025.pdf
+      verified_on: 2026-11-06
+      needs_verification: false
+  milestones:
+    # ADDED 2026-11-06 — was missing. Primary card only; add-on spend is not
+    # separately eligible ("Add-on credit Cardholders will not have separate
+    # Offer eligibility"). HSBC calls it a "limited period Offer" and states
+    # NO end date — re-check this row on every seed pass.
+    # WHAT COUNTS (§8): "Eligible transaction refers to all types of sales
+    # transactions (including but without limitation, bill payments, online
+    # purchases, mail and telephone orders and insurance payments)", excluding
+    # finance charges, cash advances, late fees, balance transfers and annual
+    # fees. So fuel and utility spend COUNTS toward ₹12L even though it earns
+    # no points — the projector's all-spend accumulation matches HSBC here.
+    - milestone_type: spend_bonus
+      spend_threshold_inr: 1200000
+      bonus_points: 10000
+      period: annual                     # "anniversary year … from the … account open date"
+      description: >-
+        10,000 bonus reward points on ₹12L net eligible spend in a card
+        anniversary year (primary card). HSBC describes it as a limited-period
+        offer.
+      source: >-
+        HSBC "TravelOne Credit Card: Terms and Conditions for Milestone Offer"
+        §4 ("Cardholders who make Net Eligible spend of ₹12,00,000 in an
+        anniversary year … will be eligible for additional 10,000 reward
+        points") https://www.hsbc.bank.in/content/dam/hsbc/in/documents/milestone-benefits-2-tnc.pdf
+        (2026-11-06)
+      verified_on: 2026-11-06
+      needs_verification: false
 
 - slug: axis-atlas
   bank: Axis
@@ -256,52 +610,97 @@
   source: paisabazaar.com/axis-bank/atlas-credit-card + cardinsider.com Atlas review (2026); fee also research doc §1
   verified_on: 2026-07-04
   needs_verification: false
+  # ANNUAL-FEE WAIVER: a sourced NO, not a gap. Axis's own schedule prints "-"
+  # in the "Annual Fee Waiver" row for Atlas (Magnus/Select/Reserve show
+  # amounts in the same row). Note the MITC "5,000 5,000 Nil" — that Nil is
+  # the ADD-ON card fee column, not a waiver statement.
+  fee_waiver:
+    kind: none
+    conditions: >-
+      Axis lists no spend-based annual-fee waiver for Atlas.
+    source: >-
+      Axis Bank Schedule of Service Charges, "Annual Fee Waiver**" row: "-" for
+      ATLAS Credit Card.
+      https://www.axis.bank.in/docs/default-source/default-document-library/credit-card/sosc-credit-cards.pdf
+      ; MITC fee table "AXIS BANK ATLAS Credit Card 5,000 5,000 Nil" (joining,
+      annual, add-on) carries no waiver clause.
+      https://www.axis.bank.in/docs/default-source/magnus-card/mitc-credit-cards.pdf
+    verified_on: 2026-11-02
+    needs_verification: false
   categories:
     - category_slug: default
       category_label: All other spend
       earn_rate: "2.00"
-      source: market knowledge (2 EDGE Miles/₹100) — VERIFY
-      verified_on: 2026-07-04
-      needs_verification: true
+      notes: >-
+        2 EDGE Miles per ₹100. Gold/jewellery, rent, wallet, government,
+        insurance, fuel, utilities/telecom, gift cards and tolls earn nothing
+        — not modelled (they fall to this row).
+      source: >-
+        Axis Bank "Terms and Conditions of features of Axis Bank Atlas Credit
+        Card" ("2 EDGE Miles on Other Spends ... 2 EDGE Miles per INR 100 spent")
+        https://www.axis.bank.in/docs/default-source/default-document-library/credit-cards/terms-and-conditions-of-features-of-axis-bank-atlas-credit-card.pdf
+      verified_on: 2026-11-02
+      needs_verification: false
     - category_slug: travel
-      category_label: Direct airlines, hotels and travel
+      # Bookings via OTAs / travel agents earn only the 2/₹100 base rate.
+      category_label: Travel EDGE portal, direct airlines and direct hotels
       earn_rate: "5.00"
       monthly_cap_inr: 200000
-      notes: 5 EDGE Miles/₹100 up to ₹2L/month, then base rate — VERIFY
-      source: market knowledge — VERIFY
-      verified_on: 2026-07-04
-      needs_verification: true
+      # Issuer-sourced (T&C quote in `source`): "Earn 2 EDGE Mile per INR 100
+      # spent on cumulative transactions above Rs. 2,00,000 per month" — the
+      # excess earns the 2.00 base rate.
+      over_cap_earn: base_rate
+      over_cap_earn_source: https://www.axis.bank.in/docs/default-source/default-document-library/credit-cards/terms-and-conditions-of-features-of-axis-bank-atlas-credit-card.pdf
+      notes: >-
+        5 EDGE Miles/₹100 up to ₹2,00,000 of travel spend per month, then
+        2/₹100 (over_cap_earn: base_rate, stated by the issuer's T&C).
+      source: >-
+        Axis Bank Atlas features T&C ("5 EDGE Miles per INR 100 spent will be
+        capped at 2 lakh spends per month ... Earn 2 EDGE Mile per INR 100
+        spent on cumulative transactions above Rs. 2,00,000 per month")
+        https://www.axis.bank.in/docs/default-source/default-document-library/credit-cards/terms-and-conditions-of-features-of-axis-bank-atlas-credit-card.pdf
+      verified_on: 2026-11-02
+      needs_verification: false
   milestones:
     - milestone_type: spend_bonus
       spend_threshold_inr: 300000
       bonus_points: 2500
       period: annual
-      description: Silver tier — 2,500 EDGE Miles at ₹3L annual spend (confirmed by paisabazaar/cardinsider Atlas reviews 2026)
-      source: paisabazaar.com/axis-bank/atlas-credit-card + cardinsider.com Atlas review (2026)
-      verified_on: 2026-07-04
+      description: Silver tier — 2,500 EDGE Miles at ₹3L annual spend
+      source: >-
+        Axis Bank Atlas features T&C milestone table ("3,00,000 2500")
+        https://www.axis.bank.in/docs/default-source/default-document-library/credit-cards/terms-and-conditions-of-features-of-axis-bank-atlas-credit-card.pdf
+      verified_on: 2026-11-02
       needs_verification: false
     - milestone_type: welcome_bonus
       bonus_points: 2500
       period: one_time
       description: 2,500 EDGE Miles on first transaction within 37 days of setup
-      source: paisabazaar.com/axis-bank/atlas-credit-card (2026)
-      verified_on: 2026-07-04
+      source: >-
+        axisbank.com Atlas product page ("Enjoy 2500 EDGE Miles as welcome
+        benefit upon first transaction ... within 37 days")
+        https://www.axisbank.com/retail/cards/credit-card/axis-bank-atlas-credit-card
+      verified_on: 2026-11-02
       needs_verification: false
     - milestone_type: spend_bonus
       spend_threshold_inr: 750000
       bonus_points: 2500
       period: annual
       description: Gold tier — +2,500 EDGE Miles at ₹7.5L cumulative annual spend (5,000 total incl. Silver)
-      source: paisabazaar.com/axis-bank/atlas-credit-card + cardinsider.com Atlas review (2026)
-      verified_on: 2026-07-04
+      source: >-
+        Axis Bank Atlas features T&C milestone table ("7,50,000 Additional 2500")
+        https://www.axis.bank.in/docs/default-source/default-document-library/credit-cards/terms-and-conditions-of-features-of-axis-bank-atlas-credit-card.pdf
+      verified_on: 2026-11-02
       needs_verification: false
     - milestone_type: spend_bonus
       spend_threshold_inr: 1500000
       bonus_points: 5000
       period: annual
       description: Platinum tier — +5,000 EDGE Miles at ₹15L cumulative annual spend (10,000 total)
-      source: paisabazaar.com/axis-bank/atlas-credit-card + cardinsider.com Atlas review (2026)
-      verified_on: 2026-07-04
+      source: >-
+        Axis Bank Atlas features T&C milestone table ("15,00,000 Additional 5000")
+        https://www.axis.bank.in/docs/default-source/default-document-library/credit-cards/terms-and-conditions-of-features-of-axis-bank-atlas-credit-card.pdf
+      verified_on: 2026-11-02
       needs_verification: false
 
 - slug: axis-magnus-burgundy
@@ -322,6 +721,43 @@
   source: cardexpert.in/axis-magnus-burgundy-credit-card-review (2025-01-18) — fee, rates, eligibility
   verified_on: 2026-07-04
   needs_verification: true
+  # ANNUAL-FEE WAIVER (decision log 2026-11-02-fee-waiver-progress). Axis
+  # excludes rent, wallet, utilities, government, EMI, cash, insurance, gold
+  # and fuel MCCs from the threshold; only utilities and fuel exist in our
+  # logging vocabulary, so those two are excluded structurally and the rest
+  # are stated in `conditions` (a user logging rent as "other" would
+  # overstate — the UI tells them not to).
+  fee_waiver:
+    kind: spend_based
+    threshold_inr: 3000000
+    threshold_comparison: at_least     # "Waived on eligible spends* of INR 30,00,000"
+    window_kind: preceding_card_year   # "in preceding card anniversary year"
+    waives_renewal_fee: true
+    waives_joining_fee: false
+    excluded_categories: [utilities, fuel]
+    unmodelled_exclusions:
+      - rent
+      - wallet loads
+      - government payments
+      - EMI conversions
+      - cash withdrawals
+      - insurance
+      - gold
+      - reversals, fees and charges
+    conditions: >-
+      Only eligible spend counts: rent, wallet loads, utilities, government
+      payments, EMI conversions, cash withdrawals, insurance, gold and fuel do
+      not. Applies only while you keep the Burgundy relationship.
+    source: >-
+      Axis Bank MITC fee table: "MAGNUS FOR BURGUNDY Credit Card# 30,000#
+      30,000# (Waived on eligible spends* of INR 30,00,000 in preceding card
+      anniversary year)"; footnote *: threshold excludes "Rent (MCC -6513),
+      Wallet (MCC- 6540), Utilities (MCC-4814,4816,4899,4900), Government
+      Institutions …, EMI conversions, Cash withdrawals …" and, from 20 Apr
+      2024, "Insurance …, Gold … and Fuel (MCC-5541, 5542, 5983)".
+      https://www.axis.bank.in/docs/default-source/magnus-card/mitc-credit-cards.pdf
+    verified_on: 2026-11-02
+    needs_verification: false
   categories:
     - category_slug: default
       category_label: All spend (tiered 35/₹200 above ₹1.5L/month not modeled)
@@ -336,15 +772,51 @@
       needs_verification: true
     - category_slug: travel
       category_label: Travel EDGE portal (5X)
+      # PORTAL-GATED (2026-11-07): Axis's accelerated-35 T&C grants "5X EDGE
+      # Rewards on Travel EDGE" — bookings made through the Travel EDGE portal.
+      # Direct bookings earn the 6.00 base rate. (Atlas, by contrast, also
+      # earns its travel rate on direct airline/hotel bookings: not gated.)
+      requires_portal: Axis Travel EDGE
       earn_rate: "30.00"
       monthly_cap_inr: 200000
+      # over_cap_earn NOT issuer-sourced (2026-11-02): the Magnus for Burgundy
+      # T&C PDF on axis.bank.in could not be text-extracted. Axis's
+      # accelerated-35 T&C says Travel EDGE 5X "will be calculated on Base EDGE
+      # Reward points", i.e. 5X is a multiple OF base, so base keeps accruing
+      # past the bonus cap. Seeded base_rate on that reading; row stays
+      # needs_verification: true.
+      over_cap_earn: base_rate
+      over_cap_earn_source: >-
+        secondary: inference from Axis "terms-and-conditions-for-accelerated-35-edge-reward-points"
+        ("5X EDGE Rewards on Travel EDGE ... calculated on Base EDGE Reward points");
+        Burgundy T&C itself not read (2026-11-02)
       notes: >-
         60 RP/₹200 = 30/₹100 via Travel EDGE, capped at ₹2L/month spend
         (cardexpert "24% value-back up to ₹2L/month" at the 5:4 ratio).
         VERIFY the cap unit and whether direct airline spend qualifies.
+        Above the cap spend is assumed to earn the 6.00 base rate — VERIFY.
       source: cardexpert.in Magnus Burgundy review (2025-01-18) — VERIFY post-Apr-2026
       verified_on: 2026-07-04
       needs_verification: true
+    # ZERO-EARN ROW (2026-11-06). Issuer text, "Revision of Axis Bank MAGNUS
+    # for Burgundy Credit Card Terms & Conditions" (w.e.f. 20 Apr 2024):
+    # "spends done on Insurance, Gold & Fuel MCC will not be eligible for base
+    # & accelerated EDGE REWARD Points" — Fuel 5541, 5542, 5983. Utilities are
+    # NOT given a zero row: Axis's utilities exclusion we hold is worded for
+    # the FEE-WAIVER threshold (MITC footnote), not for earning — a different
+    # rule, and borrowing it would be a guess.
+    - category_slug: fuel
+      category_label: Fuel
+      earn_rate: "0.00"
+      notes: >-
+        Fuel (MCC 5541, 5542, 5983) earns no base or accelerated EDGE Reward
+        Points. Insurance and gold are also excluded but have no category here.
+      source: >-
+        Axis Bank Magnus for Burgundy T&C revision (effective 2024-04-20)
+        https://www.axis.bank.in/docs/default-source/default-document-library/credit-cards/magnus-for-burgundy-terms-and-conditions.pdf
+        (text extracted 2026-11-06)
+      verified_on: 2026-11-06
+      needs_verification: false
   milestones: []
 
 - slug: amex-platinum-travel
@@ -353,58 +825,128 @@
   card_network: Amex
   currency: amex-mr
   annual_fee_inr: 5000
-  joining_fee_inr: 3500
+  # Was 3500 (first-year promotional fee); issuer now states "First Year Fee:
+  # Rs. 5,000 plus applicable taxes (Second Year onwards: Rs. 5,000 ...)".
+  joining_fee_inr: 5000
   base_earn_rate: "2.00"
   min_income_inr: 600000
   has_lounge_access: true
-  source: research §1–2 (milestone-driven); rate confirmed by cardtrail.in Amex MR guide (2026-03-20, "1 MR per Rs 50")
-  verified_on: 2026-07-04
-  needs_verification: true
+  # CLOSED TO NEW APPLICANTS (user decision 2026-11-02): the issuer page says
+  # "We are temporarily pausing the acceptance of new card applications in
+  # India as we make planned updates to our technology platforms for domestic
+  # card issuing operations." (https://www.americanexpress.com/in/credit-cards/platinum-travel-credit-card/,
+  # re-checked 2026-11-06). Stage 7 must not recommend acquiring it; existing
+  # holders keep full support. Flip back to true when Amex reopens
+  # applications. min_income_inr VERIFIED 2026-11-06 — the issuer's
+  # eligibility checklist: "I have a personal annual income of Rs. 6 Lacs or
+  # above (for both Salaried, Self Employed)".
+  acquirable: false
+  source: >-
+    americanexpress.com/in Platinum Travel product page (fees, earn rate,
+    milestones, eligibility income) https://www.americanexpress.com/in/credit-cards/platinum-travel-credit-card/
+    (2026-11-06)
+  verified_on: 2026-11-06
+  needs_verification: false
   categories:
     - category_slug: default
       category_label: All eligible spend
       earn_rate: "2.00"
-      notes: 1 MR per ₹50 = 2.00/₹100 (confirmed 2026-07-04 web pass)
-      source: cardtrail.in Amex MR India guide (2026-03-20)
-      verified_on: 2026-07-04
+      notes: >-
+        1 MR per ₹50 = 2.00/₹100. Fuel and utilities earn nothing (their own
+        rows below); insurance, cash and point-of-sale EMI conversions also
+        earn nothing but have no category here, so they still fall to this row.
+      source: >-
+        americanexpress.com/in Platinum Travel page ("Earn 1 Membership Rewards
+        Point for every Rs. 50 spent except for spend on Fuel, Insurance,
+        Utilities, Cash Transactions and EMI conversion at Point of Sale")
+        https://www.americanexpress.com/in/credit-cards/platinum-travel-credit-card/
+      verified_on: 2026-11-02
       needs_verification: false
+    # ZERO-EARN ROWS (2026-11-06) — two issuer documents agree: the product
+    # page's "except for spend on Fuel, Insurance, Utilities …" and the
+    # Membership Rewards T&C table ("The American Express Platinum Travel
+    # Credit Card | Fuel: No MR points | Insurance: No MR points | Other
+    # Utility Services: No MR points"). Amex defines utilities as household
+    # electricity, gas and water providers; telecom still earns.
+    - category_slug: fuel
+      category_label: Fuel
+      earn_rate: "0.00"
+      notes: Petrol, diesel, CNG and other Oil Marketing Company spend earns no MR points.
+      source: >-
+        American Express Membership Rewards Program T&C §III table
+        https://www.americanexpress.com/content/dam/amex/in/benefits/membership-rewards-terms.pdf
+        ; Platinum Travel product page (2026-11-06)
+      verified_on: 2026-11-06
+      needs_verification: false
+    - category_slug: utilities
+      category_label: Utilities
+      earn_rate: "0.00"
+      notes: >-
+        Household electricity, gas and water providers earn no MR points.
+        Telecom is not in this exclusion and earns the normal rate.
+      source: >-
+        American Express Membership Rewards Program T&C §III table and
+        footnote ^ https://www.americanexpress.com/content/dam/amex/in/benefits/membership-rewards-terms.pdf
+        ; Platinum Travel product page (2026-11-06)
+      verified_on: 2026-11-06
+      needs_verification: false
+  # The ₹1.9L → 15,000 MR milestone is GONE from the issuer page (removed by
+  # Amex in 2026) and has been deleted here. The ₹7L tier pays a ₹20,000 Taj
+  # e-gift card, not points, so it is not seeded.
   milestones:
     - milestone_type: spend_bonus
-      spend_threshold_inr: 190000
-      bonus_points: 15000
-      period: annual
-      description: Annual milestone tier 1 — VERIFY thresholds; bonuses earned pre-March-2026 require manual claiming (research §1)
-      source: research §2 "Amex Milestone Maximization" confirms structure; figures market knowledge
-      verified_on: 2026-07-04
-      needs_verification: true
-    - milestone_type: spend_bonus
       spend_threshold_inr: 400000
-      bonus_points: 25000
-      period: annual
-      description: Annual milestone tier 2 — VERIFY
-      source: research §2 confirms structure; figures market knowledge
-      verified_on: 2026-07-04
+      bonus_points: 10000
+      period: annual                     # "Card Membership year" = 12 months from issuance/renewal
+      description: >-
+        10,000 Membership Rewards points on ₹4L spend in a Card Membership
+        year. Amex says these "can be redeemed across the Platinum Travel
+        Collection".
+      # REVIEWER NOTE: value confirmed 2026-11-02 (was 25,000). Stays
+      # needs_verification because Amex frames these points as redeemable on
+      # the Platinum Travel Collection (listed under "TRAVEL VOUCHERS"); the
+      # page does not say they can be transferred to airline partners like
+      # base MR. Do not let the engine treat them as transferable until that
+      # is confirmed.
+      source: >-
+        americanexpress.com/in Platinum Travel page ("Spend ₹4 Lakhs in a Card
+        Membership year and get 10,000 Membership Rewards points that can be
+        redeemed across the Platinum Travel Collection")
+        https://www.americanexpress.com/in/credit-cards/platinum-travel-credit-card/
+      verified_on: 2026-11-02
       needs_verification: true
   lounge_access:
-    # MODELING NOTE: Amex states TWO limits — 8 visits a year AND at most 2 a
-    # quarter. They are arithmetically consistent (2 x 4 = 8), but the
-    # quarterly one is the binding constraint in any given period: you cannot
-    # spend all 8 in one quarter. Seeding the quarterly limit is therefore the
-    # more restrictive and the more useful reading, with the annual total
-    # stated in conditions. Seeding "8 per year" would over-promise a traveller
-    # planning a single trip.
+    # SPEND-GATED FROM 1 OCT 2026. Issuer text (2026-11-02): "Effective 1
+    # October 2026, enjoy 2 complimentary domestic lounge visits per calendar
+    # quarter upon reaching eligible spends in the preceding quarter (₹70,000
+    # in Q3'26 for Q4'26 visits; ₹1 Lakh per quarter from Q4'26 onwards for
+    # Q1'27 visits)".
+    # REVIEWER NOTE — KNOWN STALE DATE: the ₹70,000 gate is the one in force
+    # today (it governs Oct–Dec 2026 visits). The ₹1,00,000 gate governs visits
+    # from 1 Jan 2027; it is announced, not yet effective, and the schema has
+    # no effective-from field, so it is NOT applied. Change spend_gate_inr to
+    # 100000 on 2027-01-01.
     - program: issuer-direct
       scope: domestic
       visits_per_period: 2
       period: quarterly
-      reset_anchor: calendar_quarter   # VERIFY: may be membership year quarters
+      reset_anchor: calendar_quarter   # issuer: "per calendar quarter"
       guest_visits_per_period: 0
+      spend_gate_inr: 70000
+      spend_gate_period: quarterly     # measured in the PRECEDING quarter
       enrollment_required: false
       conditions: >-
-        8 complimentary domestic visits a year, capped at 2 per quarter.
-        Further visits are charged at Rs 750 each.
-      source: americanexpress.com/in Platinum Travel Credit Card benefits pages (issuer primary source)
-      verified_on: 2026-08-31
+        Since 1 October 2026 these visits are earned, not granted: each
+        quarter's 2 visits unlock only if you spent enough on the card in the
+        previous quarter. A quarter with little spend means no visits in the
+        next one.
+      # REVIEWER NOTE: guest rule not stated on the issuer page — hence still
+      # needs_verification. The earlier "Rs 750 per extra visit" claim was
+      # dropped: it is not on the current issuer page.
+      source: >-
+        americanexpress.com/in Platinum Travel page
+        https://www.americanexpress.com/in/credit-cards/platinum-travel-credit-card/
+      verified_on: 2026-11-02
       needs_verification: true
     - program: priority-pass
       scope: international
@@ -413,17 +955,19 @@
       reset_anchor: calendar_year
       guest_visits_per_period: 0
       enrollment_required: true
-      # REVIEWER NOTE (not user-facing): seeded conservatively as zero
-      # complimentary visits because the per-visit charge is not yet confirmed
-      # against Amex T&C. If visits turn out to be included, raise the count —
-      # do not lower a promise we already made.
       conditions: >-
-        Your Priority Pass membership is free (Amex waives the USD 99 fee) for
-        you and one supplementary cardmember — but that is the membership, not
-        the visits. Check the per-visit charge before you travel.
-      source: americanexpress.com/in Platinum Travel Credit Card benefits pages — per-visit charge NOT yet confirmed
-      verified_on: 2026-08-31
-      needs_verification: true
+        Your Priority Pass membership is free (Amex waives the US$99 annual
+        membership fee) — but that is the membership, not the visits. Every
+        visit, yours or a guest's, is charged at Priority Pass's prevailing
+        retail rate.
+      source: >-
+        americanexpress.com/in Platinum Travel page ("complimentary membership
+        to Priority Pass, with the US$99 annual membership fee waived off
+        exclusively for you"; footnote 4: "Cardmember/accompanied guest has to
+        pay a usage fee. Usage fee is charged per the prevailing retail rate.")
+        https://www.americanexpress.com/in/credit-cards/platinum-travel-credit-card/
+      verified_on: 2026-11-02
+      needs_verification: false
 
 - slug: amex-platinum-charge
   bank: Amex
@@ -435,26 +979,86 @@
   base_earn_rate: "2.50"
   min_income_inr: null
   has_lounge_access: true
+  # CLOSED TO NEW APPLICANTS (user decision 2026-11-02): the issuer page says
+  # "We are temporarily pausing the acceptance of new card applications in
+  # India as we make planned updates to our technology platforms for domestic
+  # card issuing operations." (https://www.americanexpress.com/in/charge-cards/platinum-card/,
+  # re-checked 2026-11-03). Existing holders keep full support. Flip back to
+  # true when Amex reopens applications.
+  acquirable: false
   notes: >-
     Added per user scope decision 2026-07-04. Charge card — no preset limit,
     invitation/relationship-based eligibility (min_income null). Welcome
     benefit is ₹60,000 in hotel vouchers (Taj/Postcard), not points — no
     welcome milestone row. Shares the amex-mr currency with Platinum Travel
     (same MR program, same transfer entitlements).
-  source: americanexpress.com/in/charge-cards/platinum-card (fee ₹66,000; 1 MR/₹40) via 2026-07-04 web pass
-  verified_on: 2026-07-04
+  # Annual fee and earn rate re-confirmed on the issuer page 2026-11-06. Stays
+  # flagged ONLY for joining_fee_inr: the page states the annual fee ("INR
+  # 66,000 plus applicable taxes") but not a joining/first-year fee.
+  source: >-
+    americanexpress.com/in/charge-cards/platinum-card (fee ₹66,000; 1 MR/₹40;
+    applications paused) https://www.americanexpress.com/in/charge-cards/platinum-card/
+    (2026-11-06)
+  verified_on: 2026-11-06
   needs_verification: true
+  # ANNUAL-FEE WAIVER: a sourced NO. The ₹20L-spend provision is a renewal
+  # BENEFIT (vouchers) paid only AFTER the renewal fee is paid — it is not a
+  # waiver and must never be modelled as one.
+  fee_waiver:
+    kind: none
+    conditions: >-
+      No spend-based fee waiver. Spending ₹20 lakh in a membership year earns
+      renewal vouchers worth up to ₹35,000 — but only once the renewal fee is
+      paid, so the fee itself is never waived.
+    source: >-
+      americanexpress.com Platinum Card page: "On spends on INR 20 Lakhs in
+      membership year and payment of renewal fee, get vouchers upto INR 35,000
+      as renewal benefit"; "Annual Fee: INR 66,000 plus applicable taxes".
+      https://www.americanexpress.com/in/charge-cards/platinum-card/
+    verified_on: 2026-11-02
+    needs_verification: false
   categories:
     - category_slug: default
-      category_label: All eligible spend (excl. fuel/insurance/utilities)
+      category_label: All other eligible spend
       earn_rate: "2.50"
+      # VERIFIED 2026-11-06 against the Membership Rewards T&C, which also
+      # CORRECTS the old note here ("fuel earns nothing" — wrong for this
+      # card). The issuer table for The American Express Platinum Card:
+      #   Fuel: "5 MR points for every Rs 100 spent" (capped 5,000 points per
+      #     calendar month) · Insurance: "No MR points" · Other Utility
+      #     Services: "No MR points" · Telecom and all other spends: "1 MR
+      #     point for every Rs. 40 spent" · overseas (non-INR) spend: 3X.
+      # Fuel is NOT given its own row: a capped row must state what spend past
+      # the 5,000-point cap earns (CR-01) and the T&C does not say. Left on
+      # this row it earns 2.50 instead of 5.00 — an under-statement up to
+      # ₹2,00,000 of fuel a month, which is where 2.50% catches up with the
+      # 5,000-point ceiling. 3X overseas is also not modelled (under-promise).
       notes: >-
-        1 MR per ₹40 = 2.50/₹100. Fuel earns 5 MR/₹100 but is not seeded
-        (conservative; fuel-category acceleration can be added once the
-        exclusion list is verified). Fuel/insurance/utilities earn nothing.
-      source: americanexpress.com/in/charge-cards/platinum-card (2026-07-04 web pass)
-      verified_on: 2026-07-04
-      needs_verification: true
+        1 MR per ₹40 = 2.50/₹100. Utilities earn nothing (own row below);
+        insurance also earns nothing but has no category here. Fuel actually
+        earns 5 MR/₹100 up to 5,000 points a month and overseas spend earns
+        3X — both left at this rate, so we under-state rather than over-state.
+      source: >-
+        American Express Membership Rewards Program T&C §III ("On the American
+        Express Platinum Card, you earn 5 Membership Rewards Points for every
+        Rs. 100 spent on Fuel* (capped at a maximum of 5000 Points every
+        calendar month), and No Membership Rewards Points on spends at
+        Insurance and Other Utility Services") + table ("1 MR point for every
+        Rs. 40 spent") https://www.americanexpress.com/content/dam/amex/in/benefits/membership-rewards-terms.pdf
+        ; product page "earn 1 Membership Reward points for every INR 40 spent"
+        https://www.americanexpress.com/in/charge-cards/platinum-card/ (2026-11-06)
+      verified_on: 2026-11-06
+      needs_verification: false
+    - category_slug: utilities
+      category_label: Utilities
+      earn_rate: "0.00"
+      notes: Household electricity, gas and water providers earn no MR points.
+      source: >-
+        American Express Membership Rewards Program T&C §III table and
+        footnote ^ https://www.americanexpress.com/content/dam/amex/in/benefits/membership-rewards-terms.pdf
+        (2026-11-06)
+      verified_on: 2026-11-06
+      needs_verification: false
   milestones: []
 
 # Deliberate negative case: cashback product, no transferable currency.
@@ -467,24 +1071,126 @@
   annual_fee_inr: 999
   joining_fee_inr: 999
   base_earn_rate: "1.00"
-  min_income_inr: 400000
+  # NULLED 2026-11-06 (was 400000, "market knowledge"). SBI publishes no
+  # income figure for this card in any document checked — the T&C ekit, the
+  # MITC, or the 2026 reviews (1finance lists only age 21+ and income PROOF).
+  # null = "not stated", the same as Amex Platinum Charge; a guessed bar
+  # would be an invented number.
+  min_income_inr: null
+  # VERIFIED 2026-11-06: the 50-page CASHBACK SBI Card T&C ekit never
+  # mentions lounge access (its feature list, FAQ and benefit clauses
+  # included), and 2026 reviews report the last domestic visit was removed.
+  # The product page's stale meta description is not the governing document.
   has_lounge_access: false
-  source: MVP scope v2 (deliberate cashback contrast card); rates market knowledge
-  verified_on: 2026-07-04
-  needs_verification: true
+  # REVIEWER NOTE: fees (₹999 joining, ₹999 renewal) and the 1%/5% rates are
+  # issuer-verified 2026-11-02; lounge (none) verified 2026-11-06 from the T&C.
+  source: >-
+    sbicard.com MITC https://www.sbicard.com/sbi-card-en/assets/docs/pdf/most-important-terms-and-conditions/mitc-english.pdf
+    (fees) + CASHBACK SBI Card T&C https://www.sbicard.com/sbi-card-en/assets/docs/pdf/ekit-tncs/cashback-tnc-ekit.pdf
+    (rates; no lounge benefit anywhere in it — re-read 2026-11-06) ;
+    1finance.co.in SBI Cashback review 2026 (no lounge; no published income bar)
+  verified_on: 2026-11-06
+  needs_verification: false
+  # ANNUAL-FEE WAIVER (decision log 2026-11-02-fee-waiver-progress). Renewal
+  # fee only — the ₹999 joining fee carries no waiver in the MITC.
+  fee_waiver:
+    kind: spend_based
+    threshold_inr: 200000
+    threshold_comparison: at_least     # "Rs.2 Lakh or more"
+    window_kind: days_365_before_fee_date
+    waives_renewal_fee: true
+    waives_joining_fee: false
+    excluded_categories: []
+    # Not modelled from third-party lists: SBI's own MITC and T&C say only
+    # "eligible spends" and define them nowhere we could reach.
+    unmodelled_exclusions:
+      - anything SBI does not count as an eligible spend (not defined in the documents we checked)
+    conditions: >-
+      Eligible spends in the 365 days before your annual-fee billing date
+      (shown on your statement). The joining fee is not waived.
+    source: >-
+      SBI Card MITC fee table: "CASHBACK SBI Card 999 999 (Waived off on annual
+      spends of Rs.2 Lakh or more in the preceding year)"
+      https://www.sbicard.com/sbi-card-en/assets/docs/pdf/most-important-terms-and-conditions/mitc-english.pdf
+      ; Cashback T&C §13.2: "Eligible spends incurred on the Credit Card within
+      the last 365 days from the Annual Card Fee billing date shall be
+      considered for the spend-based reversal of the Annual Card fees."
+      https://www.sbicard.com/sbi-card-en/assets/docs/pdf/ekit-tncs/cashback-tnc-ekit.pdf
+    # REVIEWER NOTE: flagged — "eligible spends" undefined in both documents.
+    verified_on: 2026-11-02
+    needs_verification: true
   categories:
     - category_slug: default
       category_label: Offline spend (1% cashback)
       earn_rate: "1.00"
-      source: market knowledge — VERIFY
-      verified_on: 2026-07-04
-      needs_verification: true
+      # 200000 = ₹2,000 max offline cashback per statement cycle ÷ 1%.
+      # Issuer (revision PDF, w.e.f. 1 Apr 2026): "The maximum Cashback that
+      # can be earned in a statement cycle will be capped at ₹4,000, as
+      # follows: ... Online 5% ₹2,000 ... 1% Offline (POS at Merchant Outlets)
+      # ₹2,000". A MAXIMUM cashback means spend past it earns nothing.
+      monthly_cap_inr: 200000
+      over_cap_earn: nothing
+      over_cap_earn_source: https://www.sbicard.com/sbi-card-en/assets/docs/pdf/cashback-revised.pdf
+      notes: >-
+        1% on offline (POS) spend. Offline cashback is capped at ₹2,000 per
+        statement cycle (= ₹2,00,000 of offline spend), after which offline
+        spend earns NOTHING (over_cap_earn: nothing, since migration 0009).
+        Fuel and utilities earn no cashback (own rows below). Insurance, rent,
+        wallet loads, jewellery, education, railways and quasi-cash MCCs also
+        earn none but have no category here, so they still fall to this row.
+      source: >-
+        CASHBACK SBI Card T&C §11.1(b) "Offline Spends 1%" + FAQ 12
+        https://www.sbicard.com/sbi-card-en/assets/docs/pdf/ekit-tncs/cashback-tnc-ekit.pdf ;
+        offline cap: SBI Card "Revision in the benefits of CASHBACK SBI Card"
+        https://www.sbicard.com/sbi-card-en/assets/docs/pdf/cashback-revised.pdf
+      verified_on: 2026-11-02
+      needs_verification: false
     - category_slug: online
       category_label: Online spend (5% cashback)
       earn_rate: "5.00"
-      monthly_cap_inr: 100000
-      notes: Cashback capped monthly — VERIFY cap value
-      source: market knowledge — VERIFY
-      verified_on: 2026-07-04
-      needs_verification: true
+      # 40000 = ₹2,000 max online cashback per statement cycle ÷ 5%.
+      # Revised from 100000 (pre-1-Apr-2026 ₹5,000 combined cap).
+      monthly_cap_inr: 40000
+      # Issuer: "Online 5% ... Max. Cashback ₹2,000" per statement cycle —
+      # spend past ₹40,000 online earns nothing (NOT the 1% base rate).
+      over_cap_earn: nothing
+      over_cap_earn_source: https://www.sbicard.com/sbi-card-en/assets/docs/pdf/cashback-revised.pdf
+      notes: >-
+        5% on online spend, max ₹2,000 cashback per statement cycle (from
+        1 Apr 2026). Beyond ₹40,000 of online spend in a cycle the issuer pays
+        NOTHING more (over_cap_earn: nothing, since migration 0009).
+        Cycle is the statement cycle, metered here as a calendar month.
+      source: >-
+        SBI Card "Revision in the benefits of CASHBACK SBI Card", w.e.f. 1 Apr 2026
+        https://www.sbicard.com/sbi-card-en/assets/docs/pdf/cashback-revised.pdf ;
+        T&C FAQ 12 https://www.sbicard.com/sbi-card-en/assets/docs/pdf/ekit-tncs/cashback-tnc-ekit.pdf
+      verified_on: 2026-11-02
+      needs_verification: false
+    # ZERO-EARN ROWS (2026-11-06). CASHBACK SBI Card T&C exclusion list:
+    # "Any purchases at petrol pumps/service stations (MCCs: 5172, 5541, 5542,
+    # 5983)" and "Utility transactions identified under MCCs 4900, 4814,
+    # 4816, 4899, 9399"; FAQ 17: "Cashback is not applicable on fuel spends."
+    - category_slug: fuel
+      category_label: Fuel
+      earn_rate: "0.00"
+      notes: >-
+        No cashback at petrol pumps (MCC 5172, 5541, 5542, 5983). SBI gives a
+        1% fuel surcharge waiver instead (₹500–₹3,000 transactions, max ₹100
+        per statement) — a fee refund, not cashback, so not modelled.
+      source: >-
+        CASHBACK SBI Card T&C exclusion list + FAQ 17
+        https://www.sbicard.com/sbi-card-en/assets/docs/pdf/ekit-tncs/cashback-tnc-ekit.pdf
+        (2026-11-06)
+      verified_on: 2026-11-06
+      needs_verification: false
+    - category_slug: utilities
+      category_label: Utilities
+      earn_rate: "0.00"
+      notes: Utility MCCs 4900, 4814, 4816, 4899, 9399 earn no cashback, online or offline.
+      source: >-
+        CASHBACK SBI Card T&C exclusion list
+        https://www.sbicard.com/sbi-card-en/assets/docs/pdf/ekit-tncs/cashback-tnc-ekit.pdf
+        (2026-11-06)
+      verified_on: 2026-11-06
+      needs_verification: false
   milestones: []

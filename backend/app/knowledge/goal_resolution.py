@@ -10,6 +10,8 @@ import calendar
 import re
 from datetime import date
 
+from pydantic import BaseModel, ConfigDict
+
 from app.domain import (
     CabinClass,
     CatalogSnapshot,
@@ -25,25 +27,117 @@ _PRIMARY_PROGRAM = "KrisFlyer"
 
 # City → award-chart region. A deliberately small deterministic mapping table
 # (blueprint Stage 2); a city not listed here is a clarification, not a guess.
-CITY_TO_REGION: dict[str, str] = {
+# CITIES holds one display name per city (what a form lists); CITY_ALIASES are
+# other spellings Stage 2 also accepts but never lists twice.
+CITIES: dict[str, str] = {
     # India (MVP origins)
-    "hyderabad": "India",
-    "mumbai": "India",
-    "delhi": "India",
-    "new delhi": "India",
-    "bangalore": "India",
-    "bengaluru": "India",
-    "chennai": "India",
-    "kolkata": "India",
-    "pune": "India",
-    "ahmedabad": "India",
+    "Hyderabad": "India",
+    "Mumbai": "India",
+    "Delhi": "India",
+    "Bangalore": "India",
+    "Chennai": "India",
+    "Kolkata": "India",
+    "Pune": "India",
+    "Ahmedabad": "India",
     # MVP destinations (Scope v2: Singapore, London, New York)
-    "singapore": "Southeast Asia",
-    "london": "Europe",
-    "new york": "North America",
-    "new york city": "North America",
-    "nyc": "North America",
+    "Singapore": "Southeast Asia",
+    "London": "Europe",
+    "New York": "North America",
 }
+CITY_ALIASES: dict[str, str] = {
+    "new delhi": "Delhi",
+    "bengaluru": "Bangalore",
+    "new york city": "New York",
+    "nyc": "New York",
+}
+CITY_TO_REGION: dict[str, str] = {
+    **{city.lower(): region for city, region in CITIES.items()},
+    **{alias: CITIES[city] for alias, city in CITY_ALIASES.items()},
+}
+
+# Cabins in the order a traveller reads them, not alphabetical.
+_CABIN_ORDER = (
+    CabinClass.ECONOMY,
+    CabinClass.PREMIUM_ECONOMY,
+    CabinClass.BUSINESS,
+    CabinClass.FIRST,
+)
+
+
+class CityOption(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    city: str
+    region: str
+
+
+class RouteCabins(BaseModel):
+    """The cabins with a SAVER award-chart row for one region pair."""
+
+    model_config = ConfigDict(frozen=True)
+
+    origin_region: str
+    destination_region: str
+    cabins: tuple[CabinClass, ...]
+
+
+class RouteCoverage(BaseModel):
+    """What the goal engine can price today — the goal form's source of truth.
+
+    A combination is offered only if Stage 2 would accept it: both cities are
+    in the city table AND a SAVER chart row exists for their regions and the
+    cabin. Derived from the snapshot, so new chart rows widen it with no code.
+    Carries no program name: the user has not chosen one.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    origins: tuple[CityOption, ...]
+    destinations: tuple[CityOption, ...]
+    routes: tuple[RouteCabins, ...]
+
+    def cabins_for(self, origin_region: str, destination_region: str) -> tuple[CabinClass, ...]:
+        return next(
+            (
+                r.cabins
+                for r in self.routes
+                if r.origin_region == origin_region and r.destination_region == destination_region
+            ),
+            (),
+        )
+
+
+def covered_routes(snapshot: CatalogSnapshot) -> RouteCoverage:
+    """Every (region pair → cabins) with a SAVER chart row, and the listed
+    cities whose region takes part in one. Pure; sorted for determinism."""
+    pairs: dict[tuple[str, str], set[CabinClass]] = {}
+    for chart in snapshot.award_charts:
+        if chart.award_type == AwardType.SAVER:
+            key = (chart.origin_region, chart.destination_region)
+            pairs.setdefault(key, set()).add(chart.cabin_class)
+    routes = tuple(
+        RouteCabins(
+            origin_region=origin,
+            destination_region=destination,
+            cabins=tuple(c for c in _CABIN_ORDER if c in cabins),
+        )
+        for (origin, destination), cabins in sorted(pairs.items())
+    )
+    origin_regions = {r.origin_region for r in routes}
+    destination_regions = {r.destination_region for r in routes}
+    return RouteCoverage(
+        origins=tuple(
+            CityOption(city=city, region=region)
+            for city, region in sorted(CITIES.items())
+            if region in origin_regions
+        ),
+        destinations=tuple(
+            CityOption(city=city, region=region)
+            for city, region in sorted(CITIES.items())
+            if region in destination_regions
+        ),
+        routes=routes,
+    )
 
 
 def resolve_goal(

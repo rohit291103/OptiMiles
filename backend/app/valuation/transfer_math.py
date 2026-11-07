@@ -41,17 +41,32 @@ Formulas (units in brackets):
   miles_per_100(rate, link) [miles/₹100] = rate × ratio_to / ratio_from,
       quantized to 4dp ROUND_DOWN
 
-  blended_earn_rate(S, acc, base, cap) [pts/₹100]:
-      acc                                  if cap is None or S ≤ cap
-      (cap×acc + (S−cap)×base) / S         otherwise, quantized 4dp ROUND_DOWN
-      (rates are per ₹100, so the ₹100 scaling cancels in the blend)
+  CAP OVERFLOW — the ONE implementation (defect fixed 2026-11-02). What
+  spend above a rule's monthly cap earns is the rule's `over_cap_earn`:
+      over(rule, base) = base   if over_cap_earn = base_rate
+                         0      if over_cap_earn = nothing
+  A capped rule that does not state it raises — never a silent base rate
+  (validate_catalog CR-01 rejects such a row before it gets here).
+
+  category_points_exact(S, rule, base) [pts, exact Decimal, UNfloored]:
+      S × acc / 100                                if cap is None or S ≤ cap
+      (cap × acc + (S − cap) × over) / 100         otherwise
+      Callers floor ONCE per card-month (projector, allocation) or per
+      purchase (Best Card) — this function never rounds.
+
+  blended_earn_rate(S, rule, base) [pts/₹100]:
+      category_points_exact(S, rule, base) × 100 / S, quantized 4dp ROUND_DOWN
+      = acc when S ≤ cap; (cap×acc + (S−cap)×over) / S otherwise
+      e.g. SBI online ₹50,000, cap ₹40,000, 5.00, over = nothing:
+           (40,000×5 + 10,000×0) / 50,000 = 4.00   (old base-rate rule: 4.20)
 """
 
 from decimal import ROUND_DOWN, Decimal
 
-from app.domain import CurrencyTransferLink
+from app.domain import CurrencyTransferLink, OverCapEarn, RewardCategoryRule
 
 _FOUR_DP = Decimal("0.0001")
+_HUNDRED = Decimal(100)
 
 
 def transferable_points(points: int, link: CurrencyTransferLink) -> int:
@@ -104,21 +119,64 @@ def miles_per_100(earn_rate: Decimal, link: CurrencyTransferLink) -> Decimal:
     return exact.quantize(_FOUR_DP, rounding=ROUND_DOWN)
 
 
+def over_cap_rate(rule: RewardCategoryRule, base_rate: Decimal) -> Decimal:
+    """Points per ₹100 that spend ABOVE `rule`'s cap earns (see module docstring).
+
+    Raises ValueError for a capped rule that does not state `over_cap_earn` —
+    assuming the base rate is exactly the defect this replaced.
+    """
+    if rule.over_cap_earn is OverCapEarn.NOTHING:
+        return Decimal(0)
+    if rule.over_cap_earn is OverCapEarn.BASE_RATE:
+        return base_rate
+    raise ValueError(
+        f"category rule {rule.id} ({rule.category_label!r}) is capped but does not state "
+        "over_cap_earn — catalog integrity failure (validate_catalog CR-01); "
+        "refusing to assume what spend above the cap earns"
+    )
+
+
+def category_points_exact(
+    monthly_spend_inr: int, rule: RewardCategoryRule, base_rate: Decimal
+) -> Decimal:
+    """Exact, UNfloored points for routing `monthly_spend_inr` through `rule`
+    in one month — the cap split, with overflow priced by `over_cap_rate`.
+
+    Only MONTHLY caps are metered. A quarterly/annual cap raises rather than
+    being ignored (which would earn uncapped); validate_catalog CR-03 keeps
+    such rows out of the catalog in the first place.
+    """
+    if rule.quarterly_cap_inr is not None or rule.annual_cap_inr is not None:
+        raise ValueError(
+            f"category rule {rule.id} ({rule.category_label!r}) carries a quarterly/annual "
+            "cap; only monthly caps are metered (validate_catalog CR-03) — refusing to "
+            "price it as uncapped"
+        )
+    cap = rule.monthly_cap_inr
+    if cap is None:
+        return Decimal(monthly_spend_inr) * rule.earn_rate / _HUNDRED
+    over = over_cap_rate(rule, base_rate)  # validates the row even under the cap
+    if monthly_spend_inr <= cap:
+        return Decimal(monthly_spend_inr) * rule.earn_rate / _HUNDRED
+    return (
+        Decimal(cap) * rule.earn_rate + Decimal(monthly_spend_inr - cap) * over
+    ) / _HUNDRED
+
+
 def blended_earn_rate(
-    monthly_spend_inr: int,
-    accelerated_rate: Decimal,
-    base_rate: Decimal,
-    monthly_cap_inr: int | None,
+    monthly_spend_inr: int, rule: RewardCategoryRule, base_rate: Decimal
 ) -> Decimal:
     """Cap-aware rate for routing a WHOLE category's monthly spend here.
 
-    Spend beyond the accelerated cap earns the card's base rate (schema
-    semantics, db-schema-v1 §3.1) — the blend is the honest per-₹100 number
-    for the allocation decision, not the headline rate.
+    The honest per-₹100 number for the allocation decision, not the headline
+    rate: above the cap the blend falls toward the base rate or toward zero,
+    as the rule's `over_cap_earn` states.
     """
-    if monthly_cap_inr is None or monthly_spend_inr <= monthly_cap_inr:
-        return accelerated_rate
-    capped = Decimal(monthly_cap_inr) * accelerated_rate
-    overflow = Decimal(monthly_spend_inr - monthly_cap_inr) * base_rate
-    exact = (capped + overflow) / Decimal(monthly_spend_inr)
+    if monthly_spend_inr <= 0:
+        return rule.earn_rate
+    exact = category_points_exact(monthly_spend_inr, rule, base_rate) * _HUNDRED / Decimal(
+        monthly_spend_inr
+    )
+    if exact == rule.earn_rate:
+        return rule.earn_rate  # under the cap: the rule's own rate, unchanged
     return exact.quantize(_FOUR_DP, rounding=ROUND_DOWN)  # never normalize(): see miles_per_100

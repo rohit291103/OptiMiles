@@ -149,6 +149,31 @@ def test_catalog_lists_cards_with_acquirable_flag(client: TestClient) -> None:
         assert atlas["acquirable"] is False
 
 
+# ── /catalog/routes ──────────────────────────────────────────────────────
+
+
+def test_catalog_routes_lists_only_priceable_combinations(client: TestClient) -> None:
+    """The goal form's source of truth: covered cities, and per region pair
+    the cabins that have a SAVER award-chart row."""
+    response = client.get("/v1/catalog/routes")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["catalog_snapshot_version"]
+    assert {d["city"] for d in body["destinations"]} == {"Singapore", "London", "New York"}
+    assert "Mumbai" in {o["city"] for o in body["origins"]}
+    routes = {(r["origin_region"], r["destination_region"]): r["cabins"] for r in body["routes"]}
+    assert routes[("India", "Southeast Asia")] == ["economy", "business", "first"]
+    assert routes[("India", "Europe")] == ["business"]
+    # No program name: the user hasn't chosen one (CLAUDE.md, never assume).
+    assert "KrisFlyer" not in response.text
+
+
+def test_catalog_routes_revalidates_with_etag(client: TestClient) -> None:
+    etag = client.get("/v1/catalog/routes").headers["ETag"]
+    again = client.get("/v1/catalog/routes", headers={"If-None-Match": etag})
+    assert again.status_code == 304
+
+
 def test_simulate_wallet_infeasible_returns_labeled_acquisition_pair(
     client: TestClient,
 ) -> None:

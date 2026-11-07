@@ -50,7 +50,8 @@ stated above.
 
 One documented rounding-path difference from the projector: earning here
 multiplies spend by Stage 5's already-4dp-quantized `effective_rate`, whereas
-the projector applies the raw cap split (min(spend,cap)×rate + excess×base)
+the projector applies the raw cap split (min(spend,cap)×rate + excess×over,
+over = base or 0 per the rule's over_cap_earn — transfer_math.category_points_exact)
 before its own floor. On a CAPPED category with non-round spend this can
 differ by a fraction of a point per card-month — single-digit miles over a
 horizon, far under `reconcile_claim`'s 10% flag and 0 on every seed-rate

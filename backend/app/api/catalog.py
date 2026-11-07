@@ -18,21 +18,27 @@ from pydantic import BaseModel
 
 from app.ai_reasoning.education import EducationFacts, narrate_education
 from app.ai_reasoning.model import ChatModel
-from app.api.deps import get_model, get_snapshot
+from app.api.deps import get_model, get_snapshot, payload_digest
 from app.api.schemas import CardSummary, CatalogCardsResponse
 from app.domain import CatalogSnapshot
+from app.knowledge import goal_resolution
 from app.knowledge.education import (
     CardEducation,
     EducationPayload,
     UnknownCardId,
     wallet_education,
 )
+from app.knowledge.goal_resolution import CityOption, RouteCabins, covered_routes
 
 router = APIRouter(prefix="/catalog", tags=["catalog"])
 
 # Same tokenization as ai_reasoning (a trailing decimal stays part of the
 # token) — used to sweep the finished fact lines into the allow-sets.
 _FACT_NUMBER_RE = re.compile(r"\d[\d,]*(?:\.\d+)?")
+
+
+# The code component of the ETag — see deps.payload_digest.
+CARDS_DIGEST = payload_digest(CatalogCardsResponse)
 
 
 @router.get("/cards", response_model=CatalogCardsResponse)
@@ -44,7 +50,7 @@ async def list_cards(
     # The snapshot version IS the ETag: the payload is a pure function of the
     # snapshot, so a client (or CDN) holding the current version can revalidate
     # with If-None-Match and skip the body entirely until the catalog changes.
-    etag = f'"{snapshot.version}"'
+    etag = f'"{snapshot.version}-{CARDS_DIGEST}"'
     if request.headers.get("if-none-match") == etag:
         return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": etag})
     response.headers["ETag"] = etag
@@ -60,6 +66,39 @@ async def list_cards(
         for card in sorted(snapshot.cards, key=lambda c: c.card_name)
     )
     return CatalogCardsResponse(catalog_snapshot_version=snapshot.version, cards=cards)
+
+
+class CatalogRoutesResponse(BaseModel):
+    """Goal-form options: only combinations Stage 2 will accept."""
+
+    catalog_snapshot_version: str
+    origins: tuple[CityOption, ...]
+    destinations: tuple[CityOption, ...]
+    routes: tuple[RouteCabins, ...]
+
+
+# The code component of the ETag — see deps.payload_digest.
+ROUTES_DIGEST = payload_digest(CatalogRoutesResponse, goal_resolution)
+
+
+@router.get("/routes", response_model=CatalogRoutesResponse)
+async def list_routes(
+    request: Request,
+    response: Response,
+    snapshot: CatalogSnapshot = Depends(get_snapshot),
+) -> CatalogRoutesResponse | Response:
+    # Pure function of the snapshot, so the snapshot version is the ETag (as /cards).
+    etag = f'"{snapshot.version}-{ROUTES_DIGEST}"'
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": etag})
+    response.headers["ETag"] = etag
+    coverage = covered_routes(snapshot)
+    return CatalogRoutesResponse(
+        catalog_snapshot_version=snapshot.version,
+        origins=coverage.origins,
+        destinations=coverage.destinations,
+        routes=coverage.routes,
+    )
 
 
 @router.get("/education", response_model=EducationPayload)

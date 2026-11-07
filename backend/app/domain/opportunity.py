@@ -11,17 +11,19 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.domain.enums import SpendCategory
+from app.domain.enums import OverCapEarn, SpendCategory
 
 
 class CapStructure(BaseModel):
-    """Earn caps on an accelerated rate; spend past a cap earns at base rate."""
+    """Earn caps on an accelerated rate, and what spend past a cap earns
+    (`over_cap_earn`: the card's base rate, or nothing — stated per rule)."""
 
     model_config = ConfigDict(frozen=True)
 
     monthly_cap_inr: int | None = None
     quarterly_cap_inr: int | None = None
     annual_cap_inr: int | None = None
+    over_cap_earn: OverCapEarn | None = None
 
 
 class TransferPath(BaseModel):

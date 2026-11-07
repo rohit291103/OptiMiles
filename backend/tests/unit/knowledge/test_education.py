@@ -41,7 +41,8 @@ def test_atlas_and_travelone_reward_story(snapshot: CatalogSnapshot) -> None:
     travel_rule = next(r for r in atlas.earn_rules if r.category_slug == "travel")
     assert travel_rule.earn_rate == Decimal("5.00")
     assert travel_rule.monthly_cap_inr == 200_000
-    assert travel_rule.category_label == "Direct airlines, hotels and travel"
+    # Label per Axis T&C: OTAs/travel agents earn only the base rate.
+    assert travel_rule.category_label == "Travel EDGE portal, direct airlines and direct hotels"
 
     # Atlas → KrisFlyer: 1:2, 30k EDGE Miles/yr cap, ₹235 fee (seed row).
     assert len(atlas.transfer_links) == 1
@@ -52,13 +53,15 @@ def test_atlas_and_travelone_reward_story(snapshot: CatalogSnapshot) -> None:
     assert atlas_kf.max_transfer_points == 30_000
     assert atlas_kf.transfer_fee_inr == 235
 
-    # TravelOne — HSBC Reward Points, travel at 4/₹100 uncapped, 1:1 links to
-    # KrisFlyer + Bonvoy + Accor (3 links, sorted by program name).
+    # TravelOne — HSBC Reward Points, travel at 4/₹100 capped (HSBC service
+    # guide, seeded 2026-11-06 at the stricter 15,000 RP ÷ 4 × ₹100 =
+    # ₹3,75,000/month), 1:1 links to KrisFlyer + Bonvoy + Accor (3 links,
+    # sorted by program name).
     assert travelone.currency.currency_name == "HSBC Reward Points"
     assert travelone.base_earn_rate == Decimal("2.00")
     t1_travel = next(r for r in travelone.earn_rules if r.category_slug == "travel")
     assert t1_travel.earn_rate == Decimal("4.00")
-    assert t1_travel.monthly_cap_inr is None
+    assert t1_travel.monthly_cap_inr == 375_000
     assert [link.program_name for link in travelone.transfer_links] == [
         "ALL - Accor Live Limitless",
         "KrisFlyer",

@@ -22,7 +22,7 @@ def _ids(snapshot: CatalogSnapshot, names: list[str]):
 
 
 def _portfolio(snapshot: CatalogSnapshot, names: list[str]):
-    return build_portfolio(snapshot, card_ids=_ids(snapshot, names))
+    return build_portfolio(snapshot, card_ids=_ids(snapshot, names), unverified_ids=frozenset())
 
 
 def _card(portfolio, name: str):
@@ -100,10 +100,11 @@ def test_scopes_are_ordered_domestic_first(snapshot: CatalogSnapshot) -> None:
 
 
 def test_amex_quarterly_limit_is_what_gets_reported(snapshot: CatalogSnapshot) -> None:
-    """Amex states 8 a year AND 2 a quarter. The quarterly limit binds in any
-    real trip, so it is the number reported; the annual total lives in the
-    conditions text rather than over-promising a single-trip traveller."""
+    """Amex grants 2 domestic visits per calendar quarter and, since 1 Oct
+    2026, only after ₹70,000 of eligible spend in the PRECEDING quarter
+    (issuer page 2026-11-02). The quarterly count and its spend gate are what
+    gets reported — there is no longer a guaranteed annual total."""
     card = _card(_portfolio(snapshot, ["Platinum Travel"]), "Platinum Travel")
     domestic = next(a for a in card.lounge_access if a.scope is LoungeScope.DOMESTIC)
     assert (domestic.visits_per_period, domestic.period) == (2, "quarterly")
-    assert domestic.conditions is not None and "8 complimentary" in domestic.conditions
+    assert (domestic.spend_gate_inr, domestic.spend_gate_period) == (70_000, "quarterly")

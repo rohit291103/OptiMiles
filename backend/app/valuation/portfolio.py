@@ -56,16 +56,31 @@ FORMULAS (units in brackets)
       across the wallet's links into one partner — a legible "which of my
       cards is the good door into this program".
 
-WHAT IS DELIBERATELY ABSENT (Phase 1)
--------------------------------------
-Cap *utilisation* and milestone *progress* need observed spend, which arrives
-with Phase 2 spend logging. This module reports the cap and the threshold —
-the target, not the progress bar — and the API says so out loud rather than
-implying a zero. Annual-fee *dates* need the user's card-open date, which the
-catalog does not and should not hold.
+WHAT IS DELIBERATELY ABSENT
+---------------------------
+Cap *utilisation* and milestone *progress*. They need the user's activity log,
+which is private and signed-in, while this read is anonymous, cacheable and a
+pure function of the catalog. They live in `simulation/observed.py` behind
+`GET /v1/activity/summary`; a signed-in client composes the two, joining caps
+on (card_id, category_slug) and milestones on `milestone_id` (exposed here for
+exactly that). This module reports the cap and the threshold — the target —
+and the API says so rather than implying a zero. Annual-fee *dates* need the
+user's card-open date, which the catalog does not and should not hold.
+
+VERIFICATION TIER
+-----------------
+Every rendered row carries `needs_verification`, true when the seed row it was
+read from is still `needs_verification: true` (CLAUDE.md → tiered coverage:
+Listed-tier data may be shown, labelled unverified). The flags live in the
+reviewed YAML, not the snapshot, so the caller passes `unverified_ids` —
+required, not defaulted, because a forgotten argument would silently present
+every row as verified. A DERIVED figure inherits the flags of every row it is
+derived from: a miles figure is rate × ratio, so it is unverified if the rate's
+row, the target link or the link's currency is. A category leader is never
+named on an unverified winning row (`leader_withheld_unverified`).
 """
 
-from collections.abc import Sequence
+from collections.abc import Sequence, Set
 from decimal import Decimal
 from typing import Literal
 from uuid import UUID
@@ -80,6 +95,7 @@ from app.domain import (
     LoungeScope,
     MilestonePeriod,
     MilestoneType,
+    OverCapEarn,
     PartnerType,
     RewardCategoryRule,
     RewardCurrency,
@@ -122,18 +138,27 @@ class PortfolioEarnRule(_Frozen):
     monthly_cap_inr: int | None
     quarterly_cap_inr: int | None
     annual_cap_inr: int | None
+    over_cap_earn: OverCapEarn | None
+    """What spend above the cap earns (base_rate | nothing); None iff uncapped."""
     notes: str | None
+    needs_verification: bool
 
 
 class PortfolioMilestone(_Frozen):
-    """A spend threshold and what crossing it is worth in target miles."""
+    """A spend threshold and what crossing it is worth in target miles.
 
+    `milestone_id` is the snapshot row's id — the key `/v1/activity/summary`
+    reports progress under.
+    """
+
+    milestone_id: UUID
     milestone_type: MilestoneType
     period: MilestonePeriod
     spend_threshold_inr: int | None
     bonus_points: int
     bonus_miles: int | None
     description: str | None
+    needs_verification: bool
 
 
 class PortfolioTransferLink(_Frozen):
@@ -155,6 +180,7 @@ class PortfolioTransferLink(_Frozen):
     processing_days_min: int
     processing_days_max: int
     notes: str | None
+    needs_verification: bool
 
 
 class PortfolioLoungeAccess(_Frozen):
@@ -179,6 +205,9 @@ class PortfolioLoungeAccess(_Frozen):
     needs_activation: bool
     enrollment_url: str | None
     conditions: str | None
+    # The access row OR the programme it rides on — a stale programme
+    # (issuers switch vendors mid-year) taints every tier on it.
+    needs_verification: bool
 
 
 class PortfolioCard(_Frozen):
@@ -197,6 +226,9 @@ class PortfolioCard(_Frozen):
     base_earn_rate: Decimal
     has_lounge_access: bool
     acquirable: bool
+    # The header's own facts — fee, base rate, the currency and its expiry
+    # rules — so the card row OR its currency row.
+    needs_verification: bool
 
     # Three genuinely different states, never collapsed into two:
     #   "detailed"     — we hold real conditions
@@ -223,6 +255,9 @@ class CategoryRow(_Frozen):
     miles_per_100: Decimal | None
     is_accelerated: bool
     monthly_cap_inr: int | None
+    # Follows the row the rate came from: the category rule, or the card row
+    # when the cell is the base-rate fallback.
+    needs_verification: bool
 
 
 class CategoryLeader(_Frozen):
@@ -237,6 +272,15 @@ class CategoryLeader(_Frozen):
     category_slug: SpendCategory
     category_label: str
     leader_card_id: UUID | None
+    # True when a ranking was possible but its winner rests on an unverified
+    # row, so no leader is named. CLAUDE.md: no recommendation may be built
+    # from unverified rows. A verified runner-up is NOT promoted instead: it
+    # would highlight a smaller number beside a larger one as "the winner".
+    leader_withheld_unverified: bool
+    # True when cards DO reach the program but the best of them earns 0 miles
+    # here (zero-earn rows: issuers that exclude fuel, utilities…). Naming a
+    # winner at zero would be a tiebreak dressed as a recommendation.
+    no_card_earns: bool = False
     rows: tuple[CategoryRow, ...]
 
 
@@ -266,6 +310,7 @@ def build_portfolio(
     *,
     card_ids: Sequence[UUID],
     target_program_id: UUID | None = None,
+    unverified_ids: Set[UUID],
 ) -> WalletPortfolio:
     """Shape `card_ids` into a portfolio, priced only if a program is chosen.
 
@@ -322,6 +367,7 @@ def build_portfolio(
             partners_by_id=partners_by_id,
             target_link=target_link_by_card[card.id],
             target_program_id=target_id,
+            unverified_ids=unverified_ids,
         )
         for card in wallet
     )
@@ -331,8 +377,10 @@ def build_portfolio(
         target_program_id=target_id,
         target_program_name=target_name,
         cards=cards,
-        categories=_categories(wallet, rules_by_card, target_link_by_card),
-        partner_reach=partner_reach(snapshot, wallet, target_program_id=target_id),
+        categories=_categories(wallet, rules_by_card, target_link_by_card, unverified_ids),
+        partner_reach=partner_reach(
+            snapshot, wallet, target_program_id=target_id, unverified_ids=unverified_ids
+        ),
         cards_reaching_target=(
             sum(1 for card in cards if card.reaches_target) if target_id is not None else None
         ),
@@ -355,7 +403,14 @@ def _portfolio_card(
     partners_by_id: dict[UUID, TransferPartner],
     target_link: CurrencyTransferLink | None,
     target_program_id: UUID | None,
+    unverified_ids: Set[UUID],
 ) -> PortfolioCard:
+    # A miles figure = a rate × the target link's ratio, and the link belongs
+    # to the currency, so every priced figure inherits both rows' flags. With
+    # no target link there is no priced figure, and nothing to inherit.
+    priced_unverified = target_link is not None and (
+        target_link.id in unverified_ids or currency.id in unverified_ids
+    )
     earn_rules = tuple(
         PortfolioEarnRule(
             category_slug=rule.category_slug,
@@ -366,7 +421,9 @@ def _portfolio_card(
             monthly_cap_inr=rule.monthly_cap_inr,
             quarterly_cap_inr=rule.quarterly_cap_inr,
             annual_cap_inr=rule.annual_cap_inr,
+            over_cap_earn=rule.over_cap_earn,
             notes=rule.notes,
+            needs_verification=rule.id in unverified_ids or priced_unverified,
         )
         # Default first (it is the rate that applies to most spend), then the
         # accelerated ones strongest-first; slug breaks any remaining tie so
@@ -383,6 +440,7 @@ def _portfolio_card(
 
     card_milestones = tuple(
         PortfolioMilestone(
+            milestone_id=milestone.id,
             milestone_type=milestone.milestone_type,
             period=milestone.period,
             spend_threshold_inr=milestone.spend_threshold_inr,
@@ -391,6 +449,7 @@ def _portfolio_card(
                 marginal_miles(milestone.bonus_points, target_link) if target_link else None
             ),
             description=milestone.description,
+            needs_verification=milestone.id in unverified_ids or priced_unverified,
         )
         # Threshold-free bonuses (welcome, anniversary) first — they are what
         # a holder can act on today — then by ascending spend threshold.
@@ -426,6 +485,7 @@ def _portfolio_card(
             processing_days_min=link.processing_days_min,
             processing_days_max=link.processing_days_max,
             notes=link.notes,
+            needs_verification=link.id in unverified_ids or link.partner_id in unverified_ids,
         )
         # The target program leads — it is the one the user's goal needs —
         # and the rest are alphabetical so the list is scannable.
@@ -455,6 +515,7 @@ def _portfolio_card(
             needs_activation=access.enrollment_required,
             enrollment_url=access.enrollment_url,
             conditions=access.conditions,
+            needs_verification=(access.id in unverified_ids or access.program_id in unverified_ids),
         )
         # Domestic first — the common case for an Indian cardholder — then by
         # spend gate so a tier ladder reads cheapest-first. Fixed order keeps
@@ -486,6 +547,7 @@ def _portfolio_card(
         ),
         lounge_access=lounge_access,
         acquirable=card.acquirable,
+        needs_verification=card.id in unverified_ids or currency.id in unverified_ids,
         # None, not False: with no program chosen, "does this card reach it"
         # has no answer — and False would read as "no route", which is a
         # claim we have not been asked to make.
@@ -500,6 +562,7 @@ def _categories(
     wallet: Sequence[Card],
     rules_by_card: dict[UUID, list[RewardCategoryRule]],
     target_link_by_card: dict[UUID, CurrencyTransferLink | None],
+    unverified_ids: Set[UUID],
 ) -> tuple[CategoryLeader, ...]:
     """Every category any wallet card accelerates, compared across the wallet.
 
@@ -528,6 +591,13 @@ def _categories(
                 miles_per_100=miles_per_100(rate, link) if link else None,
                 is_accelerated=rule is not None and rule.earn_rate > card.base_earn_rate,
                 monthly_cap_inr=rule.monthly_cap_inr if rule else None,
+                needs_verification=(
+                    (rule.id if rule else card.id) in unverified_ids
+                    or (
+                        link is not None
+                        and (link.id in unverified_ids or card.reward_currency_id in unverified_ids)
+                    )
+                ),
             )
             rows.append(row)
             if rule is not None:
@@ -535,11 +605,18 @@ def _categories(
         # Miles decide; card name breaks ties so the leader never depends on
         # wallet ordering. Cards with no route are not candidates at all.
         routed = [row for row in rows if row.miles_per_100 is not None]
-        leader = (
+        winner = (
             min(routed, key=lambda row: (-(row.miles_per_100 or Decimal(0)), row.card_name))
             if routed
             else None
         )
+        # Nobody earns here: the best routed card is at zero miles. Checked
+        # before verification — "withheld as unverified" would wrongly suggest
+        # there is a real winner we are hiding.
+        no_card_earns = winner is not None and winner.miles_per_100 == 0
+        # An unverified winner is withheld, not replaced (see CategoryLeader).
+        withheld = winner is not None and not no_card_earns and winner.needs_verification
+        leader = None if (withheld or no_card_earns) else winner
         # The category's name comes from a card that actually HAS a rule for
         # it — accelerated first, then by rate, then by card name. "The first
         # accelerated row" made the label depend on the order the caller
@@ -554,6 +631,8 @@ def _categories(
                 category_slug=slug,
                 category_label=label,
                 leader_card_id=leader.card_id if leader else None,
+                leader_withheld_unverified=withheld,
+                no_card_earns=no_card_earns,
                 rows=tuple(rows),
             )
         )

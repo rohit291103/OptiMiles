@@ -40,6 +40,9 @@ class SavedGoalRow:
     target_date: date | None
     status: str
     created_at: datetime
+    # The goal's own program — what lets other surfaces (Best Card) put the
+    # program the user actually chose first, instead of assuming one.
+    partner_id: UUID | None
     # From the latest recommendation_outputs row (may be absent if a goal was
     # somehow saved without one — left None rather than dropping the goal).
     summary: str | None
@@ -60,6 +63,7 @@ _LIST_SQL = text(
       g.goal_type         AS goal_type,
       g.destination_city  AS destination_city,
       g.cabin_class       AS cabin_class,
+      g.partner_id        AS partner_id,
       g.target_miles      AS target_miles,
       g.target_date       AS target_date,
       g.status            AS status,
@@ -235,6 +239,7 @@ async def list_saved_goals(
             target_date=row["target_date"],
             status=row["status"],
             created_at=row["created_at"],
+            partner_id=row["partner_id"],
             summary=row["summary"],
             confidence_score=(
                 float(row["confidence_score"])

@@ -33,6 +33,9 @@ class Settings(BaseSettings):
         "exposes many models (incl. free Qwen/DeepSeek) behind the OpenAI API.",
     )
     ranking_weights_path: Path = Path("config/ranking-weights-v2.yaml")
+    seed_dir: Path = Path(__file__).resolve().parents[1] / "seeds" / "catalog"
+    """The reviewed seed YAML. Read at runtime ONLY for provenance — which rows are
+    still `needs_verification` — since that stays in the files, not the DB."""
     requirement_buffer_pct: float = 5.0
     supabase_url: str = ""
     """Supabase project URL (e.g. https://<ref>.supabase.co). When set, its JWKS

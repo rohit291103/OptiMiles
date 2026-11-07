@@ -30,11 +30,24 @@ export function ProgramChooser({
   selectedId,
   onSelect,
   prompt,
+  showBestRoute = true,
+  clearLabel = "Tap again to go back to points.",
+  labelFor = (partner: PartnerReach) => partner.program_name,
+  hideCount = false,
 }: {
   reach: PartnerReach[];
   selectedId: string | null;
   onSelect: (partnerId: string | null) => void;
   prompt: string;
+  /** The wallet's best ratio into the chosen program. Best Card turns it off:
+   * it shows per-card ratios itself, and one wallet-wide ratio beside a
+   * different card's answer reads as a contradiction. */
+  showBestRoute?: boolean;
+  clearLabel?: string;
+  /** How a program is named on its chip (Best Card strips "ALL - "). */
+  labelFor?: (partner: PartnerReach) => string;
+  /** Hide "via N cards" — unclear where the page already lists the cards. */
+  hideCount?: boolean;
 }) {
   if (reach.length === 0) {
     return (
@@ -79,11 +92,16 @@ export function ProgramChooser({
                 <Check className="size-3" strokeWidth={3} />
               </span>
               <span>
-                {partner.program_name}
-                <span className="ml-1.5 text-xs font-normal opacity-70">
-                  via {partner.card_ids.length}{" "}
-                  {partner.card_ids.length === 1 ? "card" : "cards"}
-                </span>
+                {labelFor(partner)}
+                {hideCount ? null : (
+                  <>
+                    {" "}
+                    <span className="ml-1 text-xs font-normal opacity-70">
+                      via {partner.card_ids.length}{" "}
+                      {partner.card_ids.length === 1 ? "card" : "cards"}
+                    </span>
+                  </>
+                )}
               </span>
             </button>
           );
@@ -91,12 +109,21 @@ export function ProgramChooser({
       </div>
       {selectedId ? (
         <p className="mt-3 text-xs text-muted-foreground">
-          Best route from your wallet:{" "}
-          {inr.format(
-            reach.find((p) => p.partner_id === selectedId)
-              ?.best_miles_per_1000_points ?? 0,
-          )}{" "}
-          miles per 1,000 points. Tap again to go back to points.
+          {showBestRoute ? (
+            <>
+              Best route from your wallet:{" "}
+              {inr.format(
+                reach.find((p) => p.partner_id === selectedId)
+                  ?.best_miles_per_1000_points ?? 0,
+              )}{" "}
+              {reach.find((p) => p.partner_id === selectedId)?.partner_type ===
+              "hotel"
+                ? "points"
+                : "miles"}{" "}
+              per 1,000 points.{" "}
+            </>
+          ) : null}
+          {clearLabel}
         </p>
       ) : null}
     </div>

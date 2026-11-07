@@ -50,16 +50,21 @@ def test_best_card_reports_points_only_when_no_program_is_chosen(
     assert result.unroutable == ()
     # The points themselves are still real and still shown.
     assert {o.card_name: o.points_earned for o in result.ranked} == {
-        "Regalia Gold": 267,
+        "Regalia Gold": 250,  # 10,000/100 × 2.50 (5 RP/₹200 since 15 May 2026)
         "TravelOne": 200,
         "Atlas": 200,
     }
 
 
-def test_points_only_order_is_by_points_then_name(snapshot: CatalogSnapshot) -> None:
-    """Ordered, but explicitly NOT a ranking — `ranking_basis` says so, and
-    the UI must not crown a winner on it. Atlas and TravelOne both earn 200
-    in different currencies; name breaks the tie so the order is stable."""
+def test_points_only_order_is_by_programs_won_not_points(snapshot: CatalogSnapshot) -> None:
+    """With no program chosen the wallet is ordered by PROGRAMS WON — never
+    by raw points across currencies (2026-11-07; the old points order put
+    Regalia Gold's 250 RP first, though it is the top card nowhere).
+
+    ₹10,000 everyday spend: Regalia 250 RP → KrisFlyer 2:1 = 125, Bonvoy
+    100:33 = floor(82.5) = 82, Accor 2:1 = 125. Atlas 200 EDGE → KrisFlyer
+    1:2 = 400. TravelOne 200 RP → KrisFlyer / Bonvoy / Accor 1:1 = 200.
+    KrisFlyer → Atlas; Bonvoy and Accor → TravelOne; Regalia wins none."""
     result = rank_cards_for_spend(
         snapshot,
         amount_inr=10_000,
@@ -67,7 +72,8 @@ def test_points_only_order_is_by_points_then_name(snapshot: CatalogSnapshot) -> 
         card_ids=_ids(snapshot, ["TravelOne", "Atlas", "Regalia Gold"]),
         target_program_id=None,
     )
-    assert [o.card_name for o in result.ranked] == ["Regalia Gold", "Atlas", "TravelOne"]
+    assert result.ranking_basis == "points"
+    assert [o.card_name for o in result.ranked] == ["TravelOne", "Atlas", "Regalia Gold"]
 
 
 def test_choosing_a_program_switches_the_basis_to_miles(snapshot: CatalogSnapshot) -> None:
@@ -146,6 +152,7 @@ def test_portfolio_prices_nothing_until_a_program_is_chosen(
         snapshot,
         card_ids=_ids(snapshot, ["Infinia Metal", "Atlas"]),
         target_program_id=None,
+        unverified_ids=frozenset(),
     )
 
     assert portfolio.target_program_id is None
@@ -171,6 +178,7 @@ def test_no_category_has_a_leader_without_a_chosen_program(
         snapshot,
         card_ids=_ids(snapshot, ["Infinia Metal", "Atlas"]),
         target_program_id=None,
+        unverified_ids=frozenset(),
     )
     for category in portfolio.categories:
         assert category.leader_card_id is None
@@ -183,6 +191,7 @@ def test_portfolio_still_reports_where_points_could_go(snapshot: CatalogSnapshot
         snapshot,
         card_ids=_ids(snapshot, ["Infinia Metal", "Atlas"]),
         target_program_id=None,
+        unverified_ids=frozenset(),
     )
     assert [reach.program_name for reach in portfolio.partner_reach] == [
         "ALL - Accor Live Limitless",
@@ -217,7 +226,14 @@ def test_resolve_wallet_rejects_an_empty_wallet(snapshot: CatalogSnapshot) -> No
 
 def test_partner_reach_puts_a_chosen_target_first(snapshot: CatalogSnapshot) -> None:
     wallet = resolve_wallet(snapshot, _ids(snapshot, ["Infinia Metal"]))
-    reach = partner_reach(snapshot, wallet, target_program_id=_partner(snapshot, "Marriott Bonvoy"))
+    reach = partner_reach(
+        snapshot,
+        wallet,
+        target_program_id=_partner(snapshot, "Marriott Bonvoy"),
+        unverified_ids=None,
+    )
     assert reach[0].program_name == "Marriott Bonvoy"
     assert reach[0].is_target is True
     assert [r.program_name for r in reach[1:]] == sorted(r.program_name for r in reach[1:])
+    # No provenance supplied (Best Card's case) → "not assessed", never False.
+    assert all(r.needs_verification is None for r in reach)

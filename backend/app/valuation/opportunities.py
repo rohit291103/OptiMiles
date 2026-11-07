@@ -7,7 +7,8 @@ therefore produces zero opportunities for a KrisFlyer goal by construction.
 
 Pricing: `effective_miles_per_100inr` answers "if this WHOLE category's
 monthly spend is routed to this card, how many target-program miles per ₹100
-result?" — blended across the accelerated cap (see transfer_math), then
+result?" — blended across the accelerated cap (see transfer_math; overflow
+earns the base rate or nothing, as the rule's `over_cap_earn` states), then
 passed through the transfer ratio. That is the granularity at which Stage 7
 allocates (one card per category), so it is the decision-relevant number.
 
@@ -30,6 +31,7 @@ from app.domain import (
     CurrencyTransferLink,
     MilestoneType,
     OpportunitySet,
+    OverCapEarn,
     PlanningContext,
     RewardCategoryRule,
     RewardOpportunity,
@@ -91,15 +93,17 @@ def enumerate_opportunities(context: PlanningContext) -> OpportunitySet:
                 continue  # validate_catalog guarantees a default; belt-and-braces
 
             effective_rate = blended_earn_rate(
-                monthly_spend_inr=item.monthly_spend_inr,
-                accelerated_rate=rule.earn_rate,
-                base_rate=card.base_earn_rate,
-                monthly_cap_inr=rule.monthly_cap_inr,
+                item.monthly_spend_inr, rule, card.base_earn_rate
             )
             if effective_rate != rule.earn_rate:
+                overflow = (
+                    "spend above it earns nothing"
+                    if rule.over_cap_earn is OverCapEarn.NOTHING
+                    else "spend above it earns the base rate"
+                )
                 notes.append(
-                    f"monthly cap ₹{rule.monthly_cap_inr:,} applies — blended rate over "
-                    f"₹{item.monthly_spend_inr:,}/month of declared spend"
+                    f"monthly cap ₹{rule.monthly_cap_inr:,} applies and {overflow} — "
+                    f"blended rate over ₹{item.monthly_spend_inr:,}/month of declared spend"
                 )
             if link.max_transfer_points is not None:
                 notes.append(
@@ -121,6 +125,7 @@ def enumerate_opportunities(context: PlanningContext) -> OpportunitySet:
                         monthly_cap_inr=rule.monthly_cap_inr,
                         quarterly_cap_inr=rule.quarterly_cap_inr,
                         annual_cap_inr=rule.annual_cap_inr,
+                        over_cap_earn=rule.over_cap_earn,
                     ),
                     transfer_path=transfer_path,
                     effective_miles_per_100inr=miles_per_100(effective_rate, link),

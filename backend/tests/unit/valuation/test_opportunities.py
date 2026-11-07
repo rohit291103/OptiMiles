@@ -13,6 +13,7 @@ from app.domain import (
     CatalogSnapshot,
     GoalResolution,
     OpportunitySet,
+    OverCapEarn,
     ParsedGoalIntent,
     PlanningContext,
     RewardOpportunity,
@@ -104,12 +105,36 @@ def test_golden_infinia_travel_within_cap(snapshot: CatalogSnapshot) -> None:
 
 
 def test_golden_infinia_travel_beyond_cap_blends(snapshot: CatalogSnapshot) -> None:
-    """₹200k travel vs ₹150k cap → blended 13.32 pts/₹100 × 1:1 = 13.32,
-    with a valuation note naming the cap (explainability raw material)."""
+    """₹200k travel vs the ₹1,12,500 cap → (1,125 × 16.65 + 875 × 3.33) /
+    2,000 = 21,645 / 2,000 = 10.8225 pts/₹100 × 1:1 = 10.8225, with a
+    valuation note naming the cap (explainability raw material)."""
     context = _context(snapshot, spend={SpendCategory.TRAVEL: 200_000})
     opp = _find(enumerate_opportunities(context), "hdfc-infinia", SpendCategory.TRAVEL)
-    assert opp.effective_miles_per_100inr == Decimal("13.32")
+    assert opp.effective_miles_per_100inr == Decimal("10.8225")
     assert any("cap" in note.lower() for note in opp.valuation_notes)
+
+
+def test_overflow_that_earns_nothing_blends_against_zero(snapshot: CatalogSnapshot) -> None:
+    """Stage 5 prices overflow through the same rule as the projector. With
+    Infinia travel flipped to over_cap_earn=nothing, ₹200k travel blends to
+    (1,125 × 16.65 + 875 × 0) / 2,000 = 18,731.25 / 2,000 = 9.365625, which
+    quantizes (4dp ROUND_DOWN) to 9.3656 pts/₹100 (× 1:1 = 9.3656
+    miles/₹100) — not 10.8225 — and the note says so."""
+    rules = tuple(
+        rule.model_copy(update={"over_cap_earn": OverCapEarn.NOTHING})
+        if rule.id == seed_id("category", "hdfc-infinia:travel")
+        else rule
+        for rule in snapshot.category_rules
+    )
+    context = _context(
+        snapshot.model_copy(update={"category_rules": rules}),
+        spend={SpendCategory.TRAVEL: 200_000},
+    )
+    opp = _find(enumerate_opportunities(context), "hdfc-infinia", SpendCategory.TRAVEL)
+    assert opp.earn_rate == Decimal("9.3656")
+    assert opp.effective_miles_per_100inr == Decimal("9.3656")
+    assert opp.cap_structure.over_cap_earn == OverCapEarn.NOTHING
+    assert any("earns nothing" in note for note in opp.valuation_notes)
 
 
 def test_golden_atlas_travel_rate(snapshot: CatalogSnapshot) -> None:
@@ -192,7 +217,7 @@ def test_golden_remaining_cards_all_pinned(snapshot: CatalogSnapshot) -> None:
     Hand-computed:
       DCB travel        16.65 pts/₹100 × 1:1           = 16.65
       DCB dining        3.33 (default) × 1:1           = 3.33
-      Regalia default   2.67 × 1:2 value (2:1 link)    = 1.3350
+      Regalia default   2.50 × 1:2 value (2:1 link)    = 1.2500  (5 RP/₹200 since 15 May 2026)
       HSBC travel       4.00 × 1:1                     = 4.00
       HSBC dining       2.00 (default) × 1:1           = 2.00
     """
@@ -200,7 +225,7 @@ def test_golden_remaining_cards_all_pinned(snapshot: CatalogSnapshot) -> None:
     expectations = [
         ("hdfc-diners-black", SpendCategory.TRAVEL, Decimal("16.65")),
         ("hdfc-diners-black", SpendCategory.DINING, Decimal("3.33")),
-        ("hdfc-regalia-gold", SpendCategory.DINING, Decimal("1.3350")),
+        ("hdfc-regalia-gold", SpendCategory.DINING, Decimal("1.2500")),
         ("hsbc-travelone", SpendCategory.TRAVEL, Decimal("4.00")),
         ("hsbc-travelone", SpendCategory.DINING, Decimal("2.00")),
     ]
@@ -210,9 +235,13 @@ def test_golden_remaining_cards_all_pinned(snapshot: CatalogSnapshot) -> None:
 
 
 def test_golden_dcb_shares_infinia_currency_blend(snapshot: CatalogSnapshot) -> None:
-    """DCB rides the same hdfc-rp-premium currency as Infinia: ₹200k travel
-    against its ₹150k cap must blend to the identical 13.32 — a
-    currency-sharing regression canary (D-1)."""
+    """DCB rides the same hdfc-rp-premium currency as Infinia, so it reaches
+    KrisFlyer through the same 1:1 link — a currency-sharing regression
+    canary (D-1). Its SmartBuy cap is its OWN (₹75,000 = 10,000 bonus RP,
+    seeded 2026-11-06), so ₹200k travel blends to (750 × 16.65 + 1,250 ×
+    3.33) / 2,000 = 16,650 / 2,000 = 8.3250 pts/₹100 — and through the
+    shared 1:1 link, the identical 8.3250 miles/₹100."""
     context = _context(snapshot, spend={SpendCategory.TRAVEL: 200_000})
     opp = _find(enumerate_opportunities(context), "hdfc-diners-black", SpendCategory.TRAVEL)
-    assert opp.effective_miles_per_100inr == Decimal("13.32")
+    assert opp.earn_rate == Decimal("8.3250")
+    assert opp.effective_miles_per_100inr == Decimal("8.3250")

@@ -23,8 +23,13 @@ Earning (per card, per month):
 
     for each profile category routed here:
         rule = (card, category) else (card, default)   # validated present
-        exact += min(S, cap)/100 × rule.rate + max(S−cap, 0)/100 × base
+        exact += category_points_exact(S, rule, base)   # transfer_math
+               = min(S, cap)/100 × rule.rate + max(S−cap, 0)/100 × over
+                 where over = base (over_cap_earn=base_rate) or 0 (=nothing)
     credit = floor(exact)        # ONE floor per card-month, not per category
+
+  The cap split is NOT re-derived here: it is the same function Stage 5's
+  blend uses, so the two can never disagree about what overflow earns.
 
   Only monthly caps are metered in v1 (the only period the seed catalog
   uses); a rule carrying a quarterly/annual spend cap raises rather than
@@ -94,10 +99,9 @@ from app.domain import (
     SpendCategory,
     TransferExecution,
 )
-from app.valuation.transfer_math import whole_block_transfer
+from app.valuation.transfer_math import category_points_exact, whole_block_transfer
 
 _FOUR_DP = Decimal("0.0001")
-_HUNDRED = Decimal(100)
 
 
 def simulate(strategy: CandidateStrategy, context: PlanningContext) -> SimulationOutcome:
@@ -185,11 +189,7 @@ def simulate(strategy: CandidateStrategy, context: PlanningContext) -> Simulatio
                         "overstate earnings"
                     )
                 cap = rule.monthly_cap_inr
-                if cap is None or spend_inr <= cap:
-                    exact += Decimal(spend_inr) * rule.earn_rate / _HUNDRED
-                else:
-                    exact += Decimal(cap) * rule.earn_rate / _HUNDRED
-                    exact += Decimal(spend_inr - cap) * card.base_earn_rate / _HUNDRED
+                exact += category_points_exact(spend_inr, rule, card.base_earn_rate)
                 if cap is not None:
                     used = (Decimal(min(spend_inr, cap)) / Decimal(cap)).quantize(
                         _FOUR_DP, rounding=ROUND_DOWN

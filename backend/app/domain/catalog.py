@@ -10,18 +10,22 @@ from datetime import date
 from decimal import Decimal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from app.domain.enums import (
     AllowancePeriod,
     AwardType,
     CabinClass,
+    FeeWaiverKind,
+    FeeWaiverWindow,
     LoungeScope,
     MilestonePeriod,
     MilestoneType,
+    OverCapEarn,
     PartnerType,
     ResetAnchor,
     SpendCategory,
+    ThresholdComparison,
 )
 
 
@@ -100,6 +104,18 @@ class RewardCategoryRule(_Frozen):
     monthly_cap_inr: int | None = None
     quarterly_cap_inr: int | None = None
     annual_cap_inr: int | None = None
+    over_cap_earn: OverCapEarn | None = Field(
+        default=None,
+        description="What spend above the cap earns (base_rate | nothing). Required "
+        "on every capped rule and absent on uncapped ones — validate_catalog "
+        "CR-01/CR-02 enforce it; the earn math raises rather than assume",
+    )
+    requires_portal: str | None = Field(
+        default=None,
+        description="The booking channel this BONUS rate needs (e.g. 'HDFC SmartBuy'); "
+        "the same purchase booked directly earns the card's base rate. None = the rate "
+        "applies however you pay. Only on accelerated rules — validate_catalog CR-04",
+    )
     notes: str | None = None
 
 
@@ -186,6 +202,64 @@ class LoungeAccess(_Frozen):
     )
 
 
+class FeeWaiver(_Frozen):
+    """What one card's issuer publishes about waiving its annual fee on spend.
+
+    At most one per card. Its own row, not columns on `Card`, so it carries
+    its own provenance: a waiver is sourced and verified separately from the
+    card's fee and earn rate, and a flagged waiver must not flag the card (or
+    the reverse) — see `load_unverified_ids`.
+
+    THREE ANSWERS, NOT TWO. `kind=SPEND_BASED` with terms; `kind=NONE`, a
+    sourced statement that the issuer lists no waiver (Axis Atlas); and no row
+    at all, "not covered yet" (Amex Platinum Travel). `NONE` is never a
+    default for a card we have not researched.
+
+    A renewal BENEFIT is not a waiver. Amex Platinum's ₹20L-spend vouchers
+    are paid only after the renewal fee is paid, so that card is `NONE`.
+
+    Field consistency (terms present iff SPEND_BASED) is FW-03 in
+    `validate_catalog`, so a bad row is reported with every other issue
+    rather than failing at construction.
+    """
+
+    id: UUID
+    card_id: UUID
+    kind: FeeWaiverKind
+    threshold_inr: int | None = Field(default=None, gt=0)
+    threshold_comparison: ThresholdComparison | None = None
+    window_kind: FeeWaiverWindow | None = None
+    waives_renewal_fee: bool = False
+    waives_joining_fee: bool = Field(
+        default=False, description="True only where the issuer says the first-year fee too"
+    )
+    excluded_categories: tuple[SpendCategory, ...] = Field(
+        default=(),
+        description="Logged categories the issuer names as NOT counting toward the "
+        "threshold. Only categories our vocabulary can express; the rest are in "
+        "`unmodelled_exclusions`.",
+    )
+    unmodelled_exclusions: tuple[str, ...] = Field(
+        default=(),
+        description="What the issuer excludes that our logging vocabulary cannot "
+        "separate (rent, wallet loads, …), in the user's words — or a statement "
+        "that the issuer's 'eligible spend' is undefined. Never empty just because "
+        "nothing was checked.",
+    )
+    conditions: str | None = None
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def has_unmodelled_exclusions(self) -> bool:
+        """True when logged spend may include spend the issuer does not count.
+
+        Then a REACHED is "reached on your log — subject to the issuer's
+        exclusions", not proof: the log is a lower bound on what the user
+        SPENT, not on what the issuer COUNTS.
+        """
+        return bool(self.unmodelled_exclusions)
+
+
 class AwardChartEntry(_Frozen):
     """Redemption cost for one (partner, route-region, cabin, award type)."""
 
@@ -223,3 +297,6 @@ class CatalogSnapshot(_Frozen):
     # rather than reporting as "no lounge access".
     lounge_programs: tuple[LoungeProgram, ...] = ()
     lounge_access: tuple[LoungeAccess, ...] = ()
+    # Also partial by design: a card with no row here is "not covered yet",
+    # which is a different answer from a `FeeWaiverKind.NONE` row.
+    fee_waivers: tuple[FeeWaiver, ...] = ()

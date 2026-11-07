@@ -244,6 +244,10 @@ export type ProbeResponse =
 /** GET /catalog/education — the selected wallet's reward story, straight off
  * the catalog snapshot (matches knowledge/education.py). Deterministic and
  * instant; the wizard's education step renders it as template text. */
+/** What spend ABOVE a capped rate earns, stated per rule from the issuer's
+ * terms (migration 0009): the card's base rate, or nothing (SBI Cashback). */
+export type OverCapEarn = "base_rate" | "nothing";
+
 export type EducationEarnRule = {
   category_slug: string;
   category_label: string;
@@ -251,6 +255,8 @@ export type EducationEarnRule = {
   monthly_cap_inr: number | null;
   quarterly_cap_inr: number | null;
   annual_cap_inr: number | null;
+  /** What spend above the cap earns; null iff uncapped. */
+  over_cap_earn: OverCapEarn | null;
   notes: string | null;
 };
 
@@ -325,6 +331,8 @@ export type SavedGoal = {
   target_date: string | null;
   status: string;
   saved_at: string;
+  /** The goal's program — Best Card leads with it. */
+  partner_id: string | null;
   summary: string | null;
   confidence_score: number | null;
   catalog_snapshot_version: string | null;
@@ -614,6 +622,40 @@ export async function deleteSavedGoal(
   }
 }
 
+/* ── Goal-form coverage (GET /catalog/routes) ───────────────────────────── */
+
+export type CabinClass = "economy" | "premium_economy" | "business" | "first";
+
+export type CityOption = { city: string; region: string };
+
+/** Cabins with award data for one region pair, in travel order. */
+export type RouteCabins = {
+  origin_region: string;
+  destination_region: string;
+  cabins: CabinClass[];
+};
+
+/** Only combinations the engine can price — the goal form offers nothing else. */
+export type RouteCoverage = {
+  catalog_snapshot_version: string;
+  origins: CityOption[];
+  destinations: CityOption[];
+  routes: RouteCabins[];
+};
+
+export async function fetchRoutes(): Promise<RouteCoverage> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}/catalog/routes`);
+  } catch {
+    throw new ApiError("Couldn't load the supported routes.");
+  }
+  if (!response.ok) {
+    throw new ApiError(`Route list error (${response.status}).`, response.status);
+  }
+  return (await response.json()) as RouteCoverage;
+}
+
 /** Supported cards for the wallet picker. */
 export async function fetchCards(): Promise<CardSummary[]> {
   let response: Response;
@@ -664,6 +706,10 @@ export type PartnerReach = {
   is_target: boolean;
   card_ids: string[];
   best_miles_per_1000_points: number;
+  /** true: the partner or a contributing link is unverified. null: the
+   *  endpoint supplied no provenance (Best Card today) — "not assessed",
+   *  never to be read as verified. */
+  needs_verification: boolean | null;
 };
 
 export type CardSpendOption = {
@@ -676,10 +722,72 @@ export type CardSpendOption = {
   effective_earn_rate: string;
   monthly_cap_inr: number | null;
   cap_exceeded: boolean;
+  /** What spend above `monthly_cap_inr` earns; null when there is no cap. */
+  over_cap_earn: OverCapEarn | null;
   points_earned: number;
   /** null exactly when the card has no transfer route to the target program. */
   miles_earned: number | null;
   miles_per_100: string | null;
+  /** The portal this rate needs (e.g. "HDFC SmartBuy"); null = however you pay. */
+  requires_portal: string | null;
+  /** The same spend booked DIRECT (equal to the above when no portal). */
+  direct_points_earned: number;
+  direct_miles_earned: number | null;
+  transfer_ratio_from: number | null;
+  transfer_ratio_to: number | null;
+  /** true = rests on a seed row not yet verified; null = not assessed. */
+  needs_verification: boolean | null;
+  /** The same, for the booked-direct figure (base rate, not the portal rule). */
+  direct_needs_verification: boolean | null;
+  /** Every program this card transfers to, and what this spend becomes there. */
+  destinations: CardDestination[];
+  /** Program ids where this card is the top card (ties included). */
+  best_for: string[];
+  /** Place in the no-program order; equal standing shares a number. */
+  order_position: number | null;
+};
+
+export type CardDestination = {
+  program_id: string;
+  program_name: string;
+  partner_name: string;
+  partner_type: "airline" | "hotel";
+  partner_units: number;
+  direct_partner_units: number;
+  ratio_from: number;
+  ratio_to: number;
+  /** true = the conversion rests on an unverified row; null = not assessed. */
+  needs_verification: boolean | null;
+};
+
+/** One card's figure inside one program's verdict, in that program's unit. */
+export type VerdictPick = {
+  card_id: string;
+  bank: string;
+  card_name: string;
+  partner_units: number;
+  requires_portal: string | null;
+  needs_verification: boolean | null;
+};
+
+/** The answer for one program the wallet reaches. `winner` is null when
+ * nobody earns there; `tied` means no honest winner; `direct_winner` is set
+ * only when the winner's rate needs a portal. */
+export type ProgramVerdict = {
+  program_id: string;
+  program_name: string;
+  partner_name: string;
+  partner_type: "airline" | "hotel";
+  is_target: boolean;
+  winner: VerdictPick | null;
+  runner_up: VerdictPick | null;
+  lead: number | null;
+  tied: boolean;
+  /** No winner only because the spend rounds to under one unit — not an exclusion. */
+  too_small: boolean;
+  direct_winner: VerdictPick | null;
+  /** The booked-direct alternative is itself a tie. */
+  direct_tied: boolean;
 };
 
 export type BestCardResult = {
@@ -698,6 +806,13 @@ export type BestCardResult = {
   ranked: CardSpendOption[];
   unroutable: CardSpendOption[];
   partner_reach: PartnerReach[];
+  /** Every reachable program's winner, chosen target first. */
+  program_verdicts: ProgramVerdict[];
+  /** The sole top card in every program where anyone earns; null when the
+   * answer depends on the program. */
+  overall_pick: string | null;
+  /** Nothing in the wallet earns on this spend — no winner is named. */
+  no_card_earns: boolean;
 };
 
 /** Which card to swipe for one purchase. Anonymous — no token needed. */
@@ -742,16 +857,24 @@ export type PortfolioEarnRule = {
   monthly_cap_inr: number | null;
   quarterly_cap_inr: number | null;
   annual_cap_inr: number | null;
+  /** What spend above the cap earns; null iff uncapped. */
+  over_cap_earn: OverCapEarn | null;
   notes: string | null;
+  /** True when the seed row is still `needs_verification` (Listed tier). The
+   *  UI must say so wherever the row is shown. */
+  needs_verification: boolean;
 };
 
 export type PortfolioMilestone = {
+  /** The snapshot row id — the key `/activity/summary` reports progress under. */
+  milestone_id: string;
   milestone_type: string;
   period: string;
   spend_threshold_inr: number | null;
   bonus_points: number;
   bonus_miles: number | null;
   description: string | null;
+  needs_verification: boolean;
 };
 
 export type PortfolioTransferLink = {
@@ -771,6 +894,7 @@ export type PortfolioTransferLink = {
   processing_days_min: number;
   processing_days_max: number;
   notes: string | null;
+  needs_verification: boolean;
 };
 
 export type PortfolioLoungeAccess = {
@@ -790,6 +914,9 @@ export type PortfolioLoungeAccess = {
   needs_activation: boolean;
   enrollment_url: string | null;
   conditions: string | null;
+  /** The access row or its programme is unverified. Sent by /portfolio only
+   *  (the catalog listing shares this type), so only `true` means flagged. */
+  needs_verification?: boolean;
 };
 
 export type PortfolioCard = {
@@ -813,6 +940,8 @@ export type PortfolioCard = {
   lounge_coverage: "detailed" | "not_detailed" | "none";
   lounge_access: PortfolioLoungeAccess[];
   acquirable: boolean;
+  /** The header's facts (fee, base rate, currency) are unverified. */
+  needs_verification: boolean;
   /** null when no program has been chosen — not false, which would read as
    *  "no route", a claim we haven't been asked to make. */
   reaches_target: boolean | null;
@@ -829,6 +958,8 @@ export type PortfolioCategoryRow = {
   miles_per_100: string | null;
   is_accelerated: boolean;
   monthly_cap_inr: number | null;
+  /** Follows the row the rate came from (category rule, or card base rate). */
+  needs_verification: boolean;
 };
 
 export type PortfolioCategory = {
@@ -837,6 +968,12 @@ export type PortfolioCategory = {
   /** null when no program is chosen, and when a chosen program is reachable
    *  by no card in the wallet. Either way: no honest winner to name. */
   leader_card_id: string | null;
+  /** A ranking existed but its winner rests on an unverified row, so no
+   *  leader is named. The UI says "no verified leader". */
+  leader_withheld_unverified: boolean;
+  /** Cards reach the program, but the best of them earns 0 here (an issuer
+   *  excludes the category, e.g. fuel). No leader; the UI says so. */
+  no_card_earns: boolean;
   rows: PortfolioCategoryRow[];
 };
 
@@ -854,7 +991,8 @@ export type WalletPortfolio = {
   lounge_cards_undetailed: number;
   total_annual_fees_inr: number;
   total_joining_fees_inr: number;
-  /** False until Phase 2 spend logging — caps/milestones are targets, not progress. */
+  /** Always false: this anonymous read is catalog-only. Signed-in progress
+   *  comes from `fetchActivitySummary`, composed client-side. */
   spend_data_available: boolean;
   caveat: string;
 };
@@ -889,4 +1027,315 @@ export async function fetchPortfolio(args: {
     );
   }
   return (await response.json()) as WalletPortfolio;
+}
+
+/* ── Activity log (roadmap Phase 1 lounge visits + Phase 2 spend) ────────── */
+
+/**
+ * ONE logging pattern for both, matching the backend's single resource family.
+ * Every figure derived from a log is a BOUND, not a fact — the field names say
+ * so (`visits_logged_at_least`, `remaining_at_most`) and the UI must keep that
+ * wording. A user who reads "1 visit left" as certain gets turned away at a
+ * lounge desk; that is the failure this naming exists to prevent.
+ */
+
+export type ObservedStatus = "reached" | "not_proven";
+
+export type PeriodWindow = {
+  start: string;
+  end: string;
+  label: string;
+};
+
+export type SpendEntry = {
+  id: string;
+  card_id: string;
+  occurred_on: string;
+  amount_inr: number;
+  category_slug: string;
+  note: string | null;
+};
+
+export type LoungeVisitEntry = {
+  id: string;
+  card_id: string;
+  occurred_on: string;
+  scope: "domestic" | "international";
+  guest_count: number;
+  airport_code: string | null;
+  note: string | null;
+};
+
+export type CapUse = {
+  card_id: string;
+  category_slug: string;
+  category_label: string;
+  period: string;
+  window: PeriodWindow;
+  cap_inr: number;
+  logged_spend_inr: number;
+  remaining_inr_at_most: number;
+  fraction_used_at_least: string;
+  anchor_assumed: boolean;
+};
+
+export type MilestoneProgress = {
+  card_id: string;
+  milestone_id: string;
+  description: string | null;
+  bonus_points: number;
+  threshold_inr: number;
+  window: PeriodWindow | null;
+  logged_spend_inr: number;
+  remaining_inr_at_most: number;
+  status: ObservedStatus;
+  anchor_assumed: boolean;
+};
+
+export type SpendGateState = {
+  threshold_inr: number;
+  window: PeriodWindow;
+  logged_spend_inr: number;
+  status: ObservedStatus;
+};
+
+export type LoungeAllowanceUse = {
+  card_id: string;
+  program_id: string;
+  program_name: string;
+  scope: "domestic" | "international";
+  is_unlimited: boolean;
+  allowance: number | null;
+  period: string;
+  window: PeriodWindow | null;
+  visits_logged_at_least: number;
+  guest_visits_logged: number;
+  remaining_at_most: number | null;
+  guests_share_allowance: boolean;
+  enrollment_required: boolean;
+  enrollment_url: string | null;
+  gate: SpendGateState | null;
+  conditions: string | null;
+};
+
+export type UncountableAllowance = {
+  card_id: string;
+  scope: "domestic" | "international";
+  reason: string;
+};
+
+/**
+ * Annual-fee waiver terms, as the issuer publishes them. `kind: "none"` is a
+ * SOURCED "no waiver"; a card we have not researched has no waiver at all
+ * (coverage `not_covered`) — never render the two the same way.
+ */
+export type FeeWaiver = {
+  id: string;
+  card_id: string;
+  kind: "spend_based" | "none";
+  threshold_inr: number | null;
+  /** `more_than` = the figure itself does not qualify ("exceeds ₹8,00,000"). */
+  threshold_comparison: "at_least" | "more_than" | null;
+  window_kind:
+    | "preceding_card_year"
+    | "current_card_year"
+    | "days_365_before_fee_date"
+    | null;
+  waives_renewal_fee: boolean;
+  waives_joining_fee: boolean;
+  excluded_categories: string[];
+  /** Exclusions our log cannot separate (rent, wallet loads…), or a statement
+   *  that the issuer's "eligible spend" is undefined. */
+  unmodelled_exclusions: string[];
+  has_unmodelled_exclusions: boolean;
+  conditions: string | null;
+};
+
+/** What the log proves toward one waiver over the counted window — the 11
+ *  whole months between renewal months. A LOWER bound, like every log figure. */
+export type FeeWaiverCount = {
+  renewal_label: string;
+  /** The fee this window decides — the renewal at its end, or for a
+   *  `current_card_year` waiver (HSBC) the fee charged at its start. */
+  decides_fee_label: string;
+  window: PeriodWindow;
+  logged_spend_inr: number;
+  remaining_inr_at_most: number;
+  status: ObservedStatus;
+  /** A REACHED is "reached on your log, subject to the issuer's exclusions". */
+  subject_to_exclusions: boolean;
+  note: string | null;
+};
+
+export type FeeWaiverCoverage =
+  | "tracked"
+  | "needs_renewal_month"
+  | "no_waiver"
+  | "not_covered";
+
+export type FeeWaiverProgress = {
+  card_id: string;
+  coverage: FeeWaiverCoverage;
+  waiver: FeeWaiver | null;
+  /** true = Listed tier (label it); null = not assessed — never "verified". */
+  needs_verification: boolean | null;
+  renewal_month: number | null;
+  reason: string | null;
+  count: FeeWaiverCount | null;
+};
+
+export type ActivitySummary = {
+  as_of: string;
+  card_ids: string[];
+  caps: CapUse[];
+  milestones: MilestoneProgress[];
+  lounge: LoungeAllowanceUse[];
+  uncountable: UncountableAllowance[];
+  /** One per wallet card, in wallet order. */
+  fee_waivers: FeeWaiverProgress[];
+  logged_spend_total_inr: number;
+  logged_visit_total: number;
+  earliest_entry_on: string | null;
+  caveat: string;
+};
+
+async function activityFetch<T>(
+  path: string,
+  token: string,
+  init?: RequestInit,
+): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}/activity${path}`, {
+      ...init,
+      headers: {
+        ...(init?.body ? { "Content-Type": "application/json" } : {}),
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  } catch {
+    throw new ApiError("Couldn't reach your activity log. Please try again.");
+  }
+  if (response.status === 401) {
+    throw new ApiError("Your session expired — please log in again.", 401);
+  }
+  if (response.status === 404) {
+    throw new ApiError(
+      "One of your cards is no longer in the catalog. Edit your wallet to fix it.",
+      404,
+    );
+  }
+  if (!response.ok) {
+    throw new ApiError(
+      `Activity log error (${response.status}).`,
+      response.status,
+    );
+  }
+  // 204 on delete — no body to parse.
+  return response.status === 204
+    ? (undefined as T)
+    : ((await response.json()) as T);
+}
+
+export async function logSpend(
+  entry: {
+    card_id: string;
+    occurred_on: string;
+    amount_inr: number;
+    category_slug: string;
+    note?: string | null;
+  },
+  token: string,
+): Promise<SpendEntry> {
+  return activityFetch<SpendEntry>("/spend", token, {
+    method: "POST",
+    body: JSON.stringify(entry),
+  });
+}
+
+export async function logLoungeVisit(
+  visit: {
+    card_id: string;
+    occurred_on: string;
+    scope: "domestic" | "international";
+    guest_count?: number;
+    airport_code?: string | null;
+    note?: string | null;
+  },
+  token: string,
+): Promise<LoungeVisitEntry> {
+  return activityFetch<LoungeVisitEntry>("/lounge-visits", token, {
+    method: "POST",
+    body: JSON.stringify(visit),
+  });
+}
+
+export async function fetchSpendEntries(token: string): Promise<SpendEntry[]> {
+  const body = await activityFetch<{ entries: SpendEntry[] }>("/spend", token);
+  return body.entries;
+}
+
+export async function fetchLoungeVisits(
+  token: string,
+): Promise<LoungeVisitEntry[]> {
+  const body = await activityFetch<{ visits: LoungeVisitEntry[] }>(
+    "/lounge-visits",
+    token,
+  );
+  return body.visits;
+}
+
+export async function deleteSpendEntry(
+  id: string,
+  token: string,
+): Promise<void> {
+  await activityFetch<void>(`/spend/${id}`, token, { method: "DELETE" });
+}
+
+export async function deleteLoungeVisit(
+  id: string,
+  token: string,
+): Promise<void> {
+  await activityFetch<void>(`/lounge-visits/${id}`, token, {
+    method: "DELETE",
+  });
+}
+
+/** What the log proves for a wallet — caps, milestones, lounge allowances. */
+export async function fetchActivitySummary(
+  cardIds: string[],
+  token: string,
+): Promise<ActivitySummary> {
+  const params = new URLSearchParams();
+  for (const id of cardIds) params.append("card_ids", id);
+  return activityFetch<ActivitySummary>(`/summary?${params}`, token);
+}
+
+/** Tell us (or correct) the month a card's annual fee is charged, 1-12. */
+export async function setRenewalMonth(
+  cardId: string,
+  renewalMonth: number,
+  token: string,
+): Promise<{ card_id: string; renewal_month: number }> {
+  return activityFetch(`/renewal-months/${cardId}`, token, {
+    method: "PUT",
+    body: JSON.stringify({ renewal_month: renewalMonth }),
+  });
+}
+
+/** Forget a card's renewal month. Already-forgotten is not an error. */
+export async function clearRenewalMonth(
+  cardId: string,
+  token: string,
+): Promise<void> {
+  try {
+    await activityFetch<void>(`/renewal-months/${cardId}`, token, {
+      method: "DELETE",
+    });
+  } catch (err) {
+    // activityFetch words every 404 as a stale-wallet card; here a 404 only
+    // means there was no month to clear, which is the state we wanted.
+    if (err instanceof ApiError && err.status === 404) return;
+    throw err;
+  }
 }

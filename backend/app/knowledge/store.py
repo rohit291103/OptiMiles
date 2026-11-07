@@ -14,6 +14,7 @@ from app.domain import (
     Card,
     CatalogSnapshot,
     CurrencyTransferLink,
+    FeeWaiver,
     LoungeAccess,
     LoungeProgram,
     RewardCategoryRule,
@@ -65,7 +66,8 @@ async def load_snapshot(conn: AsyncConnection) -> CatalogSnapshot:
         RewardCategoryRule.model_validate(r)
         for r in await rows(
             "SELECT id, card_id, category_slug, category_label, earn_rate,"
-            " monthly_cap_inr, quarterly_cap_inr, annual_cap_inr, notes"
+            " monthly_cap_inr, quarterly_cap_inr, annual_cap_inr, over_cap_earn,"
+            " requires_portal, notes"
             " FROM reward_categories WHERE is_active ORDER BY id"
         )
     )
@@ -94,6 +96,15 @@ async def load_snapshot(conn: AsyncConnection) -> CatalogSnapshot:
             " FROM card_lounge_access WHERE is_active ORDER BY id"
         )
     )
+    fee_waivers = tuple(
+        FeeWaiver.model_validate(r)
+        for r in await rows(
+            "SELECT id, card_id, kind, threshold_inr, threshold_comparison, window_kind,"
+            " waives_renewal_fee, waives_joining_fee, excluded_categories,"
+            " unmodelled_exclusions, conditions"
+            " FROM card_fee_waivers WHERE is_active ORDER BY id"
+        )
+    )
     award_charts = tuple(
         AwardChartEntry.model_validate(r)
         for r in await rows(
@@ -115,6 +126,7 @@ async def load_snapshot(conn: AsyncConnection) -> CatalogSnapshot:
                 list(award_charts),
                 list(lounge_programs),
                 list(lounge_access),
+                list(fee_waivers),
             ]
         ),
         currencies=currencies,
@@ -126,4 +138,5 @@ async def load_snapshot(conn: AsyncConnection) -> CatalogSnapshot:
         award_charts=award_charts,
         lounge_programs=lounge_programs,
         lounge_access=lounge_access,
+        fee_waivers=fee_waivers,
     )

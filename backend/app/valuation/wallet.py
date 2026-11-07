@@ -13,7 +13,7 @@ That is not hypothetical: both Axis currencies reach only KrisFlyer, and
 Maharaja Club is reachable only from HDFC's Infinia/Diners tier.
 """
 
-from collections.abc import Sequence
+from collections.abc import Sequence, Set
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
@@ -44,6 +44,11 @@ class PartnerReach(BaseModel):
     is_target: bool
     card_ids: tuple[UUID, ...]
     best_miles_per_1000_points: int
+    # True when the partner row or ANY contributing link is unverified — the
+    # best rate may come from exactly that link. None means the caller
+    # supplied no provenance (Best Card today): "not assessed", which must
+    # never be read as verified.
+    needs_verification: bool | None
 
 
 def resolve_wallet(snapshot: CatalogSnapshot, card_ids: Sequence[UUID]) -> tuple[Card, ...]:
@@ -81,6 +86,7 @@ def partner_reach(
     wallet: Sequence[Card],
     *,
     target_program_id: UUID | None = None,
+    unverified_ids: Set[UUID] | None,
 ) -> tuple[PartnerReach, ...]:
     """Every program this wallet can send points to, best route first-class.
 
@@ -93,8 +99,13 @@ def partner_reach(
 
     cards_by_partner: dict[UUID, list[UUID]] = {}
     best_by_partner: dict[UUID, int] = {}
+    flagged_partners: set[UUID] = set()
     for card in wallet:
         for link in grouped.get(card.reward_currency_id, ()):
+            if unverified_ids is not None and (
+                link.id in unverified_ids or link.partner_id in unverified_ids
+            ):
+                flagged_partners.add(link.partner_id)
             holders = cards_by_partner.setdefault(link.partner_id, [])
             if card.id not in holders:
                 holders.append(card.id)
@@ -110,6 +121,7 @@ def partner_reach(
             is_target=partner_id == target_program_id,
             card_ids=tuple(holders),
             best_miles_per_1000_points=best_by_partner[partner_id],
+            needs_verification=(None if unverified_ids is None else partner_id in flagged_partners),
         )
         for partner_id, holders in sorted(
             cards_by_partner.items(),

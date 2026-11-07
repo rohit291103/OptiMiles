@@ -52,17 +52,36 @@
   partner: krisflyer
   ratio_from: 1
   ratio_to: 1
-  min_transfer_points: 1000
+  # VERIFIED 2026-11-06 on HSBC India's own pages. NB: search results for
+  # "HSBC TravelOne KrisFlyer" are dominated by the SINGAPORE card (3:1 since
+  # Jan 2025, 10,000-mile minimum blocks) — that is a different product and
+  # none of its terms apply here.
+  #   ratio   — rewards page partner table: Singapore Airlines, "Reward
+  #             points equal to 1 mile": 1; product page "convert Reward points
+  #             to Air Miles 1 to 1 in the app"
+  #   minimum — "There is no minimum number of points required to redeem or
+  #             transfer points." (was 1000 here, unsourced)
+  #   fee     — "There are no handling charges for redemptions."
+  #   timing  — "For most airlines, you can expect your redemption to be
+  #             completed instantly or within 1 working day" (Singapore
+  #             Airlines is not among the named slower exceptions — an
+  #             inference; harmless to the engine, which rounds any 1–2 day
+  #             delay to the same arrival month)
+  min_transfer_points: 0
   transfer_fee_inr: 0
   processing_days_min: 0
-  processing_days_max: 2
+  processing_days_max: 1
   notes: >-
-    HSBC TravelOne transfers 1:1 to 12 of its 15 airline partners incl.
-    KrisFlyer; app transfers are near-instant for most partners. Min-transfer
-    figure unconfirmed.
-  source: livefromalounge.com HSBC transfer partnerships; business-standard.com 2025-04-21; magnify.club TravelOne review 2026
-  verified_on: 2026-07-04
-  needs_verification: true
+    HSBC TravelOne (India) transfers 1:1 to Singapore Airlines KrisFlyer in the
+    HSBC India app, with no minimum and no handling charge; most airline
+    transfers complete instantly or within 1 working day.
+  source: >-
+    hsbc.bank.in TravelOne rewards page https://www.hsbc.bank.in/credit-cards/products/travelone/rewards/
+    + "How to redeem credit card reward points"
+    https://www.hsbc.bank.in/credit-cards/how-to-redeem-credit-card-reward-points/
+    + TravelOne product page (2026-11-06)
+  verified_on: 2026-11-06
+  needs_verification: false
 
 - currency: axis-edge-miles
   partner: krisflyer
@@ -80,8 +99,20 @@
     ≈ ₹235 per transfer (pointsmath) — VERIFY exact amount. NOTE: Atlas is
     discontinued for NEW applicants (2026) — existing holders keep benefits;
     flagged for Stage 7's one-new-card archetype.
-  source: pointsmath.com/axis-bank-transfer-partners (2026-06-21); rivo.pe Axis rewards guide 2026; research doc §1–2
-  verified_on: 2026-07-04
+  # RE-CHECKED 2026-11-06 — still secondary-only, so still flagged. The Axis
+  # 2026-09-23 Travel EDGE reshuffle (Accor back, Air India / Flying Blue /
+  # Qantas moved into Group A, Avios cut) left KrisFlyer in Group A at 1:2
+  # with the 30,000 EDGE Miles/yr Atlas cap (cardexpress.in, checked against
+  # the Travel EDGE portal 2026-09-23). Fee ₹199 + GST and a 500-EDGE-Mile
+  # minimum are the consensus of secondary guides. Issuer pages could not be
+  # read: the Travel EDGE T&C is rendered client-side and the old
+  # axisbank.com/miles-transfer URL now redirects to a sitemap.
+  source: >-
+    pointsmath.com/axis-bank-transfer-partners (2026-06-21); rivo.pe Axis
+    rewards guide 2026; cardexpress.in/articles/axis-edge-transfer-partners-group-a-group-b
+    (2026-09-23); livefromalounge.com/axis-bank-travel-edge-rewards-reshuffle-2026/ ;
+    research doc §1–2
+  verified_on: 2026-11-06
   needs_verification: true
 
 - currency: axis-edge-rewards
@@ -99,8 +130,22 @@
     Magnus 5:2. Group A cap 2,00,000 EDGE RP/calendar year (Group B 8L, 10L
     total across groups — only Group A modeled; KrisFlyer is Group A). Fee
     ₹199+GST ≈ ₹235 — VERIFY. Min transfer unconfirmed.
-  source: cardexpert.in Magnus Burgundy review (2025-01-18) + pointsmath.com Axis table (2026-06-21) agree on 5:4 and the 2L Group A cap; rivo.pe's differing cap table treated as the outlier
-  verified_on: 2026-07-04
+  # RE-CHECKED 2026-11-06 — still flagged.
+  #   ISSUER-CONFIRMED: KrisFlyer is a Group A partner, and Group A is capped
+  #   at "maximum of 2 lakh EDGE REWARD Points cumulatively" per calendar year
+  #   (Axis "Revision of … MAGNUS for Burgundy … Terms & Conditions", w.e.f.
+  #   2024-04-20, text extracted from axis.bank.in).
+  #   SECONDARY ONLY: the 5:4 ratio. After the 2026-09-23 reshuffle,
+  #   cardexpress.in still lists Burgundy at 5:4 with the 2L Group A cap, but
+  #   some blogs report Burgundy cut to 5:2 for SOME partners (Avios, Accor) —
+  #   no source reports a KrisFlyer change. The revision PDF does not state
+  #   ratios, and the Travel EDGE T&C could not be read.
+  source: >-
+    Axis Magnus for Burgundy T&C revision (Group A membership + 2L cap)
+    https://www.axis.bank.in/docs/default-source/default-document-library/credit-cards/magnus-for-burgundy-terms-and-conditions.pdf
+    ; cardexpert.in Magnus Burgundy review (2025-01-18) + pointsmath.com Axis
+    table (2026-06-21) + cardexpress.in Group A/B article (2026-09-23) for 5:4
+  verified_on: 2026-11-06
   needs_verification: true
 
 - currency: amex-mr
@@ -168,14 +213,24 @@
   partner: marriott-bonvoy
   ratio_from: 1
   ratio_to: 1
-  min_transfer_points: 1000
+  # VERIFIED 2026-11-06 — same issuer pages and wording as the KrisFlyer row
+  # above. Rewards page hotel table: Marriott International, "Reward points
+  # equal to 1 loyalty point": 1. Hotels: "points will be transferred
+  # instantly, or within 1 business day".
+  min_transfer_points: 0
   transfer_fee_inr: 0
   processing_days_min: 0
-  processing_days_max: 2
-  notes: TravelOne 1:1 to all 5 hotel partners incl. Bonvoy. Min transfer unconfirmed.
-  source: livefromalounge.com HSBC transfer partnerships; business-standard.com 2025-04-21
-  verified_on: 2026-07-04
-  needs_verification: true
+  processing_days_max: 1
+  notes: >-
+    TravelOne (India) transfers 1:1 to Marriott Bonvoy, no minimum, no
+    handling charge; instant or within 1 business day.
+  source: >-
+    hsbc.bank.in TravelOne rewards page https://www.hsbc.bank.in/credit-cards/products/travelone/rewards/
+    + "How to redeem credit card reward points"
+    https://www.hsbc.bank.in/credit-cards/how-to-redeem-credit-card-reward-points/
+    (2026-11-06)
+  verified_on: 2026-11-06
+  needs_verification: false
 
 - currency: amex-mr
   partner: marriott-bonvoy
@@ -224,13 +279,22 @@
   partner: accor-all
   ratio_from: 1
   ratio_to: 1
-  min_transfer_points: 1000
+  # VERIFIED 2026-11-06 — same issuer pages and wording as the KrisFlyer row
+  # above. Rewards page hotel table: Accor, "Reward points equal to 1
+  # loyalty point": 1.
+  min_transfer_points: 0
   transfer_fee_inr: 0
   processing_days_min: 0
-  processing_days_max: 2
-  notes: TravelOne 1:1 to all 5 hotel partners incl. Accor. Min transfer unconfirmed.
-  source: livefromalounge.com HSBC transfer partnerships; business-standard.com 2025-04-21
-  verified_on: 2026-07-04
-  needs_verification: true
+  processing_days_max: 1
+  notes: >-
+    TravelOne (India) transfers 1:1 to Accor Live Limitless, no minimum, no
+    handling charge; instant or within 1 business day.
+  source: >-
+    hsbc.bank.in TravelOne rewards page https://www.hsbc.bank.in/credit-cards/products/travelone/rewards/
+    + "How to redeem credit card reward points"
+    https://www.hsbc.bank.in/credit-cards/how-to-redeem-credit-card-reward-points/
+    (2026-11-06)
+  verified_on: 2026-11-06
+  needs_verification: false
 
 # sbi-cashback-inr: NO rows here, by design (the negative case).

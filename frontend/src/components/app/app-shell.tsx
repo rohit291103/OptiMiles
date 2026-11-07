@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   CreditCard,
   LayoutDashboard,
+  ListChecks,
   LogOut,
   Menu,
   Plus,
@@ -49,6 +50,12 @@ const NAV = [
     icon: CreditCard,
     isActive: (p: string) => p.startsWith("/cards"),
   },
+  {
+    href: "/activity",
+    label: "My log",
+    icon: ListChecks,
+    isActive: (p: string) => p.startsWith("/activity"),
+  },
 ] as const;
 
 /** Top-bar title per route; goal detail pages fall through to "Strategy". */
@@ -56,6 +63,7 @@ function pageTitle(pathname: string): string {
   if (pathname === "/goals") return "Dashboard";
   if (pathname === "/goals/new") return "New goal";
   if (pathname.startsWith("/cards")) return "Supported cards";
+  if (pathname.startsWith("/activity")) return "My log";
   if (pathname.startsWith("/goals/")) return "Strategy";
   return "Dashboard";
 }
@@ -115,7 +123,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               type="button"
               aria-label="Open menu"
               onClick={() => setMobileNavOpen(true)}
-              className="grid size-9 place-items-center rounded-lg border border-hairline text-foreground lg:hidden"
+              className="grid size-12 place-items-center rounded-lg border border-hairline text-foreground sm:size-9 lg:hidden"
             >
               <Menu className="size-5" />
             </button>
@@ -160,7 +168,7 @@ function SidebarContent({
             type="button"
             aria-label="Close menu"
             onClick={onClose}
-            className="grid size-8 place-items-center rounded-lg border border-hairline text-foreground"
+            className="grid size-12 place-items-center rounded-lg border border-hairline text-foreground sm:size-8"
           >
             <X className="size-4" />
           </button>

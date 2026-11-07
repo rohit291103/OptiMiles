@@ -17,6 +17,18 @@ class SpendCategory(StrEnum):
     DEFAULT = "default"
 
 
+class OverCapEarn(StrEnum):
+    """What spend ABOVE a category rule's reward cap earns (migration 0009).
+
+    Stated per capped rule from the issuer's terms — never assumed. Before
+    2026-11-02 the schema hard-wired BASE_RATE for every cap, which overstated
+    cards like SBI Cashback that pay nothing once the cap is reached.
+    """
+
+    BASE_RATE = "base_rate"  # the card's base_earn_rate (e.g. Axis Atlas travel)
+    NOTHING = "nothing"  # zero (e.g. SBI Cashback past ₹2,000 cashback/cycle)
+
+
 class CabinClass(StrEnum):
     ECONOMY = "economy"
     PREMIUM_ECONOMY = "premium_economy"
@@ -122,3 +134,47 @@ class StrategyArchetype(StrEnum):
     CONCENTRATED = "concentrated"
     SIMPLEST_VIABLE = "simplest_viable"
     CHEAPEST_VIABLE = "cheapest_viable"
+
+
+class FeeWaiverKind(StrEnum):
+    """What a card's issuer publishes about waiving the annual fee on spend.
+
+    `NONE` is a sourced ANSWER ("the issuer's fee schedule lists no waiver"),
+    not a gap. A card we have not researched has no fee-waiver row at all —
+    "not covered yet" — and the two must never be conflated: telling someone
+    "there is no waiver" when we simply have not looked is an invented fact.
+    """
+
+    SPEND_BASED = "spend_based"
+    NONE = "none"
+
+
+class ThresholdComparison(StrEnum):
+    """Whether reaching the threshold exactly is enough.
+
+    Issuers word this differently and it decides the answer at the boundary:
+    HDFC "Spend Rs. 4,00,000" and SBI "Rs.2 Lakh or more" are met AT the
+    figure; HSBC's "exceeds ₹800,000" is not.
+    """
+
+    AT_LEAST = "at_least"
+    MORE_THAN = "more_than"
+
+
+class FeeWaiverWindow(StrEnum):
+    """Which spend the issuer measures, relative to which fee.
+
+    PRECEDING_CARD_YEAR — the 12 months / card anniversary year before a
+        renewal; meeting it waives THAT renewal's fee (HDFC, Axis Magnus).
+    CURRENT_CARD_YEAR — spend during the card year a fee was charged for;
+        meeting it reverses THAT year's fee (HSBC TravelOne).
+    DAYS_365_BEFORE_FEE_DATE — the 365 days before the annual-fee billing
+        date (SBI Cashback).
+
+    All three end at a renewal, which is what lets one month-only window
+    (`simulation/periods.renewal_window`) stay inside each of them.
+    """
+
+    PRECEDING_CARD_YEAR = "preceding_card_year"
+    CURRENT_CARD_YEAR = "current_card_year"
+    DAYS_365_BEFORE_FEE_DATE = "days_365_before_fee_date"

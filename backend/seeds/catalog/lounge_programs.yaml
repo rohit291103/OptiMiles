@@ -38,8 +38,20 @@
     Reported as Axis Bank's domestic lounge partner after the 2026 switch away
     from DreamFolks. VERIFY before relying on it — sourced from secondary
     coverage only.
-  source: secondary coverage of the 2026 Axis lounge programme switch — VERIFY
-  verified_on: 2026-08-31
+  # RE-CHECKED 2026-11-06 — stays flagged, and with a CONTRADICTION: the
+  # issuer's own Atlas privileges page (axis.bank.in) does not name LoungeOne.
+  # It says "All eligible lounges are part of Axis Bank lounge program via
+  # lounge service providers", still refers to "the agreement between
+  # dreamfolks and the lounge", and says the app booking journey is
+  # "currently suspended until further notice". Secondary sources (2025–26)
+  # say Axis left DreamFolks on 2025-07-01 for Adani Digital Labs' LoungeOne.
+  # Do not attach any card to this programme until Axis names it.
+  source: >-
+    secondary coverage of the 2025–26 Axis lounge programme switch
+    (livefromalounge.com, cardadvisor.in) — CONTRADICTED by the Axis Atlas
+    privileges page https://www.axis.bank.in/cards/credit-card/axis-bank-atlas-credit-card/privileges
+    (2026-11-06)
+  verified_on: 2026-11-06
   needs_verification: true
 
 - slug: issuer-direct

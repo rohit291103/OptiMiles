@@ -12,18 +12,27 @@ import {
   ApiError,
   fetchCards,
   fetchEducation,
+  fetchRoutes,
   fetchEducationStory,
   probeFeasibility,
   simulate,
   simulateAndSave,
+  type CabinClass,
   type CardSummary,
   type EducationPayload,
   type FeasibilityVerdict,
+  type RouteCoverage,
   type SimulateRequest,
   type SimulateResponse,
 } from "@/lib/api";
 import { SaveGoal, SimulatorResult } from "@/components/wizard/result";
 import { EducationStory } from "@/components/wizard/education-step";
+import {
+  ALL_CABINS,
+  GoalForm,
+  cabinsFor,
+  monthLabel,
+} from "@/components/wizard/goal-form";
 import {
   prefillSplit,
   SPLIT_CATEGORIES,
@@ -35,7 +44,7 @@ import { useAuth } from "@/lib/use-auth";
 
 /**
  * The guided strategy wizard (decision log 2026-07-13): one
- * conversational-scroll page — goal sentence → wallet → total spend →
+ * conversational-scroll page — goal form → wallet → total spend →
  * education → opt-in split → strategy. Each completed step collapses to an
  * editable summary line; the next appears below and auto-scrolls into view.
  * Editing an earlier step invalidates everything computed after it (inputs
@@ -54,24 +63,17 @@ import { useAuth } from "@/lib/use-auth";
  *   with the strategy output instead.
  */
 
-// Backend-supported vocabulary (goal_resolution.CITY_TO_REGION).
-const DESTINATIONS = ["Singapore", "London", "New York"];
-const ORIGINS = ["Hyderabad", "Mumbai", "Delhi", "Bangalore", "Chennai", "Pune"];
-const PASSENGERS = [1, 2, 3, 4];
-const CABINS = [
-  { label: "economy", value: "economy" },
-  { label: "business", value: "business" },
-  { label: "first", value: "first" },
-] as const;
-
-type CabinValue = (typeof CABINS)[number]["value"];
 type StepId = "goal" | "wallet" | "budget" | "education" | "split" | "strategy";
 
 export function GoalWizard() {
   // ── Step inputs (kept across edits — editing invalidates results, not data)
-  const [origin, setOrigin] = useState(ORIGINS[0]);
-  const [destination, setDestination] = useState(DESTINATIONS[0]);
-  const [cabin, setCabin] = useState<CabinValue>("business");
+  // Goal options come from the catalog (GET /catalog/routes): only cities and
+  // cabins the engine can actually price are ever offered.
+  const [coverage, setCoverage] = useState<RouteCoverage | null>(null);
+  const [coverageFailed, setCoverageFailed] = useState(false);
+  const [origin, setOrigin] = useState("Mumbai");
+  const [destination, setDestination] = useState("Singapore");
+  const [cabin, setCabin] = useState<CabinClass>("business");
   const [timeline, setTimeline] = useState("8");
   const [passengers, setPassengers] = useState(1);
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
@@ -151,6 +153,51 @@ export function GoalWizard() {
       block: "start",
     });
   }, [activeStep]);
+
+  // Load what the goal form may offer. Defaults are kept when covered;
+  // otherwise the first covered city stands in (never an uncovered one).
+  const applyCoverage = (fetched: RouteCoverage) => {
+    const pick = (list: { city: string }[], current: string) =>
+      list.some((c) => c.city === current) ? current : (list[0]?.city ?? current);
+    const nextOrigin = pick(fetched.origins, origin);
+    const nextDestination = pick(fetched.destinations, destination);
+    setCoverage(fetched);
+    setOrigin(nextOrigin);
+    setDestination(nextDestination);
+    setCabin((current) => validCabin(cabinsFor(fetched, nextOrigin, nextDestination), current));
+  };
+  const retryCoverage = () => {
+    setCoverageFailed(false);
+    fetchRoutes().then(applyCoverage).catch(() => setCoverageFailed(true));
+  };
+  useEffect(() => {
+    let active = true;
+    fetchRoutes()
+      .then((fetched) => {
+        if (active) applyCoverage(fetched);
+      })
+      .catch(() => {
+        if (active) setCoverageFailed(true);
+      });
+    return () => {
+      active = false;
+    };
+    // Mount-only: applyCoverage reads the initial defaults on purpose.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // A route change that drops the current cabin moves to business when
+  // covered, else the first covered cabin — done in the handler, not an effect.
+  const availableCabins = coverage ? cabinsFor(coverage, origin, destination) : [];
+  const changeRoute = (nextOrigin: string, nextDestination: string) => {
+    setOrigin(nextOrigin);
+    setDestination(nextDestination);
+    if (coverage) {
+      setCabin((current) =>
+        validCabin(cabinsFor(coverage, nextOrigin, nextDestination), current),
+      );
+    }
+  };
 
   // Load the catalog for the wallet picker. Pre-select the user's SAVED
   // wallet when they have one (`lib/wallet.ts` — the same wallet Portfolio
@@ -369,9 +416,12 @@ export function GoalWizard() {
     return totalSpendValue > 0 ? totalSpendValue : 90_000 * months;
   }
 
-  const goalSummary = `${cabin} class to ${destination} from ${origin} · ${months} ${
-    months === 1 ? "month" : "months"
-  } · ${passengers} ${passengers === 1 ? "passenger" : "passengers"}`;
+  const cabinLabel = (
+    ALL_CABINS.find((c) => c.value === cabin)?.label ?? cabin
+  ).toLowerCase();
+  const goalSummary = `${cabinLabel} to ${destination} from ${origin} · ${monthLabel(months)} · ${passengers} ${
+    passengers === 1 ? "traveller" : "travellers"
+  }`;
   const walletSummary =
     selectedCardIds.length === 0
       ? "No cards yet"
@@ -407,7 +457,7 @@ export function GoalWizard() {
 
   return (
     <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-card/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-sm">
-      {/* ── Step 1: the goal, as the sentence you'd say out loud ── */}
+      {/* ── Step 1: the goal — a form limited to routes the engine can price ── */}
       <WizardStep
         number={1}
         title="Your goal"
@@ -417,55 +467,41 @@ export function GoalWizard() {
         onEdit={() => editStep("goal")}
         stepRef={activeStep === "goal" ? activeStepRef : undefined}
       >
-        <p className="mt-4 font-heading text-2xl leading-[2.1] text-foreground sm:text-3xl sm:leading-loose">
-          I want to fly{" "}
-          <InlineSelect
-            ariaLabel="Cabin class"
-            value={cabin}
-            onChange={(v) => setCabin(v as CabinValue)}
-            options={CABINS.map((c) => ({ value: c.value, label: c.label }))}
-          />{" "}
-          class to{" "}
-          <InlineSelect
-            ariaLabel="Destination"
-            value={destination}
-            onChange={setDestination}
-            options={DESTINATIONS.map((d) => ({ value: d, label: d }))}
-          />{" "}
-          from{" "}
-          <InlineSelect
-            ariaLabel="Flying from"
-            value={origin}
-            onChange={setOrigin}
-            options={ORIGINS.map((o) => ({ value: o, label: o }))}
-          />{" "}
-          within{" "}
-          <span className="inline-flex items-baseline gap-1 whitespace-nowrap">
-            <input
-              type="number"
-              min={1}
-              max={36}
-              value={timeline}
-              onChange={(e) => setTimeline(e.target.value)}
-              aria-label="Timeline in months"
-              className="w-16 rounded-none border-0 border-b border-gold/50 bg-transparent px-1 text-center font-heading italic text-gold focus:border-gold focus:outline-none"
-            />
-            months
-          </span>
-          , for{" "}
-          <InlineSelect
-            ariaLabel="Passengers"
-            value={String(passengers)}
-            onChange={(v) => setPassengers(Number(v))}
-            options={PASSENGERS.map((n) => ({
-              value: String(n),
-              label: n === 1 ? "1 passenger" : `${n} passengers`,
-            }))}
+        {coverage ? (
+          <GoalForm
+            coverage={coverage}
+            origin={origin}
+            destination={destination}
+            cabin={cabin}
+            monthsAhead={months}
+            passengers={passengers}
+            onOrigin={(city) => changeRoute(city, destination)}
+            onDestination={(city) => changeRoute(origin, city)}
+            onCabin={setCabin}
+            onMonthsAhead={(n) => setTimeline(String(n))}
+            onPassengers={setPassengers}
           />
-          .
-        </p>
+        ) : coverageFailed ? (
+          <p className="mt-5 text-sm text-muted-foreground">
+            We couldn&apos;t load the routes we cover.{" "}
+            <button
+              type="button"
+              onClick={retryCoverage}
+              className="text-gold underline-offset-4 hover:underline"
+            >
+              Try again
+            </button>
+          </p>
+        ) : (
+          <div aria-hidden="true" className="mt-5 grid gap-5 sm:grid-cols-2">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="h-[4.25rem] animate-pulse rounded-xl bg-white/5" />
+            ))}
+          </div>
+        )}
         <Button
           onClick={() => goTo("wallet")}
+          disabled={!coverage || availableCabins.length === 0}
           className="mt-6 bg-gold text-gold-foreground hover:bg-gold/90"
         >
           Continue
@@ -838,32 +874,9 @@ function WizardStep({
   );
 }
 
-/** A select disguised as the emphasized word in the goal sentence — the form
- * IS the sentence, so entering the goal reads like saying it. (Moved here
- * from the retired one-shot simulator, slice 10.) */
-function InlineSelect({
-  value,
-  onChange,
-  options,
-  ariaLabel,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  options: { value: string; label: string }[];
-  ariaLabel: string;
-}) {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      aria-label={ariaLabel}
-      className="max-w-full appearance-none rounded-none border-0 border-b border-gold/50 bg-transparent px-1 pb-0.5 font-heading italic text-gold focus:border-gold focus:outline-none"
-    >
-      {options.map((o) => (
-        <option key={o.value} value={o.value} className="bg-card font-sans not-italic">
-          {o.label}
-        </option>
-      ))}
-    </select>
-  );
+/** The current cabin when the route covers it; otherwise business when
+ * covered, else the first covered cabin (or the current one if none). */
+function validCabin(available: CabinClass[], current: CabinClass): CabinClass {
+  if (available.length === 0 || available.includes(current)) return current;
+  return available.includes("business") ? "business" : available[0];
 }

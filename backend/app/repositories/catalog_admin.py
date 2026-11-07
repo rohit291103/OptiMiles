@@ -61,10 +61,12 @@ _UPSERTS: dict[str, str] = {
     "reward_categories": """
         INSERT INTO reward_categories
           (id, card_id, category_slug, category_label, earn_rate, monthly_cap_inr,
-           quarterly_cap_inr, annual_cap_inr, notes, is_active)
+           quarterly_cap_inr, annual_cap_inr, over_cap_earn, requires_portal, notes,
+           is_active)
         VALUES
           (:id, :card_id, :category_slug, :category_label, :earn_rate, :monthly_cap_inr,
-           :quarterly_cap_inr, :annual_cap_inr, :notes, TRUE)
+           :quarterly_cap_inr, :annual_cap_inr, :over_cap_earn, :requires_portal, :notes,
+           TRUE)
         ON CONFLICT (id) DO UPDATE SET
           category_slug = EXCLUDED.category_slug,
           category_label = EXCLUDED.category_label,
@@ -72,6 +74,8 @@ _UPSERTS: dict[str, str] = {
           monthly_cap_inr = EXCLUDED.monthly_cap_inr,
           quarterly_cap_inr = EXCLUDED.quarterly_cap_inr,
           annual_cap_inr = EXCLUDED.annual_cap_inr,
+          over_cap_earn = EXCLUDED.over_cap_earn,
+          requires_portal = EXCLUDED.requires_portal,
           notes = EXCLUDED.notes,
           is_active = TRUE
     """,
@@ -160,6 +164,31 @@ _UPSERTS: dict[str, str] = {
           conditions = EXCLUDED.conditions,
           is_active = TRUE
     """,
+    # Migration 0010. Ordered after `cards` (FK). Upserted by id, and the
+    # deactivate-absent sweep below retires a card's waiver whose block is
+    # removed from the seeds — turning it back into "not covered", never NONE.
+    "card_fee_waivers": """
+        INSERT INTO card_fee_waivers
+          (id, card_id, kind, threshold_inr, threshold_comparison, window_kind,
+           waives_renewal_fee, waives_joining_fee, excluded_categories,
+           unmodelled_exclusions, conditions, is_active)
+        VALUES
+          (:id, :card_id, :kind, :threshold_inr, :threshold_comparison, :window_kind,
+           :waives_renewal_fee, :waives_joining_fee, :excluded_categories,
+           :unmodelled_exclusions, :conditions, TRUE)
+        ON CONFLICT (id) DO UPDATE SET
+          card_id = EXCLUDED.card_id,
+          kind = EXCLUDED.kind,
+          threshold_inr = EXCLUDED.threshold_inr,
+          threshold_comparison = EXCLUDED.threshold_comparison,
+          window_kind = EXCLUDED.window_kind,
+          waives_renewal_fee = EXCLUDED.waives_renewal_fee,
+          waives_joining_fee = EXCLUDED.waives_joining_fee,
+          excluded_categories = EXCLUDED.excluded_categories,
+          unmodelled_exclusions = EXCLUDED.unmodelled_exclusions,
+          conditions = EXCLUDED.conditions,
+          is_active = TRUE
+    """,
 }
 
 
@@ -169,7 +198,11 @@ def _rows(snapshot: CatalogSnapshot) -> dict[str, list[dict[str, Any]]]:
         "transfer_partners": [p.model_dump() for p in snapshot.partners],
         "cards": [c.model_dump() for c in snapshot.cards],
         "reward_categories": [
-            {**r.model_dump(), "category_slug": r.category_slug.value}
+            {
+                **r.model_dump(),
+                "category_slug": r.category_slug.value,
+                "over_cap_earn": r.over_cap_earn.value if r.over_cap_earn else None,
+            }
             for r in snapshot.category_rules
         ],
         "currency_transfer_partners": [li.model_dump() for li in snapshot.transfer_links],
@@ -201,6 +234,20 @@ def _rows(snapshot: CatalogSnapshot) -> dict[str, list[dict[str, Any]]]:
                 ),
             }
             for a in snapshot.lounge_access
+        ],
+        "card_fee_waivers": [
+            {
+                # The computed flag is derived, not a column.
+                **w.model_dump(exclude={"has_unmodelled_exclusions"}),
+                "kind": w.kind.value,
+                "threshold_comparison": (
+                    w.threshold_comparison.value if w.threshold_comparison else None
+                ),
+                "window_kind": w.window_kind.value if w.window_kind else None,
+                "excluded_categories": [c.value for c in w.excluded_categories],
+                "unmodelled_exclusions": list(w.unmodelled_exclusions),
+            }
+            for w in snapshot.fee_waivers
         ],
     }
 

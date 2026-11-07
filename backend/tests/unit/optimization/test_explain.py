@@ -326,7 +326,11 @@ def test_runner_up_reason_transfer_cap_golden(snapshot: CatalogSnapshot) -> None
     """The user-reported Atlas confusion: Atlas travel rates 10 mi/₹100 vs
     TravelOne's 4, yet travel routes to TravelOne — because moving it would
     strand points behind the 30,000 EDGE/yr transfer cap. The row must name
-    the cap and carry the verified whole-plan delta (84,200 − 60,000)."""
+    the cap and carry the verified whole-plan delta (94,200 − 60,000). The
+    chosen plan includes TravelOne's ₹12L anniversary-year milestone (+10,000
+    RP at 1:1, seeded 2026-11-06): ₹1.5L travel/month reaches ₹12L in month
+    8 of the 12-month horizon; the swapped plan never puts spend on
+    TravelOne. Without that milestone the delta is the earlier 24,200."""
     context = _real_context(snapshot, (ATLAS, TRAVELONE), travel=150_000, dining=30_000)
     rows = _attributed_rows(
         context,
@@ -336,7 +340,7 @@ def test_runner_up_reason_transfer_cap_golden(snapshot: CatalogSnapshot) -> None
     assert travel.runner_up_card_id == ATLAS
     assert travel.runner_up_miles_per_100inr == Decimal("10.0000")
     assert travel.runner_up_reason == "transfer_cap"
-    assert travel.runner_up_plan_delta_miles == 24_200
+    assert travel.runner_up_plan_delta_miles == 34_200
 
 
 def test_runner_up_reason_milestone_golden(snapshot: CatalogSnapshot) -> None:

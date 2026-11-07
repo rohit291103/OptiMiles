@@ -31,6 +31,7 @@ from app.domain import (
     CandidateStrategy,
     CatalogSnapshot,
     GoalResolution,
+    OverCapEarn,
     ParsedGoalIntent,
     PlanningContext,
     SimulationOutcome,
@@ -222,43 +223,65 @@ def test_no_transfers_misses_goal_with_full_ledger(snapshot: CatalogSnapshot) ->
 
 
 def test_golden_cap_exactly_at_boundary(snapshot: CatalogSnapshot) -> None:
-    """₹150,000 travel = exactly the Infinia SmartBuy cap: all spend earns
-    16.65 ⇒ 1,500 × 16.65 = 24,975/month; cap_utilization exactly 1."""
-    context = _context(snapshot, {SpendCategory.TRAVEL: 150_000})
+    """₹1,12,500 travel = exactly the Infinia SmartBuy cap (15,000 bonus RP ÷
+    20 bonus RP per ₹150 × ₹150, seeded 2026-11-06): all spend earns 16.65 ⇒
+    1,125 × 16.65 = 18,731.25 floors to 18,731/month; cap_utilization
+    exactly 1."""
+    context = _context(snapshot, {SpendCategory.TRAVEL: 112_500})
     outcome = simulate(_strategy({SpendCategory.TRAVEL: "hdfc-infinia"}), context)
-    assert _balance(outcome, 0, "hdfc-infinia") == 20_000 + 24_975
+    assert _balance(outcome, 0, "hdfc-infinia") == 20_000 + 18_731
     assert outcome.ledger[0].cap_utilization[seed_id("card", "hdfc-infinia")] == Decimal("1")
 
 
 def test_golden_cap_one_hundred_over(snapshot: CatalogSnapshot) -> None:
-    """₹150,100 travel: 1,500×16.65 = 24,975 accelerated + ₹100 overflow at
-    base 3.33 = 3.33 ⇒ 24,978.33 floors to 24,978."""
-    context = _context(snapshot, {SpendCategory.TRAVEL: 150_100})
+    """₹1,12,600 travel: 1,125×16.65 = 18,731.25 accelerated + ₹100 overflow
+    at base 3.33 = 3.33 ⇒ 18,734.58 floors to 18,734."""
+    context = _context(snapshot, {SpendCategory.TRAVEL: 112_600})
     outcome = simulate(_strategy({SpendCategory.TRAVEL: "hdfc-infinia"}), context)
-    assert _balance(outcome, 0, "hdfc-infinia") == 20_000 + 24_978
+    assert _balance(outcome, 0, "hdfc-infinia") == 20_000 + 18_734
     assert outcome.ledger[0].cap_utilization[seed_id("card", "hdfc-infinia")] == Decimal("1")
 
 
 def test_golden_cap_one_hundred_under(snapshot: CatalogSnapshot) -> None:
-    """₹149,900 travel: 1,499×16.65 = 24,958.35 floors to 24,958; utilization
-    149,900/150,000 = 0.99933… quantizes (4dp ROUND_DOWN) to 0.9993."""
-    context = _context(snapshot, {SpendCategory.TRAVEL: 149_900})
+    """₹1,12,400 travel: 1,124×16.65 = 18,714.60 floors to 18,714; utilization
+    112,400/112,500 = 0.99911… quantizes (4dp ROUND_DOWN) to 0.9991."""
+    context = _context(snapshot, {SpendCategory.TRAVEL: 112_400})
     outcome = simulate(_strategy({SpendCategory.TRAVEL: "hdfc-infinia"}), context)
-    assert _balance(outcome, 0, "hdfc-infinia") == 20_000 + 24_958
-    assert outcome.ledger[0].cap_utilization[seed_id("card", "hdfc-infinia")] == Decimal("0.9993")
+    assert _balance(outcome, 0, "hdfc-infinia") == 20_000 + 18_714
+    assert outcome.ledger[0].cap_utilization[seed_id("card", "hdfc-infinia")] == Decimal("0.9991")
 
 
 def test_cap_resets_monthly(snapshot: CatalogSnapshot) -> None:
     """The monthly cap meters each month independently: ₹200k travel earns the
-    same blended 26,640 every month (1,500×16.65 + 500×3.33 = 24,975 + 1,665),
-    not a degrading rate as cumulative spend grows."""
+    same blended 21,645 every month (1,125×16.65 + 875×3.33 = 18,731.25 +
+    2,913.75), not a degrading rate as cumulative spend grows."""
     context = _context(snapshot, {SpendCategory.TRAVEL: 200_000})
     outcome = simulate(_strategy({SpendCategory.TRAVEL: "hdfc-infinia"}), context)
     for month in range(3):
         earned = _balance(outcome, month, "hdfc-infinia") - (
             20_000 if month == 0 else _balance(outcome, month - 1, "hdfc-infinia")
         )
-        assert earned == 26_640, f"month {month}: {earned}"
+        assert earned == 21_645, f"month {month}: {earned}"
+
+
+def test_overflow_that_earns_nothing_is_metered_as_nothing(snapshot: CatalogSnapshot) -> None:
+    """The projector and Stage 5 share ONE overflow rule (transfer_math).
+    Flip Infinia travel to over_cap_earn=nothing (SBI's real behaviour) and
+    ₹200k travel earns only the capped part: 1,125 × 16.65 = 18,731.25 ⇒
+    18,731/month — NOT 21,645 (which pays 875 × 3.33 = 2,913.75 on the
+    ₹87,500 overflow)."""
+    rules = tuple(
+        rule.model_copy(update={"over_cap_earn": OverCapEarn.NOTHING})
+        if rule.id == seed_id("category", "hdfc-infinia:travel")
+        else rule
+        for rule in snapshot.category_rules
+    )
+    context = _context(
+        snapshot.model_copy(update={"category_rules": rules}), {SpendCategory.TRAVEL: 200_000}
+    )
+    outcome = simulate(_strategy({SpendCategory.TRAVEL: "hdfc-infinia"}), context)
+    assert _balance(outcome, 0, "hdfc-infinia") == 20_000 + 18_731
+    assert outcome.ledger[0].cap_utilization[seed_id("card", "hdfc-infinia")] == Decimal("1")
 
 
 # ── Milestones: quarterly reset, annual once, exact thresholds ──
@@ -268,8 +291,11 @@ def test_golden_dcb_quarterly_milestone_triggers_each_quarter(
     snapshot: CatalogSnapshot,
 ) -> None:
     """DCB ₹4L quarterly ⇒ 10,000 RP. ₹140k travel/month: cumulative in-quarter
-    spend crosses 400,000 in month 2 (420k) and again in month 5. Earn
-    1,400×16.65 = 23,310/month from a zero starting balance."""
+    spend crosses 400,000 in month 2 (420k) and again in month 5. Earn from a
+    zero starting balance, against DCB's ₹75,000 SmartBuy cap (10,000 bonus
+    RP, seeded 2026-11-06): 750×16.65 = 12,487.50 + 650×3.33 = 2,164.50 ⇒
+    14,652/month exactly. Month 1: 29,304; month 2: 43,956 + 10,000;
+    month 5: 6 × 14,652 = 87,912 + two bonuses."""
     context = _context(
         snapshot,
         {SpendCategory.TRAVEL: 140_000},
@@ -279,11 +305,11 @@ def test_golden_dcb_quarterly_milestone_triggers_each_quarter(
     outcome = simulate(_strategy({SpendCategory.TRAVEL: "hdfc-diners-black"}), context)
     milestone = seed_id("milestone", "hdfc-diners-black:0")
 
-    assert _balance(outcome, 1, "hdfc-diners-black") == 46_620
+    assert _balance(outcome, 1, "hdfc-diners-black") == 29_304
     assert outcome.ledger[2].milestones_triggered == (milestone,)
-    assert _balance(outcome, 2, "hdfc-diners-black") == 69_930 + 10_000
+    assert _balance(outcome, 2, "hdfc-diners-black") == 43_956 + 10_000
     assert outcome.ledger[5].milestones_triggered == (milestone,)
-    assert _balance(outcome, 5, "hdfc-diners-black") == 149_860 + 10_000
+    assert _balance(outcome, 5, "hdfc-diners-black") == 87_912 + 10_000 + 10_000
     assert not outcome.ledger[0].milestones_triggered
     assert not outcome.ledger[3].milestones_triggered
 
@@ -319,10 +345,14 @@ def test_quarterly_milestone_one_rupee_under_never_triggers(snapshot: CatalogSna
     assert all(not entry.milestones_triggered for entry in outcome.ledger)
 
 
-def test_golden_amex_two_annual_tiers(snapshot: CatalogSnapshot) -> None:
-    """Amex dining ₹100k/month at default 2.00 ⇒ 2,000/month. Tier 1 (₹1.9L ⇒
-    15,000) crosses at month 1 (200k); tier 2 (₹4L ⇒ 25,000) exactly at month
-    3. Each annual milestone fires ONCE in a ≤12-month horizon."""
+def test_golden_amex_single_annual_tier(snapshot: CatalogSnapshot) -> None:
+    """Amex dining ₹100k/month at default 2.00 ⇒ 100,000 × 2.00 / 100 = 2,000
+    MR/month. Since the 2026 revision the only points milestone is ₹4L ⇒
+    10,000 MR (the ₹1.9L ⇒ 15,000 tier was removed; issuer page 2026-11-02).
+    Cumulative spend hits 4 × 100,000 = 400,000 exactly at month index 3, so:
+      month 1: 2 × 2,000 = 4,000 (nothing crossed — the old ₹1.9L tier is gone)
+      month 3: 4 × 2,000 + 10,000 = 18,000
+    The annual milestone fires ONCE in a ≤12-month horizon."""
     context = _context(
         snapshot,
         {SpendCategory.DINING: 100_000},
@@ -330,13 +360,13 @@ def test_golden_amex_two_annual_tiers(snapshot: CatalogSnapshot) -> None:
         horizon_months=6,
     )
     outcome = simulate(_strategy({SpendCategory.DINING: "amex-platinum-travel"}), context)
-    tier1 = seed_id("milestone", "amex-platinum-travel:0")
-    tier2 = seed_id("milestone", "amex-platinum-travel:1")
+    only_tier = seed_id("milestone", "amex-platinum-travel:0")  # the ₹4L row
 
-    assert outcome.ledger[1].milestones_triggered == (tier1,)
-    assert _balance(outcome, 1, "amex-platinum-travel") == 4_000 + 15_000
-    assert outcome.ledger[3].milestones_triggered == (tier2,)
-    assert _balance(outcome, 3, "amex-platinum-travel") == 8_000 + 15_000 + 25_000
+    assert not outcome.ledger[1].milestones_triggered
+    assert _balance(outcome, 1, "amex-platinum-travel") == 4_000
+    assert outcome.ledger[3].milestones_triggered == (only_tier,)
+    assert _balance(outcome, 3, "amex-platinum-travel") == 8_000 + 10_000
+    assert not outcome.ledger[0].milestones_triggered
     assert not outcome.ledger[2].milestones_triggered
     assert not outcome.ledger[4].milestones_triggered  # annual: never re-fires
     assert not outcome.ledger[5].milestones_triggered
@@ -644,4 +674,4 @@ def test_spend_bonus_without_threshold_is_excluded(snapshot: CatalogSnapshot) ->
     )
     outcome = simulate(_strategy({SpendCategory.TRAVEL: "hdfc-diners-black"}), context)
     assert all(not entry.milestones_triggered for entry in outcome.ledger)
-    assert _balance(outcome, 2, "hdfc-diners-black") == 69_930  # no +10,000
+    assert _balance(outcome, 2, "hdfc-diners-black") == 43_956  # 3 × 14,652, no +10,000

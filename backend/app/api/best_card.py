@@ -14,11 +14,17 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 
-from app.api.deps import get_snapshot
+from app.api.deps import get_snapshot, get_unverified_ids, payload_digest, tier_digest
+from app.config import ENGINE_VERSION
 from app.domain import CatalogSnapshot, SpendCategory
+from app.valuation import best_card as best_card_engine
+from app.valuation import transfer_math, wallet
 from app.valuation.best_card import BestCardResult, UnknownCard, rank_cards_for_spend
 
 router = APIRouter(prefix="/best-card", tags=["best-card"])
+
+# The code component of the ETag — see deps.payload_digest.
+PAYLOAD_DIGEST = payload_digest(BestCardResult, best_card_engine, transfer_math, wallet)
 
 # There is NO default program, deliberately (CLAUDE.md → *Never Assume the
 # User's Goal*). Omitting `target_program_id` is a legitimate state, not a
@@ -41,6 +47,7 @@ async def best_card_for_spend(
         "answer plus the programs this wallet can reach.",
     ),
     snapshot: CatalogSnapshot = Depends(get_snapshot),
+    unverified_ids: frozenset[UUID] = Depends(get_unverified_ids),
 ) -> BestCardResult | Response:
     # The result is a pure function of (snapshot, query), so the snapshot
     # version plus a digest of the query string is a sound ETag. sha256 and
@@ -48,7 +55,14 @@ async def best_card_for_spend(
     # worker (and every restart) would mint a different ETag for the same
     # query — never a false 304, but never a cache hit either.
     query_digest = hashlib.sha256(request.url.query.encode()).hexdigest()[:12]
-    etag = f'"{snapshot.version}-{query_digest}"'
+    # The provenance tier is part of the answer (needs_verification flags), so
+    # it is part of the ETag too — a re-verified row must not serve a stale 304.
+    # ENGINE_VERSION too: an engine-only change can alter the payload for the
+    # same snapshot and query, and must not be served a stale 304.
+    etag = (
+        f'"{snapshot.version}-{ENGINE_VERSION}-{tier_digest(unverified_ids)}'
+        f'-{query_digest}-{PAYLOAD_DIGEST}"'
+    )
     if request.headers.get("if-none-match") == etag:
         return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": etag})
     response.headers["ETag"] = etag
@@ -60,6 +74,7 @@ async def best_card_for_spend(
             category=category,
             card_ids=card_ids,
             target_program_id=target_program_id,
+            unverified_ids=unverified_ids,
         )
     except UnknownCard as exc:
         # A stale wallet (card removed from the catalog) is the client's to fix.
