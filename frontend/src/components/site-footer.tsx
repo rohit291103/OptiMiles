@@ -29,9 +29,9 @@ const FOOTER_GROUPS = [
   {
     title: "Legal",
     links: [
-      { href: "#", label: "Privacy" },
-      { href: "#", label: "Terms" },
-      { href: "#", label: "Disclosures" },
+      { href: "/privacy", label: "Privacy" },
+      { href: "/terms", label: "Terms" },
+      { href: "/terms#not-advice", label: "Disclosures" },
     ],
   },
 ]
