@@ -27,3 +27,21 @@ def test_health_returns_200_when_snapshot_unavailable(
     assert body["status"] == "ok"
     assert body["engine_version"] == ENGINE_VERSION
     assert body["catalog_snapshot_version"] is None
+
+
+def test_health_answers_head_for_uptime_monitors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Uptime pingers (UptimeRobot's default, cron-job.org's HEAD option) send
+    HEAD, not GET. A 405 there marks the monitor down and gets the keep-awake
+    job auto-disabled, letting the free Render instance fall asleep."""
+
+    async def _boom() -> object:
+        raise RuntimeError("db unreachable")
+
+    monkeypatch.setattr("app.api.health.get_snapshot", _boom)
+    client = TestClient(create_app())
+
+    response = client.head("/health")
+    assert response.status_code == 200
+    assert response.content == b""

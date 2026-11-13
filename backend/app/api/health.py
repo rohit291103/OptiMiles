@@ -1,4 +1,7 @@
-"""GET /health — liveness + catalog snapshot version (build plan §7)."""
+"""GET|HEAD /health — liveness + catalog snapshot version (build plan §7).
+
+HEAD is accepted because uptime monitors that keep the free Render instance
+awake often send HEAD rather than GET; a 405 there reads as "down"."""
 
 import logging
 
@@ -18,7 +21,7 @@ class HealthResponse(BaseModel):
     catalog_snapshot_version: str | None
 
 
-@router.get("/health")
+@router.api_route("/health", methods=["GET", "HEAD"])
 async def health() -> HealthResponse:
     # Liveness must not depend on the DB: report the snapshot version when it
     # loads, but a DB hiccup returns status=ok with a null version, not a 500.
