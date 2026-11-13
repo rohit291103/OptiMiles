@@ -168,9 +168,7 @@ def test_points_exact_beyond_cap_earning_nothing_is_the_cap_itself() -> None:
 def test_points_exact_beyond_cap_at_base_is_unfloored() -> None:
     """Infinia ₹150,100: 1,500×16.65 + 1×3.33 = 24,975 + 3.33 = 24,978.33 —
     exact, NOT floored (callers floor once per card-month)."""
-    assert category_points_exact(150_100, _INFINIA_TRAVEL, Decimal("3.33")) == Decimal(
-        "24978.33"
-    )
+    assert category_points_exact(150_100, _INFINIA_TRAVEL, Decimal("3.33")) == Decimal("24978.33")
 
 
 def test_spend_exactly_at_cap_is_boundary_not_blend() -> None:

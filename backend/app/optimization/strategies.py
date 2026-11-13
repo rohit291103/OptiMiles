@@ -240,8 +240,7 @@ def _build_validated(
         if (
             archetype != StrategyArchetype.CHEAPEST_VIABLE
             and cards_to_acquire
-            and Decimal(estimate.total_miles)
-            <= (Decimal(baseline_claim) * _MEANINGFUL_IMPROVEMENT)
+            and Decimal(estimate.total_miles) <= (Decimal(baseline_claim) * _MEANINGFUL_IMPROVEMENT)
         ):
             continue
 

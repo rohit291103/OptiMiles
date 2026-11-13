@@ -344,8 +344,7 @@ def select_guided_routes(
     tabs), or nothing acquiring achieves it (the existing best-effort +
     adjustment-menu path) — so callers fall back to `select_route_options`."""
     wallet_clears = any(
-        not _misses(entry.simulation) and not entry.strategy.cards_to_acquire
-        for entry in ranked
+        not _misses(entry.simulation) and not entry.strategy.cards_to_acquire for entry in ranked
     )
     if wallet_clears:
         return None
@@ -353,9 +352,7 @@ def select_guided_routes(
     if not pair:
         return None
     routes = list(sorted(pair, key=lambda entry: entry.rank))
-    best_effort = next(
-        (entry for entry in ranked if not entry.strategy.cards_to_acquire), None
-    )
+    best_effort = next((entry for entry in ranked if not entry.strategy.cards_to_acquire), None)
     if best_effort is not None:
         routes.append(best_effort)
     return tuple(routes)
@@ -368,9 +365,7 @@ def _opportunity_index(
     earn detail to a ranked strategy's routing. Empty when no set was given."""
     if opportunities is None:
         return {}
-    return {
-        (o.card_id, o.category_slug): o for o in opportunities.opportunities
-    }
+    return {(o.card_id, o.category_slug): o for o in opportunities.opportunities}
 
 
 class _StoryInputs(BaseModel):
@@ -384,9 +379,7 @@ class _StoryInputs(BaseModel):
     category_labels: dict[tuple[UUID, SpendCategory], str]
 
 
-def _story_inputs(
-    opportunities: OpportunitySet | None, context: PlanningContext
-) -> _StoryInputs:
+def _story_inputs(opportunities: OpportunitySet | None, context: PlanningContext) -> _StoryInputs:
     if opportunities is None:
         return _StoryInputs(all_opportunities=(), currency_names={}, category_labels={})
     snapshot = context.snapshot
@@ -427,9 +420,7 @@ def _details_for(
     }
     if not assignment:
         return ()
-    available = frozenset(
-        {w.card_id for w in context.wallet} | set(strategy.cards_to_acquire)
-    )
+    available = frozenset({w.card_id for w in context.wallet} | set(strategy.cards_to_acquire))
     return allocation_detail(
         assignment,
         context.spend_profile,

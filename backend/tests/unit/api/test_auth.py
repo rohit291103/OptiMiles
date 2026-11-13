@@ -148,9 +148,7 @@ def test_token_without_exp_rejected() -> None:
 def test_alg_none_token_rejected() -> None:
     """An unsigned `alg: none` token must be rejected — no algorithm-confusion
     bypass of the HS256 allowlist."""
-    token = jwt.encode(
-        {"sub": str(uuid4()), "aud": "authenticated"}, None, algorithm="none"
-    )
+    token = jwt.encode({"sub": str(uuid4()), "aud": "authenticated"}, None, algorithm="none")
     with pytest.raises(AuthError):
         user_id_from_token(token, _settings())
 
@@ -160,8 +158,7 @@ def test_wrong_algorithm_rejected() -> None:
     rejected even when signed with the same secret."""
     now = datetime.now(UTC)
     token = jwt.encode(
-        {"sub": str(uuid4()), "aud": "authenticated", "iat": now,
-         "exp": now + timedelta(hours=1)},
+        {"sub": str(uuid4()), "aud": "authenticated", "iat": now, "exp": now + timedelta(hours=1)},
         SECRET,
         algorithm="HS512",  # not in algorithms=["HS256"]
     )

@@ -158,9 +158,7 @@ def category_points_exact(
     over = over_cap_rate(rule, base_rate)  # validates the row even under the cap
     if monthly_spend_inr <= cap:
         return Decimal(monthly_spend_inr) * rule.earn_rate / _HUNDRED
-    return (
-        Decimal(cap) * rule.earn_rate + Decimal(monthly_spend_inr - cap) * over
-    ) / _HUNDRED
+    return (Decimal(cap) * rule.earn_rate + Decimal(monthly_spend_inr - cap) * over) / _HUNDRED
 
 
 def blended_earn_rate(
@@ -174,8 +172,10 @@ def blended_earn_rate(
     """
     if monthly_spend_inr <= 0:
         return rule.earn_rate
-    exact = category_points_exact(monthly_spend_inr, rule, base_rate) * _HUNDRED / Decimal(
-        monthly_spend_inr
+    exact = (
+        category_points_exact(monthly_spend_inr, rule, base_rate)
+        * _HUNDRED
+        / Decimal(monthly_spend_inr)
     )
     if exact == rule.earn_rate:
         return rule.earn_rate  # under the cap: the rule's own rate, unchanged

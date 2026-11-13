@@ -67,9 +67,7 @@ def test_atlas_and_travelone_reward_story(snapshot: CatalogSnapshot) -> None:
         "KrisFlyer",
         "Marriott Bonvoy",
     ]
-    t1_kf = next(
-        link for link in travelone.transfer_links if link.partner_id == KRISFLYER
-    )
+    t1_kf = next(link for link in travelone.transfer_links if link.partner_id == KRISFLYER)
     assert (t1_kf.ratio_from, t1_kf.ratio_to) == (1, 1)
     assert t1_kf.max_transfer_points is None
     assert t1_kf.transfer_fee_inr == 0

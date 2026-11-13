@@ -47,16 +47,12 @@ class FakeEngine:
         return FakeConn()
 
 
-def _client_with_fake_delete(
-    monkeypatch: pytest.MonkeyPatch, *, deleted: bool
-) -> TestClient:
+def _client_with_fake_delete(monkeypatch: pytest.MonkeyPatch, *, deleted: bool) -> TestClient:
     async def fake_delete(conn: object, *, user_id: object, goal_id: object) -> bool:
         return deleted
 
     app = create_app()
-    app.dependency_overrides[get_settings] = lambda: Settings(
-        supabase_jwt_secret=_SECRET
-    )
+    app.dependency_overrides[get_settings] = lambda: Settings(supabase_jwt_secret=_SECRET)
     monkeypatch.setattr("app.api.goals.get_engine", lambda: FakeEngine())
     monkeypatch.setattr("app.api.goals.delete_goal_lineage", fake_delete)
     return TestClient(app)

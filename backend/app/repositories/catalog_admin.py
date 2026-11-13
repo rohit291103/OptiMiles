@@ -229,9 +229,7 @@ def _rows(snapshot: CatalogSnapshot) -> dict[str, list[dict[str, Any]]]:
                 "scope": a.scope.value,
                 "period": a.period.value,
                 "reset_anchor": a.reset_anchor.value,
-                "spend_gate_period": (
-                    a.spend_gate_period.value if a.spend_gate_period else None
-                ),
+                "spend_gate_period": (a.spend_gate_period.value if a.spend_gate_period else None),
             }
             for a in snapshot.lounge_access
         ],

@@ -92,9 +92,7 @@ def enumerate_opportunities(context: PlanningContext) -> OpportunitySet:
             if rule is None:
                 continue  # validate_catalog guarantees a default; belt-and-braces
 
-            effective_rate = blended_earn_rate(
-                item.monthly_spend_inr, rule, card.base_earn_rate
-            )
+            effective_rate = blended_earn_rate(item.monthly_spend_inr, rule, card.base_earn_rate)
             if effective_rate != rule.earn_rate:
                 overflow = (
                     "spend above it earns nothing"

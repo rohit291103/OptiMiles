@@ -340,9 +340,7 @@ _DELETE_LINEAGE_SQL = (
 )
 
 
-async def delete_goal_lineage(
-    conn: AsyncConnection, *, user_id: UUID, goal_id: UUID
-) -> bool:
+async def delete_goal_lineage(conn: AsyncConnection, *, user_id: UUID, goal_id: UUID) -> bool:
     """Delete one of `user_id`'s goals and its stored lineage.
 
     Runs inside whatever transaction the caller opened (`engine.begin()`), so

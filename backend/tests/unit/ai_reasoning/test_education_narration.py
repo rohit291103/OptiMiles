@@ -72,9 +72,7 @@ async def test_known_decimal_rate_is_allowed() -> None:
 
 async def test_catalog_card_outside_wallet_is_a_hallucination() -> None:
     """A real catalog card that is NOT in the wallet must not be cited."""
-    bad = EducationStoryDraft(
-        story="Your Atlas pairs well with the Magnus for Burgundy."
-    )
+    bad = EducationStoryDraft(story="Your Atlas pairs well with the Magnus for Burgundy.")
     model = FakeChatModel(always(bad))
     assert await narrate_education(_facts(), model=model) is None
 

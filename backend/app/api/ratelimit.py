@@ -56,9 +56,7 @@ class RateLimiter:
         """Drop every expired window; keys outside their window carry no
         state worth keeping (a returning client just starts a fresh window)."""
         expired = [
-            key
-            for key, (start, _) in self._windows.items()
-            if now - start >= self.window_seconds
+            key for key, (start, _) in self._windows.items() if now - start >= self.window_seconds
         ]
         for key in expired:
             del self._windows[key]

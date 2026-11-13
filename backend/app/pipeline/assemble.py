@@ -60,9 +60,7 @@ def assemble_recommendation(
     )
 
 
-def _assumed_flags(
-    context: PlanningContext, intent: ParsedGoalIntent | None
-) -> tuple[str, ...]:
+def _assumed_flags(context: PlanningContext, intent: ParsedGoalIntent | None) -> tuple[str, ...]:
     flags: list[str] = []
     if context.spend_profile.assumed:
         flags.append("spend_profile")

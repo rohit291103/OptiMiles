@@ -113,18 +113,27 @@ def test_best_value_is_top_acquisition_composite_not_top_rank() -> None:
       B: eff 40,  cost 100, risk 100 → (30×40 + 50×100 + 20×100)/100 = 82.00
     B is best_value despite rank 2; the ₹10,000 route is cheapest by fee."""
     a = _ranked(
-        "onc-a", rank=1, archetype=StrategyArchetype.ONE_NEW_CARD,
-        acquire=(BURGUNDY,), breakdown=_breakdown(efficiency="100", cost="0", risk="80"),
+        "onc-a",
+        rank=1,
+        archetype=StrategyArchetype.ONE_NEW_CARD,
+        acquire=(BURGUNDY,),
+        breakdown=_breakdown(efficiency="100", cost="0", risk="80"),
         fees=30_000,
     )
     b = _ranked(
-        "onc-b", rank=2, archetype=StrategyArchetype.ONE_NEW_CARD,
-        acquire=(INFINIA,), breakdown=_breakdown(efficiency="40", cost="100", risk="100"),
+        "onc-b",
+        rank=2,
+        archetype=StrategyArchetype.ONE_NEW_CARD,
+        acquire=(INFINIA,),
+        breakdown=_breakdown(efficiency="40", cost="100", risk="100"),
         fees=12_500,
     )
     cheap = _ranked(
-        "cv", rank=3, archetype=StrategyArchetype.CHEAPEST_VIABLE,
-        acquire=(DCB,), breakdown=_breakdown(efficiency="20", cost="100", risk="90"),
+        "cv",
+        rank=3,
+        archetype=StrategyArchetype.CHEAPEST_VIABLE,
+        acquire=(DCB,),
+        breakdown=_breakdown(efficiency="20", cost="100", risk="90"),
         fees=10_000,
     )
     pair = select_acquisition_pair((a, b, cheap), ACQ)
@@ -142,13 +151,19 @@ def test_cheapest_survives_archetype_dedupe_by_fee() -> None:
       A: eff 100, cost 100, risk 100 → 100.00 (best_value, ₹30,000)
       B: eff 0,   cost 100, risk 50  → 60.00  (cheapest,   ₹10,000)"""
     a = _ranked(
-        "onc-a", rank=1, archetype=StrategyArchetype.ONE_NEW_CARD,
-        acquire=(BURGUNDY,), breakdown=_breakdown(efficiency="100", cost="100", risk="100"),
+        "onc-a",
+        rank=1,
+        archetype=StrategyArchetype.ONE_NEW_CARD,
+        acquire=(BURGUNDY,),
+        breakdown=_breakdown(efficiency="100", cost="100", risk="100"),
         fees=30_000,
     )
     b = _ranked(
-        "onc-b", rank=2, archetype=StrategyArchetype.ONE_NEW_CARD,
-        acquire=(DCB,), breakdown=_breakdown(efficiency="0", cost="100", risk="50"),
+        "onc-b",
+        rank=2,
+        archetype=StrategyArchetype.ONE_NEW_CARD,
+        acquire=(DCB,),
+        breakdown=_breakdown(efficiency="0", cost="100", risk="50"),
         fees=10_000,
     )
     pair = select_acquisition_pair((a, b), ACQ)
@@ -163,10 +178,20 @@ def test_ties_break_by_rank_deterministically() -> None:
     rank breaks both ties (first in ranked order wins), collapsing the pair
     onto the single rank-1 route."""
     same = _breakdown(efficiency="50", cost="50", risk="50")
-    a = _ranked("onc-a", rank=1, archetype=StrategyArchetype.ONE_NEW_CARD,
-                acquire=(BURGUNDY,), breakdown=same)
-    b = _ranked("onc-b", rank=2, archetype=StrategyArchetype.ONE_NEW_CARD,
-                acquire=(INFINIA,), breakdown=same)
+    a = _ranked(
+        "onc-a",
+        rank=1,
+        archetype=StrategyArchetype.ONE_NEW_CARD,
+        acquire=(BURGUNDY,),
+        breakdown=same,
+    )
+    b = _ranked(
+        "onc-b",
+        rank=2,
+        archetype=StrategyArchetype.ONE_NEW_CARD,
+        acquire=(INFINIA,),
+        breakdown=same,
+    )
     pair = select_acquisition_pair((a, b), ACQ)
     assert [(p.strategy.strategy_id, p.acquisition_role) for p in pair] == [
         ("onc-a", "cheapest_and_best_value"),
@@ -180,12 +205,18 @@ def test_same_acquisition_set_collapses_to_combined_label() -> None:
       cv:  eff 0,  cost 100, risk 50  → (0 + 5000 + 1000)/100  = 60.00
       onc: eff 40, cost 100, risk 100 → (1200 + 5000 + 2000)/100 = 82.00"""
     onc = _ranked(
-        "onc", rank=1, archetype=StrategyArchetype.ONE_NEW_CARD,
-        acquire=(DCB,), breakdown=_breakdown(efficiency="40", cost="100", risk="100"),
+        "onc",
+        rank=1,
+        archetype=StrategyArchetype.ONE_NEW_CARD,
+        acquire=(DCB,),
+        breakdown=_breakdown(efficiency="40", cost="100", risk="100"),
     )
     cv = _ranked(
-        "cv", rank=2, archetype=StrategyArchetype.CHEAPEST_VIABLE,
-        acquire=(DCB,), breakdown=_breakdown(efficiency="0", cost="100", risk="50"),
+        "cv",
+        rank=2,
+        archetype=StrategyArchetype.CHEAPEST_VIABLE,
+        acquire=(DCB,),
+        breakdown=_breakdown(efficiency="0", cost="100", risk="50"),
     )
     pair = select_acquisition_pair((onc, cv), ACQ)
     assert len(pair) == 1
@@ -203,13 +234,19 @@ def test_same_set_collapse_keeps_higher_composite_of_distinct_plans() -> None:
     onc wins despite cv being the cheaper plan — same card, same route to the
     user, and the better plan for it."""
     onc = _ranked(
-        "onc", rank=1, archetype=StrategyArchetype.ONE_NEW_CARD,
-        acquire=(DCB,), breakdown=_breakdown(efficiency="40", cost="100", risk="100"),
+        "onc",
+        rank=1,
+        archetype=StrategyArchetype.ONE_NEW_CARD,
+        acquire=(DCB,),
+        breakdown=_breakdown(efficiency="40", cost="100", risk="100"),
         fees=10_000,
     )
     cv = _ranked(
-        "cv", rank=2, archetype=StrategyArchetype.CHEAPEST_VIABLE,
-        acquire=(DCB,), breakdown=_breakdown(efficiency="0", cost="100", risk="50"),
+        "cv",
+        rank=2,
+        archetype=StrategyArchetype.CHEAPEST_VIABLE,
+        acquire=(DCB,),
+        breakdown=_breakdown(efficiency="0", cost="100", risk="50"),
         fees=9_000,
     )
     pair = select_acquisition_pair((onc, cv), ACQ)
@@ -222,13 +259,19 @@ def test_goal_missing_acquisitions_are_never_offered() -> None:
     """The pair is a promise ('these clear your goal') — a goal-missing
     acquisition can't be in it, whatever its scores."""
     missing_cv = _ranked(
-        "cv", rank=1, archetype=StrategyArchetype.CHEAPEST_VIABLE,
-        acquire=(DCB,), breakdown=_breakdown(efficiency="100", cost="100", risk="100"),
+        "cv",
+        rank=1,
+        archetype=StrategyArchetype.CHEAPEST_VIABLE,
+        acquire=(DCB,),
+        breakdown=_breakdown(efficiency="100", cost="100", risk="100"),
         misses=True,
     )
     missing_onc = _ranked(
-        "onc", rank=2, archetype=StrategyArchetype.ONE_NEW_CARD,
-        acquire=(BURGUNDY,), breakdown=_breakdown(efficiency="100", cost="100", risk="100"),
+        "onc",
+        rank=2,
+        archetype=StrategyArchetype.ONE_NEW_CARD,
+        acquire=(BURGUNDY,),
+        breakdown=_breakdown(efficiency="100", cost="100", risk="100"),
         misses=True,
     )
     assert select_acquisition_pair((missing_cv, missing_onc), ACQ) == ()
@@ -236,8 +279,11 @@ def test_goal_missing_acquisitions_are_never_offered() -> None:
 
 def test_single_sided_pair_when_only_one_archetype_exists() -> None:
     cheap = _ranked(
-        "cv", rank=1, archetype=StrategyArchetype.CHEAPEST_VIABLE,
-        acquire=(DCB,), breakdown=_breakdown(efficiency="20", cost="100", risk="90"),
+        "cv",
+        rank=1,
+        archetype=StrategyArchetype.CHEAPEST_VIABLE,
+        acquire=(DCB,),
+        breakdown=_breakdown(efficiency="20", cost="100", risk="90"),
     )
     pair = select_acquisition_pair((cheap,), ACQ)
     assert [(p.strategy.strategy_id, p.acquisition_role) for p in pair] == [
@@ -250,9 +296,13 @@ def test_single_sided_pair_when_only_one_archetype_exists() -> None:
 
 def _wallet_only(strategy_id: str, *, rank: int, misses: bool) -> RankedStrategy:
     return _ranked(
-        strategy_id, rank=rank, archetype=StrategyArchetype.STATUS_QUO_OPTIMIZED,
-        acquire=(), breakdown=_breakdown(efficiency="50", cost="100", risk="100"),
-        misses=misses, fees=0,
+        strategy_id,
+        rank=rank,
+        archetype=StrategyArchetype.STATUS_QUO_OPTIMIZED,
+        acquire=(),
+        breakdown=_breakdown(efficiency="50", cost="100", risk="100"),
+        misses=misses,
+        fees=0,
     )
 
 
@@ -261,8 +311,11 @@ def test_guided_routes_stand_down_when_wallet_clears() -> None:
     presentation (hero + quiet upgrade tabs), no pair reshaping."""
     wallet_win = _wallet_only("sq", rank=1, misses=False)
     onc = _ranked(
-        "onc", rank=2, archetype=StrategyArchetype.ONE_NEW_CARD,
-        acquire=(BURGUNDY,), breakdown=_breakdown(efficiency="100", cost="0", risk="80"),
+        "onc",
+        rank=2,
+        archetype=StrategyArchetype.ONE_NEW_CARD,
+        acquire=(BURGUNDY,),
+        breakdown=_breakdown(efficiency="100", cost="0", risk="80"),
     )
     assert select_guided_routes((wallet_win, onc), ACQ) is None
 
@@ -271,13 +324,19 @@ def test_guided_routes_pair_plus_wallet_best_effort() -> None:
     """Wallet misses, acquisitions clear → the labeled pair (original rank
     order) plus the wallet best-effort route last, for the verdict hero."""
     onc = _ranked(
-        "onc", rank=1, archetype=StrategyArchetype.ONE_NEW_CARD,
-        acquire=(BURGUNDY,), breakdown=_breakdown(efficiency="100", cost="0", risk="80"),
+        "onc",
+        rank=1,
+        archetype=StrategyArchetype.ONE_NEW_CARD,
+        acquire=(BURGUNDY,),
+        breakdown=_breakdown(efficiency="100", cost="0", risk="80"),
         fees=30_000,
     )
     cv = _ranked(
-        "cv", rank=2, archetype=StrategyArchetype.CHEAPEST_VIABLE,
-        acquire=(DCB,), breakdown=_breakdown(efficiency="20", cost="100", risk="90"),
+        "cv",
+        rank=2,
+        archetype=StrategyArchetype.CHEAPEST_VIABLE,
+        acquire=(DCB,),
+        breakdown=_breakdown(efficiency="20", cost="100", risk="90"),
         fees=10_000,
     )
     best_effort = _wallet_only("sq", rank=3, misses=True)
@@ -291,13 +350,19 @@ def test_guided_routes_pair_only_when_no_wallet_route_exists() -> None:
     """Empty wallet: nothing non-acquiring was generable — the pair stands
     alone (education folds into the strategy output, decision 13)."""
     onc = _ranked(
-        "onc", rank=1, archetype=StrategyArchetype.ONE_NEW_CARD,
-        acquire=(BURGUNDY,), breakdown=_breakdown(efficiency="100", cost="0", risk="80"),
+        "onc",
+        rank=1,
+        archetype=StrategyArchetype.ONE_NEW_CARD,
+        acquire=(BURGUNDY,),
+        breakdown=_breakdown(efficiency="100", cost="0", risk="80"),
         fees=30_000,
     )
     cv = _ranked(
-        "cv", rank=2, archetype=StrategyArchetype.CHEAPEST_VIABLE,
-        acquire=(DCB,), breakdown=_breakdown(efficiency="20", cost="100", risk="90"),
+        "cv",
+        rank=2,
+        archetype=StrategyArchetype.CHEAPEST_VIABLE,
+        acquire=(DCB,),
+        breakdown=_breakdown(efficiency="20", cost="100", risk="90"),
         fees=10_000,
     )
     routes = select_guided_routes((onc, cv), ACQ)
@@ -310,8 +375,11 @@ def test_guided_routes_stand_down_without_an_achieving_acquisition() -> None:
     best-effort + adjustment-menu path stays the answer."""
     best_effort = _wallet_only("sq", rank=1, misses=True)
     missing_onc = _ranked(
-        "onc", rank=2, archetype=StrategyArchetype.ONE_NEW_CARD,
-        acquire=(BURGUNDY,), breakdown=_breakdown(efficiency="50", cost="50", risk="50"),
+        "onc",
+        rank=2,
+        archetype=StrategyArchetype.ONE_NEW_CARD,
+        acquire=(BURGUNDY,),
+        breakdown=_breakdown(efficiency="50", cost="50", risk="50"),
         misses=True,
     )
     assert select_guided_routes((best_effort, missing_onc), ACQ) is None
@@ -333,8 +401,13 @@ def test_v2_config_carries_acquisition_profile() -> None:
     # Base ranking weights unchanged from v1 (the profile is additive).
     v1 = load_ranking_weights(Path("config/ranking-weights-v1.yaml"))
     for field in (
-        "goal_achievement", "efficiency", "cost", "simplicity",
-        "portfolio_utilization", "risk", "near_tie_threshold",
+        "goal_achievement",
+        "efficiency",
+        "cost",
+        "simplicity",
+        "portfolio_utilization",
+        "risk",
+        "near_tie_threshold",
     ):
         assert getattr(weights, field) == getattr(v1, field)
 

@@ -255,9 +255,7 @@ def test_allocation_details_absent_without_opportunities(
     assert ranked.allocation_details == ()
 
 
-def test_allocation_details_attached_from_opportunities(
-    snapshot: CatalogSnapshot, weights
-) -> None:  # type: ignore[no-untyped-def]
+def test_allocation_details_attached_from_opportunities(snapshot: CatalogSnapshot, weights) -> None:  # type: ignore[no-untyped-def]
     """Given the real OpportunitySet, each ranked strategy gains per-category
     earn detail resolved from the priced opportunities for its routing."""
     from app.valuation.opportunities import enumerate_opportunities
@@ -280,9 +278,7 @@ def test_allocation_details_attached_from_opportunities(
     assert travel.effective_miles_per_100inr > 0
 
 
-def test_allocation_details_enriched_with_story_fields(
-    snapshot: CatalogSnapshot, weights
-) -> None:  # type: ignore[no-untyped-def]
+def test_allocation_details_enriched_with_story_fields(snapshot: CatalogSnapshot, weights) -> None:  # type: ignore[no-untyped-def]
     """rank() threads the story enrichment: currency names from the snapshot,
     transfer ratios from the priced path, and the runner-up comparison scoped
     to the plan's own cards (wallet Infinia + acquired Burgundy)."""

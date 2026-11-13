@@ -303,9 +303,7 @@ def test_display_names_resolve_from_snapshot(snapshot: CatalogSnapshot) -> None:
         )
     )
     assert detail.strategy is not None
-    card_names, partner_names = display_names(
-        detail.strategy, detail.strategy_options, snapshot
-    )
+    card_names, partner_names = display_names(detail.strategy, detail.strategy_options, snapshot)
     assert card_names[infinia] == "Infinia Metal"
     assert "KrisFlyer" in partner_names[krisflyer]
 
@@ -352,9 +350,7 @@ def test_display_names_skip_unknown_ids(snapshot: CatalogSnapshot) -> None:
     are omitted from the maps (client falls back), never invented."""
     detail = detail_from_row(_row())  # random uuids, not in the seed catalog
     assert detail.strategy is not None
-    card_names, partner_names = display_names(
-        detail.strategy, detail.strategy_options, snapshot
-    )
+    card_names, partner_names = display_names(detail.strategy, detail.strategy_options, snapshot)
     assert card_names == {}
     assert partner_names == {}
 
@@ -370,9 +366,7 @@ def test_goal_detail_requires_auth() -> None:
     assert response.status_code == 401
 
 
-def test_unknown_goal_is_404(
-    monkeypatch: pytest.MonkeyPatch, snapshot: CatalogSnapshot
-) -> None:
+def test_unknown_goal_is_404(monkeypatch: pytest.MonkeyPatch, snapshot: CatalogSnapshot) -> None:
     """A goal that doesn't exist — or belongs to someone else — is a 404; the
     scoped query makes the two cases deliberately indistinguishable."""
 
@@ -411,14 +405,10 @@ def test_unknown_goal_is_404(
     from app.api import deps
 
     app = create_app()
-    app.dependency_overrides[get_settings] = lambda: Settings(
-        supabase_jwt_secret=secret
-    )
+    app.dependency_overrides[get_settings] = lambda: Settings(supabase_jwt_secret=secret)
     app.dependency_overrides[deps.get_snapshot] = lambda: snapshot
     monkeypatch.setattr("app.api.goals.get_engine", lambda: FakeEngine())
     with TestClient(app) as client:
-        response = client.get(
-            f"/v1/goals/{uuid4()}", headers={"Authorization": f"Bearer {token}"}
-        )
+        response = client.get(f"/v1/goals/{uuid4()}", headers={"Authorization": f"Bearer {token}"})
     app.dependency_overrides.clear()
     assert response.status_code == 404

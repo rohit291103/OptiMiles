@@ -211,9 +211,7 @@ def _build_tiers(
                 miles=option.simulation.miles_at_target_date,
                 card_fees_inr=option.simulation.card_fees_inr,
                 acquire_names=tuple(
-                    names_by_card[c]
-                    for c in option.strategy.cards_to_acquire
-                    if c in names_by_card
+                    names_by_card[c] for c in option.strategy.cards_to_acquire if c in names_by_card
                 ),
                 is_recommended=is_recommended,
             )
@@ -354,9 +352,7 @@ def _prompt(payload: NarrationPayload) -> str:
             )
             for tier in payload.comparison:
                 add = (
-                    f"add {', '.join(tier.acquire_names)}"
-                    if tier.acquire_names
-                    else "no new cards"
+                    f"add {', '.join(tier.acquire_names)}" if tier.acquire_names else "no new cards"
                 )
                 mark = " [recommended]" if tier.is_recommended else ""
                 lines.append(

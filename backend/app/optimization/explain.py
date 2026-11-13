@@ -53,9 +53,7 @@ from app.domain import (
 )
 from app.optimization.allocation import Assignment, ClaimedEstimate, claimed_estimate
 
-RunnerUpReason = Literal[
-    "transfer_cap", "milestone", "fewer_total", "equal_total", "route_shape"
-]
+RunnerUpReason = Literal["transfer_cap", "milestone", "fewer_total", "equal_total", "route_shape"]
 
 
 def _floor(value: Decimal) -> int:
@@ -90,9 +88,7 @@ def allocation_detail(
     would GAIN is attributed `route_shape` — declining it IS those routes'
     design. On hill-climbed routes a gaining swap is a search artifact, not a
     design choice, so no cause is asserted (fields stay None)."""
-    spend_by_category = {
-        item.category_slug: item.monthly_spend_inr for item in spend_profile.items
-    }
+    spend_by_category = {item.category_slug: item.monthly_spend_inr for item in spend_profile.items}
     # The current plan's estimate is shared by every row's counterfactual —
     # computed once, lazily (only when some row actually needs attribution).
     current_estimate: ClaimedEstimate | None = None
@@ -104,16 +100,13 @@ def allocation_detail(
         monthly_miles = _floor(
             Decimal(monthly_spend) * opportunity.effective_miles_per_100inr / 100
         )
-        runner_up = _runner_up(
-            category, opportunity.card_id, all_opportunities, available_card_ids
-        )
+        runner_up = _runner_up(category, opportunity.card_id, all_opportunities, available_card_ids)
         reason: RunnerUpReason | None = None
         delta: int | None = None
         if (
             context is not None
             and runner_up is not None
-            and runner_up.effective_miles_per_100inr
-            > opportunity.effective_miles_per_100inr
+            and runner_up.effective_miles_per_100inr > opportunity.effective_miles_per_100inr
         ):
             if current_estimate is None:
                 current_estimate = claimed_estimate(
@@ -140,9 +133,7 @@ def allocation_detail(
                 currency_name=(currency_names or {}).get(opportunity.card_id),
                 transfer_ratio_from=opportunity.transfer_path.ratio_from,
                 transfer_ratio_to=opportunity.transfer_path.ratio_to,
-                category_label=(category_labels or {}).get(
-                    (opportunity.card_id, category)
-                ),
+                category_label=(category_labels or {}).get((opportunity.card_id, category)),
                 runner_up_card_id=runner_up.card_id if runner_up else None,
                 runner_up_miles_per_100inr=(
                     runner_up.effective_miles_per_100inr if runner_up else None
@@ -222,17 +213,13 @@ def _runner_up(
     return max(candidates, key=lambda o: (o.effective_miles_per_100inr, str(o.card_id)))
 
 
-def card_monthly_points(
-    assignment: Assignment, spend_profile: SpendProfile
-) -> dict[UUID, int]:
+def card_monthly_points(assignment: Assignment, spend_profile: SpendProfile) -> dict[UUID, int]:
     """Honest per-card monthly points: exact Decimal sum across all categories
     routed to a card, floored ONCE (the engine's contract — matches
     `allocation.py` `_card_monthly` and the projector's per-card-month floor).
     This, not the sum of per-category `monthly_points` rows, is the figure the
     UI shows as a card's monthly earn."""
-    spend_by_category = {
-        item.category_slug: item.monthly_spend_inr for item in spend_profile.items
-    }
+    spend_by_category = {item.category_slug: item.monthly_spend_inr for item in spend_profile.items}
     exact_by_card: dict[UUID, Decimal] = {}
     for category, opportunity in assignment.items():
         spend = spend_by_category.get(category, 0)

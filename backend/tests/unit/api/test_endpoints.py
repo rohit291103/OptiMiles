@@ -202,9 +202,7 @@ def test_simulate_wallet_infeasible_returns_labeled_acquisition_pair(
     roles = [r["acquisition_role"] for r in routes if r is not None]
     labeled = [r for r in roles if r is not None]
     assert labeled, "empty wallet can't clear — the pair must be labeled"
-    assert set(labeled) == {"cheapest", "best_value"} or set(labeled) == {
-        "cheapest_and_best_value"
-    }
+    assert set(labeled) == {"cheapest", "best_value"} or set(labeled) == {"cheapest_and_best_value"}
 
 
 # ── /simulations/probe (guided-flow slice 3) ─────────────────────────────
@@ -226,9 +224,7 @@ def test_probe_hopeless_goal_returns_adjustment_menu(client: TestClient) -> None
     intent = dict(_feasible_body()["intent"], num_passengers=2)
     body = {
         "intent": intent,
-        "wallet": [
-            {"card_id": str(seed_id("card", "axis-atlas")), "current_points_balance": 0}
-        ],
+        "wallet": [{"card_id": str(seed_id("card", "axis-atlas")), "current_points_balance": 0}],
         "spend_profile": [{"category_slug": "travel", "monthly_spend_inr": 100000}],
         "constraints": {"no_new_cards": True},
     }
@@ -254,9 +250,7 @@ def test_education_returns_wallet_reward_story(client: TestClient) -> None:
     straight off the snapshot (no pipeline run)."""
     atlas = str(seed_id("card", "axis-atlas"))
     travelone = str(seed_id("card", "hsbc-travelone"))
-    response = client.get(
-        "/v1/catalog/education", params={"card_ids": [atlas, travelone]}
-    )
+    response = client.get("/v1/catalog/education", params={"card_ids": [atlas, travelone]})
     assert response.status_code == 200
     body = response.json()
     assert body["catalog_snapshot_version"]
@@ -327,9 +321,7 @@ def test_cors_allows_configured_frontend_origin(client: TestClient) -> None:
     """A simulate call from the Next dev origin gets the allow-origin header,
     so the browser doesn't block the response."""
     origin = "http://localhost:3000"
-    response = client.post(
-        "/v1/simulations", json=_feasible_body(), headers={"Origin": origin}
-    )
+    response = client.post("/v1/simulations", json=_feasible_body(), headers={"Origin": origin})
     assert response.status_code == 200
     assert response.headers["access-control-allow-origin"] == origin
 
@@ -379,8 +371,7 @@ def test_my_goals_rejects_out_of_range_page_params(snapshot: CatalogSnapshot) ->
     app.dependency_overrides[get_settings] = lambda: Settings(supabase_jwt_secret=secret)
     now = datetime.now(UTC)
     token = jwt.encode(
-        {"sub": str(uuid4()), "aud": "authenticated", "iat": now,
-         "exp": now + timedelta(hours=1)},
+        {"sub": str(uuid4()), "aud": "authenticated", "iat": now, "exp": now + timedelta(hours=1)},
         secret,
         algorithm="HS256",
     )
@@ -405,14 +396,11 @@ def test_recommendation_save_with_valid_token(snapshot: CatalogSnapshot) -> None
     app = create_app()
     app.dependency_overrides[deps.get_snapshot] = lambda: snapshot
     app.dependency_overrides[deps.get_model] = lambda: None
-    app.dependency_overrides[get_settings] = lambda: Settings(
-        supabase_jwt_secret=secret
-    )
+    app.dependency_overrides[get_settings] = lambda: Settings(supabase_jwt_secret=secret)
 
     now = datetime.now(UTC)
     token = jwt.encode(
-        {"sub": str(uuid4()), "aud": "authenticated", "iat": now,
-         "exp": now + timedelta(hours=1)},
+        {"sub": str(uuid4()), "aud": "authenticated", "iat": now, "exp": now + timedelta(hours=1)},
         secret,
         algorithm="HS256",
     )
@@ -468,13 +456,10 @@ def test_successful_save_returns_the_goal_id(
     app = create_app()
     app.dependency_overrides[deps.get_snapshot] = lambda: snapshot
     app.dependency_overrides[deps.get_model] = lambda: None
-    app.dependency_overrides[get_settings] = lambda: Settings(
-        supabase_jwt_secret=secret
-    )
+    app.dependency_overrides[get_settings] = lambda: Settings(supabase_jwt_secret=secret)
     now = datetime.now(UTC)
     token = jwt.encode(
-        {"sub": str(uuid4()), "aud": "authenticated", "iat": now,
-         "exp": now + timedelta(hours=1)},
+        {"sub": str(uuid4()), "aud": "authenticated", "iat": now, "exp": now + timedelta(hours=1)},
         secret,
         algorithm="HS256",
     )

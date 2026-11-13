@@ -87,9 +87,7 @@ def _spend() -> SpendProfile:
 
 def test_allocation_detail_carries_per_category_earn_facts() -> None:
     assignment: Assignment = {
-        SpendCategory.TRAVEL: _opportunity(
-            SpendCategory.TRAVEL, earn_rate="5.0", eff="4.0"
-        ),
+        SpendCategory.TRAVEL: _opportunity(SpendCategory.TRAVEL, earn_rate="5.0", eff="4.0"),
         SpendCategory.DINING: _opportunity(
             SpendCategory.DINING, earn_rate="5.0", eff="4.0", notes=("Cap ₹1L/mo",)
         ),
@@ -134,9 +132,7 @@ def test_allocation_detail_floors_fractional_points() -> None:
         SpendCategory.TRAVEL: _opportunity(SpendCategory.TRAVEL, earn_rate="5", eff="4"),
     }
     spend = SpendProfile(
-        items=(
-            SpendProfileItem(category_slug=SpendCategory.TRAVEL, monthly_spend_inr=33_333),
-        )
+        items=(SpendProfileItem(category_slug=SpendCategory.TRAVEL, monthly_spend_inr=33_333),)
     )
     rows = allocation_detail(assignment, spend)
     assert rows[0].monthly_points == 1_666
@@ -209,9 +205,7 @@ def test_allocation_detail_runner_up_is_best_other_available_card() -> None:
     rows = allocation_detail(
         {SpendCategory.TRAVEL: chosen},
         SpendProfile(
-            items=(
-                SpendProfileItem(category_slug=SpendCategory.TRAVEL, monthly_spend_inr=40_000),
-            )
+            items=(SpendProfileItem(category_slug=SpendCategory.TRAVEL, monthly_spend_inr=40_000),)
         ),
         all_opportunities=(chosen, other_opp, stronger_but_unavailable),
         available_card_ids=frozenset({CARD, other}),
@@ -226,9 +220,7 @@ def test_allocation_detail_runner_up_absent_without_another_card() -> None:
     rows = allocation_detail(
         {SpendCategory.TRAVEL: chosen},
         SpendProfile(
-            items=(
-                SpendProfileItem(category_slug=SpendCategory.TRAVEL, monthly_spend_inr=40_000),
-            )
+            items=(SpendProfileItem(category_slug=SpendCategory.TRAVEL, monthly_spend_inr=40_000),)
         ),
         all_opportunities=(chosen,),
         available_card_ids=frozenset({CARD}),
@@ -441,9 +433,7 @@ def test_single_card_route_counterfactual_uses_fewest_actions_basis(
         travel = 94,200. Δ = 72,600 − 94,200 = −21,600.
       (The default basis would say −11,600 — a number inconsistent with the
       route's own claimed total.)"""
-    context = _real_context(
-        snapshot, (ATLAS, TRAVELONE), travel=150_000, dining=30_000
-    ).model_copy(
+    context = _real_context(snapshot, (ATLAS, TRAVELONE), travel=150_000, dining=30_000).model_copy(
         update={
             "wallet": (
                 WalletCard(card_id=ATLAS, current_points_balance=5_000),

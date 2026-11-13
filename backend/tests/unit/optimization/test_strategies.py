@@ -359,9 +359,7 @@ def test_cheapest_viable_tries_every_acquirable_card_not_just_the_best_rate(
             num_passengers=1,
         )
     )
-    dcb = next(
-        (c for c in candidates if c.cards_to_acquire == (_card("hdfc-diners-black"),)), None
-    )
+    dcb = next((c for c in candidates if c.cards_to_acquire == (_card("hdfc-diners-black"),)), None)
     assert dcb is not None
     assert dcb.cards_used == (_card("hdfc-diners-black"),)
     assert dcb.claimed_total_miles == 84_249
@@ -408,9 +406,7 @@ def test_cheapest_viable_survives_br02_when_the_wallet_baseline_is_already_stron
             num_passengers=1,
         )
     )
-    dcb = next(
-        (c for c in candidates if c.cards_to_acquire == (_card("hdfc-diners-black"),)), None
-    )
+    dcb = next((c for c in candidates if c.cards_to_acquire == (_card("hdfc-diners-black"),)), None)
     assert dcb is not None
     assert dcb.claimed_total_miles == 51_282
     assert dcb.claimed_total_miles >= 45_000  # clears the goal despite not beating baseline+5%
@@ -452,10 +448,7 @@ def test_cheapest_viable_respects_no_new_cards_and_fee_cap(snapshot: CatalogSnap
     candidates = _generate(capped)
     assert candidates  # best-effort acquisitions within the cap now surface
     required = capped.requirement.miles_required_total
-    fees = {
-        a.card_id: a.annual_fee_inr
-        for a in enumerate_opportunities(capped).card_aggregates
-    }
+    fees = {a.card_id: a.annual_fee_inr for a in enumerate_opportunities(capped).card_aggregates}
     for candidate in candidates:
         assert sum(fees[c] for c in candidate.cards_to_acquire) <= 5_000
         assert candidate.claimed_total_miles < required

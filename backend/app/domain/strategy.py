@@ -89,9 +89,9 @@ class StrategyAllocationDetail(BaseModel):
     runner_up_miles_per_100inr: Decimal | None = Field(
         default=None, description="That runner-up's effective miles per ₹100 (Stage-5 value)"
     )
-    runner_up_reason: Literal[
-        "transfer_cap", "milestone", "fewer_total", "equal_total", "route_shape"
-    ] | None = Field(
+    runner_up_reason: (
+        Literal["transfer_cap", "milestone", "fewer_total", "equal_total", "route_shape"] | None
+    ) = Field(
         default=None,
         description="Why a HIGHER-rated runner-up still lost this category, verified "
         "by re-estimating the whole plan with the category swapped: 'transfer_cap' "

@@ -202,9 +202,7 @@ async def get_saved_goal(
         reasoning=row["reasoning"],
         action_items=row["action_items"],
         confidence_score=(
-            float(row["confidence_score"])
-            if row["confidence_score"] is not None
-            else None
+            float(row["confidence_score"]) if row["confidence_score"] is not None else None
         ),
         model_version=row["model_version"],
         catalog_snapshot_version=row["catalog_snapshot_version"],
@@ -224,9 +222,7 @@ async def list_saved_goals(
     recommendation summary. Empty tuple when the user has saved nothing.
     Paged (`limit`/`offset`, newest-first with an id tie-break for stable
     pages) so the list query is never unbounded; the API bounds `limit`."""
-    result = await conn.execute(
-        _LIST_SQL, {"user_id": user_id, "limit": limit, "offset": offset}
-    )
+    result = await conn.execute(_LIST_SQL, {"user_id": user_id, "limit": limit, "offset": offset})
     rows = result.mappings().all()
     return tuple(
         SavedGoalRow(
@@ -242,9 +238,7 @@ async def list_saved_goals(
             partner_id=row["partner_id"],
             summary=row["summary"],
             confidence_score=(
-                float(row["confidence_score"])
-                if row["confidence_score"] is not None
-                else None
+                float(row["confidence_score"]) if row["confidence_score"] is not None else None
             ),
             catalog_snapshot_version=row["catalog_snapshot_version"],
         )

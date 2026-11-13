@@ -107,9 +107,7 @@ async def test_rows_map_onto_saved_goal_faithfully() -> None:
 async def test_goal_without_recommendation_still_lists() -> None:
     """A LEFT JOIN miss (goal saved, no recommendation row) leaves the
     recommendation fields NULL — the goal must still appear, not vanish."""
-    conn = CapturingConn(
-        [_row(summary=None, confidence_score=None, catalog_snapshot_version=None)]
-    )
+    conn = CapturingConn([_row(summary=None, confidence_score=None, catalog_snapshot_version=None)])
     goals = await list_saved_goals(conn, user_id=uuid4())  # type: ignore[arg-type]
 
     assert len(goals) == 1

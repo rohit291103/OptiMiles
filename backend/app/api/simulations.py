@@ -72,9 +72,7 @@ async def probe_feasibility(
     but no candidates, simulation, or narration: just the Stage-6 bound-check
     verdict with its adjustment menu, fast enough to run invisibly right after
     the total-spend step."""
-    spend = (
-        SpendProfile(items=request.spend_items()) if request.spend_profile else None
-    )
+    spend = SpendProfile(items=request.spend_items()) if request.spend_profile else None
     outcome = await run_feasibility_probe(
         text=request.text,
         intent=request.intent,

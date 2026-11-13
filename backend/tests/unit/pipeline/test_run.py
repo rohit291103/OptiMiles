@@ -131,8 +131,9 @@ async def test_determinism_byte_identical_replay(snapshot: CatalogSnapshot) -> N
     second = await once()
     # Goal id is minted per run; everything downstream of the fixed user must
     # match. Compare the full model dump minus the two minted ids.
-    assert first.model_dump(exclude={"goal": {"id"}, "requirement": {"goal_id"}}) == \
-        second.model_dump(exclude={"goal": {"id"}, "requirement": {"goal_id"}})
+    assert first.model_dump(
+        exclude={"goal": {"id"}, "requirement": {"goal_id"}}
+    ) == second.model_dump(exclude={"goal": {"id"}, "requirement": {"goal_id"}})
 
 
 async def test_from_context_is_byte_identical(snapshot: CatalogSnapshot) -> None:

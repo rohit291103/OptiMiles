@@ -64,9 +64,7 @@ def test_expired_windows_are_pruned_so_memory_stays_bounded() -> None:
     limiter must not accumulate one entry per key forever — expired windows
     are dropped once the table passes the prune threshold."""
     clock = Clock()
-    limiter = RateLimiter(
-        max_requests=1, window_seconds=60, clock=clock, prune_threshold=100
-    )
+    limiter = RateLimiter(max_requests=1, window_seconds=60, clock=clock, prune_threshold=100)
     for i in range(150):
         limiter.allow(f"10.0.0.{i}")
     assert len(limiter._windows) == 150  # all still within their window
@@ -86,8 +84,8 @@ def strict_client(snapshot: CatalogSnapshot) -> Iterator[TestClient]:
     app = create_app()
     app.dependency_overrides[deps.get_snapshot] = lambda: snapshot
     app.dependency_overrides[deps.get_model] = lambda: None
-    app.dependency_overrides[simulations.simulate_limit] = (
-        simulations.limit_dependency(RateLimiter(max_requests=1, window_seconds=60))
+    app.dependency_overrides[simulations.simulate_limit] = simulations.limit_dependency(
+        RateLimiter(max_requests=1, window_seconds=60)
     )
     with TestClient(app) as tc:
         yield tc

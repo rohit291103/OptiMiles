@@ -268,14 +268,25 @@ async def test_persists_allocation_details_and_score_story(
     details = allocations["allocation_details"]
     assert len(details) == len(rec.recommended.allocation_details)
     sample = details[0]
-    assert {"category_slug", "card_id", "monthly_spend_inr", "earn_rate",
-            "effective_miles_per_100inr", "monthly_points", "notes"} <= set(sample)
+    assert {
+        "category_slug",
+        "card_id",
+        "monthly_spend_inr",
+        "earn_rate",
+        "effective_miles_per_100inr",
+        "monthly_points",
+        "notes",
+    } <= set(sample)
 
     # The 6-part score breakdown survives (was previously dropped).
     breakdown = allocations["score_breakdown"]
     assert set(breakdown) == {
-        "goal_achievement", "efficiency", "cost", "simplicity",
-        "portfolio_utilization", "risk",
+        "goal_achievement",
+        "efficiency",
+        "cost",
+        "simplicity",
+        "portfolio_utilization",
+        "risk",
     }
     assert allocations["headline_differentiator"] == rec.recommended.headline_differentiator
 
@@ -294,8 +305,13 @@ async def test_persists_alternative_tiers(snapshot: CatalogSnapshot) -> None:
     # Recommended + every alternative, each a compact summary.
     assert len(tiers) == 1 + len(rec.alternatives)
     first = tiers[0]
-    assert {"headline_differentiator", "miles_at_target_date", "total_fees_inr",
-            "cards_to_acquire", "is_recommended"} <= set(first)
+    assert {
+        "headline_differentiator",
+        "miles_at_target_date",
+        "total_fees_inr",
+        "cards_to_acquire",
+        "is_recommended",
+    } <= set(first)
     assert first["is_recommended"] is True
     if len(tiers) > 1:
         assert tiers[1]["is_recommended"] is False

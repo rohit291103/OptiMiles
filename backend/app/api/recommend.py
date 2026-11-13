@@ -43,9 +43,7 @@ async def run_and_respond(
     persist: bool,
 ) -> RecommendationResponse:
     """Run the pipeline and map its outcome union to the HTTP response."""
-    spend = (
-        SpendProfile(items=request.spend_items()) if request.spend_profile else None
-    )
+    spend = SpendProfile(items=request.spend_items()) if request.spend_profile else None
     outcome = await run_goal_pipeline(
         text=request.text,
         intent=request.intent,
@@ -80,9 +78,7 @@ async def run_and_respond(
     )
 
 
-async def _persist(
-    recommendation: FinalRecommendation, user_id: UUID
-) -> dict[str, UUID] | None:
+async def _persist(recommendation: FinalRecommendation, user_id: UUID) -> dict[str, UUID] | None:
     """Best-effort lineage persistence (blueprint Stage 11: the response beats
     bookkeeping). Returns the minted lineage ids iff the write landed, else
     None. A failure is logged and reported (as `persisted=False`) so the UI

@@ -43,9 +43,7 @@ TODAY = date(2026, 7, 4)
         (date(2027, 3, 20), 9),  # 8 months + partial → 9
     ],
 )
-def test_horizon_rounds_up_partial_month_and_floors_at_one(
-    target: date, expected: int
-) -> None:
+def test_horizon_rounds_up_partial_month_and_floors_at_one(target: date, expected: int) -> None:
     assert horizon_months(target, TODAY) == expected
 
 

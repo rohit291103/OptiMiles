@@ -156,9 +156,7 @@ def display_names(
     }
     partner_ids = {str(t.to_partner_id) for t in strategy.transfer_plan}
     card_names = {
-        str(card.id): card.card_name
-        for card in snapshot.cards
-        if str(card.id) in card_ids
+        str(card.id): card.card_name for card in snapshot.cards if str(card.id) in card_ids
     }
     partner_names = {
         str(partner.id): partner.program_name
@@ -191,30 +189,23 @@ def detail_from_row(row: SavedGoalDetailRow) -> SavedGoalDetail:
             ),
             months_to_goal=row.months_to_goal,
             optimization_score=row.optimization_score,
-            milestones=tuple(
-                SavedMilestone(**m) for m in (row.milestone_projections or [])
-            ),
+            milestones=tuple(SavedMilestone(**m) for m in (row.milestone_projections or [])),
             transfer_plan=tuple(
                 SavedTransferPlanItem(**t) for t in (row.transfer_recommendation or [])
             ),
             # Story fields — absent (empty/None) on goals saved before they were
             # persisted; reconstructed exactly as stored, never recomputed.
             allocation_details=tuple(
-                SavedAllocationDetail(**d)
-                for d in allocations.get("allocation_details", [])
+                SavedAllocationDetail(**d) for d in allocations.get("allocation_details", [])
             ),
-            score_breakdown=(
-                SavedScoreBreakdown(**breakdown_raw) if breakdown_raw else None
-            ),
+            score_breakdown=(SavedScoreBreakdown(**breakdown_raw) if breakdown_raw else None),
             headline_differentiator=allocations.get("headline_differentiator"),
         )
         strategy_options = tuple(
-            SavedStrategyOption(**opt)
-            for opt in allocations.get("strategy_options", [])
+            SavedStrategyOption(**opt) for opt in allocations.get("strategy_options", [])
         )
         adjustment_options = tuple(
-            SavedAdjustmentOption(**opt)
-            for opt in allocations.get("adjustment_options", [])
+            SavedAdjustmentOption(**opt) for opt in allocations.get("adjustment_options", [])
         )
 
     action_items = tuple(

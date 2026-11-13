@@ -99,9 +99,7 @@ class ScopeRefused(BaseModel):
 
 # What Flow A can produce: a finished recommendation, or an honest reason it
 # couldn't start. Every branch is explicit — nothing is silently defaulted.
-PipelineOutcome = (
-    FinalRecommendation | ClarificationNeeded | RouteUnsupported | ScopeRefused
-)
+PipelineOutcome = FinalRecommendation | ClarificationNeeded | RouteUnsupported | ScopeRefused
 
 
 class FeasibilityProbe(BaseModel):
@@ -165,9 +163,7 @@ async def run_goal_pipeline(
     if not isinstance(prepared, tuple):
         return prepared
     context, resolved_intent = prepared
-    return await run_from_context(
-        context, weights=weights, model=model, intent=resolved_intent
-    )
+    return await run_from_context(context, weights=weights, model=model, intent=resolved_intent)
 
 
 async def run_feasibility_probe(
@@ -236,10 +232,7 @@ async def _prepare_context(
     model: ChatModel | None,
     today: date,
 ) -> (
-    tuple[PlanningContext, ParsedGoalIntent]
-    | ClarificationNeeded
-    | RouteUnsupported
-    | ScopeRefused
+    tuple[PlanningContext, ParsedGoalIntent] | ClarificationNeeded | RouteUnsupported | ScopeRefused
 ):
     """Stages 1–4, shared by Flow A and the feasibility probe: intent →
     resolution → requirement → PlanningContext, or the honest early exit."""
@@ -247,9 +240,7 @@ async def _prepare_context(
     if intent is None:
         if text is None:
             raise ValueError("run_goal_pipeline requires either text or intent")
-        proposal = await extract_intent(
-            text, snapshot, model=model, profile_city=profile_city
-        )
+        proposal = await extract_intent(text, snapshot, model=model, profile_city=profile_city)
         if isinstance(proposal, ClarificationRequest):
             return ClarificationNeeded(request=proposal)
         if isinstance(proposal, ScopeRefusal):
