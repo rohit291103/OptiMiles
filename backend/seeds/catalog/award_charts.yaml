@@ -32,17 +32,38 @@
 # Hotel partners (Marriott/Accor) have no award-chart rows by design —
 # hotel redemptions are not chart-priced flights.
 
+# ── India → Singapore (VERIFIED 2026-11-16) ─────────────────────────────
+# Issuer check by hand: singaporeair.com KrisFlyer miles calculator, "Redeem
+# Miles" tab, Mumbai (BOM) → Singapore (SIN), One-way. It shows:
+#   Economy Saver 19,000 · Premium Economy Saver 36,000 (no row seeded yet)
+#   Business Saver 45,000 · First Saver 61,500
+# Re-run from Chennai (MAA) → SIN the same day: identical on all four cabins.
+# Two issuer checks from different cities confirm the chart is priced by zone
+# (India is one zone), so the rows hold for every Indian origin we list.
+# This contradicts the secondary figures that kept these rows flagged
+# (pointsmax.in: 46,000 DEL-SIN Business, 17,500 DEL-SIN / 13,000 MAA-SIN
+# Economy). "Southeast Asia" maps ONLY to Singapore (goal_resolution.CITIES).
+# FOLLOW-UP (not modelled): a price is not availability. A secondary summary
+# says First is not flown on the BLR-SIN nonstop (A350, no First cabin), so a
+# First Saver goal from some cities may need a positioning flight.
+# TAXES DROPPED (2026-11-16): the old 6,500 / 8,000 / 9,000 had no source and
+# the calculator shows miles only ("taxes and fees are paid separately").
+# Left absent rather than shipped as an invented ₹ figure; add one only with
+# a source (e.g. a dated singaporeair.com award search).
 - partner: krisflyer
   origin_region: India
   destination_region: Southeast Asia
   cabin_class: business
   award_type: saver
   miles_required: 45000
-  taxes_fees_inr: 8000
   effective_date: 2025-11-01
-  source: suitesmile.com KrisFlyer award charts (2026-03-28), Zone 6 → SEA saver; pointsmax.in quotes 46,000 for DEL-SIN — VERIFY against live chart
-  verified_on: 2026-07-04
-  needs_verification: true
+  source: >-
+    singaporeair.com KrisFlyer miles calculator (Redeem Miles, one-way):
+    "Business Saver Award Ticket 45,000 miles" from both BOM→SIN and MAA→SIN
+    — checked by hand 2026-11-16. effective_date from suitesmile.com chart
+    dump (secondary).
+  verified_on: 2026-11-16
+  needs_verification: false
 
 - partner: krisflyer
   origin_region: India
@@ -50,11 +71,14 @@
   cabin_class: first
   award_type: saver
   miles_required: 61500
-  taxes_fees_inr: 9000
   effective_date: 2025-11-01
-  source: suitesmile.com KrisFlyer award charts (2026-03-28), Zone 6 → SEA saver — VERIFY
-  verified_on: 2026-07-04
-  needs_verification: true
+  source: >-
+    singaporeair.com KrisFlyer miles calculator (Redeem Miles, one-way,
+    Suites/First): "First Saver Award Ticket 61,500 miles" from both BOM→SIN
+    and MAA→SIN — checked by hand 2026-11-16. effective_date from
+    suitesmile.com chart dump (secondary).
+  verified_on: 2026-11-16
+  needs_verification: false
 
 - partner: krisflyer
   origin_region: India
@@ -62,11 +86,14 @@
   cabin_class: economy
   award_type: saver
   miles_required: 19000
-  taxes_fees_inr: 6500
   effective_date: 2025-11-01
-  source: suitesmile.com KrisFlyer award charts (2026-03-28), Zone 6 → SEA saver; pointsmax quotes 17,500 DEL-SIN / 13,000 MAA-SIN — VERIFY
-  verified_on: 2026-07-04
-  needs_verification: true
+  source: >-
+    singaporeair.com KrisFlyer miles calculator (Redeem Miles, one-way):
+    "Economy Saver Award Ticket 19,000 miles" from both BOM→SIN and MAA→SIN
+    — checked by hand 2026-11-16. effective_date from suitesmile.com chart
+    dump (secondary).
+  verified_on: 2026-11-16
+  needs_verification: false
 
 - partner: krisflyer
   origin_region: India
@@ -74,11 +101,16 @@
   cabin_class: business
   award_type: saver
   miles_required: 108500
-  taxes_fees_inr: 32000
   effective_date: 2025-11-01
   # SOURCE DEFECT (2026-11-06): 108,500 is the SINGAPORE → Europe (Zone 11)
   # Saver price on the suitesmile chart, which lists no India-origin Europe
   # fare. Only pointsmax.in (secondary) claims it for India → Europe via SIN.
+  # STILL UNVERIFIABLE (2026-11-16): the singaporeair.com miles calculator
+  # prices only Singapore Airlines' own nonstops, and India → London connects
+  # via SIN, so it returns nothing. Do NOT sum BOM-SIN + SIN-LHR: KrisFlyer
+  # prices a connecting itinerary by origin/destination zone, not per leg.
+  # The source to find is the full zone-to-zone KrisFlyer award chart.
+  # Unsourced taxes (₹32,000) dropped, as on the Singapore rows.
   source: suitesmile.com KrisFlyer award charts (2026-03-28) — Singapore→Europe (Zone 11) saver, NOT India-origin; pointsmax.in claims the same figure India→Europe via SIN — VERIFY India-origin price
   verified_on: 2026-07-04
   needs_verification: true
@@ -89,10 +121,13 @@
   cabin_class: business
   award_type: saver
   miles_required: 117000
-  taxes_fees_inr: 38000
   effective_date: 2025-11-01
   # SOURCE DEFECT (2026-11-06): 117,000 / 112,500 are SINGAPORE → USA East /
   # West Saver prices (Zones 13 / 12). No India-origin US price was found.
+  # STILL UNVERIFIABLE (2026-11-16): same as Europe — the miles calculator has
+  # no India → New York price (connects via SIN). "North America" maps only to
+  # New York (goal_resolution.CITIES), i.e. the East-coast zone.
+  # Unsourced taxes (₹38,000) dropped, as on the Singapore rows.
   source: suitesmile.com KrisFlyer award charts (2026-03-28) — Singapore→USA EAST coast (Zone 13) saver, NOT India-origin (west coast 112,500) — VERIFY India-origin price
   verified_on: 2026-07-04
   needs_verification: true

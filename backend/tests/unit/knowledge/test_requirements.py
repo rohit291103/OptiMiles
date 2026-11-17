@@ -23,18 +23,40 @@ def _goal(snapshot: CatalogSnapshot, **intent_overrides: object) -> TravelGoal:
 
 
 def test_golden_singapore_business_for_two(snapshot: CatalogSnapshot) -> None:
-    """45,000 chart miles (post-Nov-2025 Zone 6 saver) × 2 passengers =
-    90,000; 5% buffer = 4,500."""
+    """45,000 chart miles (KrisFlyer calculator, BOM→SIN Business Saver,
+    checked 2026-11-16) × 2 passengers = 90,000; 5% buffer = 4,500."""
     goal = _goal(snapshot)
     requirement = estimate_requirement(goal, snapshot, buffer_pct=5.0)
 
     assert requirement.chart_miles_per_passenger == 45000
     assert requirement.miles_required_total == 90000
     assert requirement.buffer_miles == 4500
-    assert requirement.taxes_fees_inr_estimate == 8000 * 2
     assert requirement.target_program_id == seed_id("partner", "krisflyer")
     assert requirement.target_program_name == "KrisFlyer"
     assert requirement.stale_chart is False
+
+
+def test_unsourced_taxes_are_absent_not_estimated(snapshot: CatalogSnapshot) -> None:
+    """The award chart states miles, not taxes. With no sourced taxes figure
+    the seed leaves it out, and the requirement says "unknown" (None) rather
+    than shipping an invented ₹ amount."""
+    goal = _goal(snapshot)
+    requirement = estimate_requirement(goal, snapshot, buffer_pct=5.0)
+    assert requirement.taxes_fees_inr_estimate is None
+
+
+def test_sourced_taxes_scale_with_passengers(snapshot: CatalogSnapshot) -> None:
+    """When a chart row does carry a taxes figure it is per passenger:
+    ₹7,250 × 2 passengers = ₹14,500."""
+    goal = _goal(snapshot)
+    taxed = tuple(
+        c.model_copy(update={"taxes_fees_inr": 7250}) if c.id == goal.award_chart_id else c
+        for c in snapshot.award_charts
+    )
+    requirement = estimate_requirement(
+        goal, snapshot.model_copy(update={"award_charts": taxed}), buffer_pct=5.0
+    )
+    assert requirement.taxes_fees_inr_estimate == 7250 * 2
 
 
 def test_buffer_rounds_up_never_down(snapshot: CatalogSnapshot) -> None:

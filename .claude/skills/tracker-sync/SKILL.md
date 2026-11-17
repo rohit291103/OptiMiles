@@ -18,6 +18,8 @@ Before starting any non-trivial backend, frontend, or docs work, read `docs/trac
 
 If the tracker's "Done" claims something exists, verify it still does before relying on it (files get renamed/removed) — same rule as recalling any other persisted state.
 
+Also read the current week in `docs/weekly-goals.md`. It says which session of the week's plan comes next and what "done" means for it. Unless the user asks for something else, that session is the default work.
+
 ## Mode B — Refresh at the end of a session
 
 Run this after any session that materially changed `backend/`, `frontend/`, or `docs/`. Edit `docs/tracker.md` in place:
@@ -30,9 +32,15 @@ Run this after any session that materially changed `backend/`, `frontend/`, or `
 2. **Last updated** — set to today's date (convert any relative date the user gave you, e.g. "today," to an absolute `YYYY-MM-DD`) plus a short label for the session.
 3. **Last session notes** — **replace entirely**, don't append. This section is always exactly one session's worth of summary — the most recent delta, in plain language, for someone walking in cold.
 4. **Snapshot** — only touch this 2-3 sentence paragraph if the overall project phase or state materially shifted; otherwise leave it.
+5. **`docs/weekly-goals.md`** — tick the *Done when* boxes this session met, and add a one-line note under the session for anything that slipped. At the end of the week:
+   - add one row to *Past weeks* (goal, outcome, what carried over)
+   - replace the plan with next week's
+   - move the carried-over items back into the tracker's "Next up"
+
+   Keep the file to the current week plus that one-line-per-week table; the detail of past weeks lives in git.
 
 ## Relationship to other docs work
 
 - If this session's change is non-trivial enough to need a *reason* recorded (not just a status update), also file a decision log entry via `docs-sync` Mode B. The tracker's "Next up" can note "log decision for X" as a reminder if you're deferring that to a later session — that's the one case where the tracker is allowed to point at unfinished documentation work rather than do it.
 - Don't duplicate decision-log content into the tracker. The tracker gets one consolidated bullet ("X shipped"); the decision log gets the why.
-- `docs/tracker.md` intentionally lives outside the six `/docs` subfolders (`prd`, `architecture`, `research`, `ux`, `decisions`, `prompts`) listed in root `CLAUDE.md` — it's a status board, not a category of permanent content. A `docs-sync` audit should treat it as expected, not stray.
+- `docs/tracker.md` intentionally lives outside the six `/docs` subfolders (`prd`, `architecture`, `research`, `ux`, `decisions`, `prompts`) listed in root `CLAUDE.md` — it's a status board, not a category of permanent content. A `docs-sync` audit should treat it as expected, not stray. The same applies to `docs/weekly-goals.md`, its companion plan for the current week.

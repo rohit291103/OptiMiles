@@ -203,9 +203,10 @@ def test_without_a_programme_a_flagged_link_taints_no_rate(snapshot: CatalogSnap
 def test_a_flagged_currency_taints_its_priced_figures(snapshot: CatalogSnapshot) -> None:
     hdfc_premium = seed_id("currency", "hdfc-rp-premium")
     priced = _card(_priced(snapshot, [INFINIA], {hdfc_premium}), INFINIA)
-    assert [r.needs_verification for r in priced.earn_rules] == [True, True]
+    assert len(priced.earn_rules) == 3  # default, travel, fuel
+    assert all(r.needs_verification for r in priced.earn_rules)
     unpriced = _card(_build(snapshot, [INFINIA], {hdfc_premium}), INFINIA)
-    assert [r.needs_verification for r in unpriced.earn_rules] == [False, False]
+    assert not any(r.needs_verification for r in unpriced.earn_rules)
     assert unpriced.needs_verification is True  # the header states the currency
 
 

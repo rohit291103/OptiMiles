@@ -200,7 +200,7 @@ def test_unverified_rows_are_labelled_in_the_payload(snapshot: CatalogSnapshot) 
     flags = {
         rule["category_slug"]: rule["needs_verification"] for rule in body["cards"][0]["earn_rules"]
     }
-    assert flags == {"default": False, "travel": True}
+    assert flags == {"default": False, "travel": True, "fuel": False}
     assert body["cards"][0]["needs_verification"] is False
 
 

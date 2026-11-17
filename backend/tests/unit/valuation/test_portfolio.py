@@ -169,13 +169,14 @@ def test_no_leader_when_no_routed_card_earns_anything(snapshot: CatalogSnapshot)
 
 
 def test_a_card_that_earns_still_leads_beside_a_zero_row(snapshot: CatalogSnapshot) -> None:
-    """Fuel: Infinia has no fuel rule, so it prices at its 3.33 base × 1:1 =
-    3.33 miles/₹100 (HDFC's fuel exclusion is not yet sourced — tracker);
-    TravelOne's zero row is 0. Infinia leads, no_card_earns stays False, and
-    the category is named neutrally — never by a card's "earns nothing"
-    phrasing that the leader contradicts."""
-    fuel = _category(_portfolio(snapshot, ["Infinia Metal", "TravelOne"]), SpendCategory.FUEL)
-    assert fuel.leader_card_id == _card_id(snapshot, "Infinia Metal")
+    """Fuel: Regalia Gold has no fuel rule (the HDFC MITC's no-fuel-points
+    list does not name it), so it prices at its 2.50 base × 2:1 = 1.25
+    miles/₹100; TravelOne's zero row is 0. Regalia Gold leads, no_card_earns
+    stays False, and the category is named neutrally — never by a card's
+    "earns nothing" phrasing that the leader contradicts. (Infinia was the
+    earning card here until its fuel exclusion was sourced on 2026-11-16.)"""
+    fuel = _category(_portfolio(snapshot, ["Regalia Gold", "TravelOne"]), SpendCategory.FUEL)
+    assert fuel.leader_card_id == _card_id(snapshot, "Regalia Gold")
     assert fuel.no_card_earns is False
     assert "no" not in fuel.category_label.lower()
 
@@ -406,7 +407,7 @@ def test_category_label_comes_from_the_strongest_claim_not_the_wallet_order(
     forward = _category(_portfolio(snapshot, ["Atlas", "Infinia Metal"]), SpendCategory.TRAVEL)
     reverse = _category(_portfolio(snapshot, ["Infinia Metal", "Atlas"]), SpendCategory.TRAVEL)
 
-    assert forward.category_label == "Travel via SmartBuy portal"  # Infinia, 16.65
+    assert forward.category_label == "Flights & hotels via SmartBuy portal"  # Infinia, 16.65
     assert reverse.category_label == forward.category_label
 
 

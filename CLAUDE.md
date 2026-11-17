@@ -537,8 +537,8 @@ This repo has dedicated skills (`.claude/skills/`) and subagents (`.claude/agent
 * **After any change under `frontend/src`**, or when something looks "off"/"messy" or has scrolling/layout issues → agent `frontend-reviewer` (read-only).
 * **When scaffolding a new backend module, engine, or significant abstraction** → skill `codebase-design`.
 * **When investigating a reported bug, unexpected calculation result, or test failure** — before jumping to a fix → skill `diagnosing-bugs`.
-* **At the start of any new chat/task** → skill `tracker-sync` to load `docs/tracker.md` current state.
-* **At the end of any session that touched `backend/`, `frontend/`, or `docs/`** → skill `tracker-sync` to refresh the tracker.
+* **At the start of any new chat/task** → skill `tracker-sync` to load `docs/tracker.md` current state and this week's plan in `docs/weekly-goals.md`.
+* **At the end of any session that touched `backend/`, `frontend/`, or `docs/`** → skill `tracker-sync` to refresh the tracker and tick off the week's session in `docs/weekly-goals.md`.
 * **Whenever something gets built, changed, or decided** — a new feature, schema, architecture choice, scope change, or any "relevant" discussion outcome — file it before ending the session, even if the user doesn't ask. This is the mechanical enforcement of "Chats are temporary. Documentation is permanent." (see Documentation Rules above) → skill `docs-sync`. Don't wait for "document this" — that phrase is a trigger, not a prerequisite.
 
 ## Triggered by user phrasing or task shape

@@ -21,9 +21,11 @@ Per root `CLAUDE.md`'s "Documentation Structure" section, `/docs` must contain:
   /prompts      — saved AI task prompts using the template below
 ```
 
-## Exception: `docs/tracker.md`
+## Exception: `docs/tracker.md` and `docs/weekly-goals.md`
 
 `docs/tracker.md` lives directly under `/docs`, outside the six subfolders below — that's intentional, not a misfile. It's a disposable, continuously-overwritten status board (current Done/In progress/Next up per area), maintained by the `tracker-sync` skill, distinct from the permanent decision log this skill maintains. Don't flag it in an audit, and don't apply the "don't overwrite history" rule to it — that rule is for `/decisions` and `/research`, not the tracker.
+
+`docs/weekly-goals.md` is its companion: the current week's goal and build sessions, also maintained by `tracker-sync` and replaced each week. The same exception applies to it.
 
 ## Before doing any task in this repo
 

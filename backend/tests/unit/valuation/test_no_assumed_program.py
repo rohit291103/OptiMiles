@@ -183,7 +183,8 @@ def test_no_category_has_a_leader_without_a_chosen_program(
     for category in portfolio.categories:
         assert category.leader_card_id is None
         assert all(row.miles_per_100 is None for row in category.rows)
-        assert all(row.earn_rate > 0 for row in category.rows)
+        assert all(row.earn_rate >= 0 for row in category.rows)  # zero-earn rows are facts
+    assert any(row.earn_rate > 0 for category in portfolio.categories for row in category.rows)
 
 
 def test_portfolio_still_reports_where_points_could_go(snapshot: CatalogSnapshot) -> None:

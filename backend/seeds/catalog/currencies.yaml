@@ -16,8 +16,19 @@
 - slug: hdfc-rp-premium
   currency_name: HDFC Reward Points (Infinia/Diners tier)
   issuer: HDFC
-  expiry_rules: 2 years from earning
-  source: docs/research/singapore_airlines_krisflyer_indian_credit_card_research_v1.md §1
+  # CORRECTED 2026-11-16 from "2 years" — the 2-year rule is HDFC's default;
+  # this tier is the named exception. Also from the MITC: points are
+  # cancelled if the card is unused for more than 365 days (p.25 p).
+  expiry_rules: 3 years from earning
+  source: >-
+    docs/research/singapore_airlines_krisflyer_indian_credit_card_research_v1.md §1
+    ; expiry: HDFC Bank MITC for Credit Cards (Updated on 11th November'26,
+    Version 4.18) p.23 "Reward Points/CashPoints are valid only for 2 years
+    from the date of accumulation … except for Infinia / Infinia (Metal
+    Edition)/ Diners Black Metal Edition/ Diners Black Card/ BizBlack Metal
+    Card for which reward points are valid for 3 years"
+    https://www.hdfc.bank.in/content/dam/hdfcbankpws/in/en/personal-banking/discover-products/cards/credit-cards/personal-mitc/mitc-in-english.pdf
+    ; Infinia Reward Points T&C cl.6 (same 3 years)
   verified_on: 2026-07-04
   needs_verification: false
 
