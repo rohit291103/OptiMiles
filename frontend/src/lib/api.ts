@@ -735,7 +735,8 @@ export type CardSpendOption = {
   direct_miles_earned: number | null;
   transfer_ratio_from: number | null;
   transfer_ratio_to: number | null;
-  /** true = rests on a seed row not yet verified; null = not assessed. */
+  /** Always false from /v1/best-card: unverified figures are withheld, not
+   * labelled (see `BestCardResult.withheld`). null = not assessed. */
   needs_verification: boolean | null;
   /** The same, for the booked-direct figure (base rate, not the portal rule). */
   direct_needs_verification: boolean | null;
@@ -811,8 +812,23 @@ export type BestCardResult = {
   /** The sole top card in every program where anyone earns; null when the
    * answer depends on the program. */
   overall_pick: string | null;
-  /** Nothing in the wallet earns on this spend — no winner is named. */
+  /** Nothing in the wallet earns on this spend — no winner is named. Never
+   * true while a card's earn is withheld (we don't know what it earns). */
   no_card_earns: boolean;
+  /** Left out of the answer because it rests on an unverified row. Names
+   * only: the figure is never sent, so it can never be shown or picked. */
+  withheld: WithheldFigure[];
+};
+
+/** A card (or one card's transfer) Best Card did not compare. */
+export type WithheldFigure = {
+  card_id: string;
+  bank: string;
+  card_name: string;
+  /** null: the card's own earn on this spend is unverified — left out
+   * everywhere. Set: only its transfer into this program is unverified. */
+  program_id: string | null;
+  program_name: string | null;
 };
 
 /** Which card to swipe for one purchase. Anonymous — no token needed. */
@@ -842,7 +858,14 @@ export async function fetchBestCard(args: {
       response.status,
     );
   }
-  return (await response.json()) as BestCardResult;
+  const body = (await response.json()) as Partial<BestCardResult>;
+  // Fail closed: a backend without `withheld` predates the verified-only
+  // rule and may still rank unverified figures, which this page no longer
+  // labels. Showing nothing beats showing them unmarked (deploy order safety).
+  if (!Array.isArray(body.withheld)) {
+    throw new ApiError("Couldn't work out the best card right now.");
+  }
+  return body as BestCardResult;
 }
 
 /* ── Portfolio View (roadmap Phase 1) ───────────────────────────────────── */

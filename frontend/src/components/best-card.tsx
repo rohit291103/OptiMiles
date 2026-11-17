@@ -21,6 +21,7 @@ import {
   type CardSummary,
   type ProgramVerdict,
   type SpendCategorySlug,
+  type WithheldFigure,
 } from "@/lib/api";
 
 const inr = new Intl.NumberFormat("en-IN");
@@ -430,7 +431,7 @@ function Result({
     <div ref={topRef} tabIndex={-1} className="scroll-mt-24 space-y-6 outline-none">
       {comparingAll ? (
         <p className="rounded-xl border border-hairline px-4 py-3 text-sm text-muted-foreground">
-          {`You haven't picked any cards, so this compares all ${result.ranked.length + result.unroutable.length} cards we cover. Pick the ones you hold to see only yours.`}
+          {`You haven't picked any cards, so this looks at all ${new Set([...result.ranked, ...result.unroutable, ...result.withheld].map((c) => c.card_id)).size} cards we cover. Pick the ones you hold to see only yours.`}
         </p>
       ) : null}
       {result.ranking_basis === "points" ? (
@@ -504,6 +505,17 @@ function cardName(option: { bank: string; card_name: string }): string {
   return `${option.bank} ${option.card_name}`;
 }
 
+/** Cards whose own earn on this spend isn't verified — left out everywhere. */
+function earnWithheld(result: BestCardResult): WithheldFigure[] {
+  return result.withheld.filter((w) => w.program_id === null);
+}
+
+/** Has this card any transfer we left out as unverified? Then "can't be
+ * transferred" would be false — it can, we just haven't checked how well. */
+function hasWithheldRoutes(result: BestCardResult, cardId: string): boolean {
+  return result.withheld.some((w) => w.card_id === cardId && w.program_id !== null);
+}
+
 function spendPhrase(result: BestCardResult): string {
   const amount = `₹${inr.format(result.amount_inr)}`;
   return result.category === "default"
@@ -568,6 +580,7 @@ function PointsFirst({
   const single = result.ranked.length === 1 ? result.ranked[0] : null;
   const tooSmall =
     !result.no_card_earns &&
+    result.ranked.length > 0 &&
     result.ranked.every(
       (o) => o.points_earned === 0 && Number(o.effective_earn_rate) > 0,
     );
@@ -577,7 +590,10 @@ function PointsFirst({
   let answered: CardSpendOption[] = [];
   let panel: React.ReactNode;
   let showChooser = true;
-  if (result.no_card_earns) {
+  if (result.ranked.length === 0) {
+    panel = <NothingVerified result={result} comparingAll={comparingAll} />;
+    showChooser = false;
+  } else if (result.no_card_earns) {
     panel = (
       <NobodyEarns
         category={result.category}
@@ -653,6 +669,8 @@ function PointsFirst({
         </div>
       ) : null}
 
+      <NotCompared result={result} />
+
       {showChooser && result.partner_reach.length > 1 ? chooser : null}
 
       <Footnotes result={result} />
@@ -676,15 +694,24 @@ function PickPanel({
 }) {
   const lead = picks[0];
   const portal = picks.find((p) => p.requires_portal)?.requires_portal ?? null;
+  // Anything withheld means the claim covers only what we compared — say so,
+  // rather than "the only card you've picked" when another was left out.
+  const partial = result.withheld.length > 0;
   const why =
     reason === "only"
-      ? comparingAll
-        ? "It's the only card we cover."
-        : "It's the only card you've picked."
-      : reason === "everywhere"
+      ? earnWithheld(result).length > 0
         ? comparingAll
-          ? `Of the cards we cover, it earns the most in every program you could transfer to.`
-          : "It earns the most in every program you could transfer to."
+          ? "It's the only card we cover whose figures for this spend are verified."
+          : "It's the only one of your cards whose figures for this spend are verified."
+        : comparingAll
+          ? "It's the only card we cover."
+          : "It's the only card you've picked."
+      : reason === "everywhere"
+        ? partial
+          ? "Of the cards we could compare, it earns the most in every program you could transfer to."
+          : comparingAll
+            ? `Of the cards we cover, it earns the most in every program you could transfer to.`
+            : "It earns the most in every program you could transfer to."
         : "They earn exactly the same here, in every program they can transfer to — use either.";
 
   return (
@@ -694,7 +721,6 @@ function PickPanel({
       </p>
       <h2 className="mt-2 text-2xl font-semibold sm:text-3xl">
         Use {picks.map((p) => cardName(p)).join(" or ")}
-        <Unverified flag={picks.some((p) => p.needs_verification)} />
         {portal ? (
           <span className="mt-1 block text-lg font-medium text-gold sm:text-xl">
             {`booked through ${portal}`}
@@ -720,7 +746,7 @@ function PickPanel({
       ) : null}
       <CapNote option={lead} />
 
-      <Destinations option={lead} />
+      <Destinations option={lead} result={result} />
 
       {portal && reason !== "only" ? (
         <DirectAlternatives result={result} picks={picks} closed={closed} />
@@ -730,14 +756,22 @@ function PickPanel({
 }
 
 /** Where a card's points can go, and what this spend becomes there. */
-function Destinations({ option }: { option: CardSpendOption }) {
+function Destinations({
+  option,
+  result,
+}: {
+  option: CardSpendOption;
+  result: BestCardResult;
+}) {
   const dests = option.destinations;
   if (dests.length === 0) {
     return (
       <p className="mt-4 text-sm text-muted-foreground">
         {isCashback(option)
           ? "It's cashback — it comes straight off your bill, so there's nothing to transfer."
-          : `These points can't be transferred to an airline or hotel program; they're redeemed with ${option.bank}.`}
+          : hasWithheldRoutes(result, option.card_id)
+            ? "Its transfers to airline and hotel programs aren't verified yet, so we don't show what these points become there."
+            : `These points can't be transferred to an airline or hotel program; they're redeemed with ${option.bank}.`}
       </p>
     );
   }
@@ -747,7 +781,7 @@ function Destinations({ option }: { option: CardSpendOption }) {
       <p className="mt-4 text-sm text-muted-foreground">
         {`${option.card_name}'s ${shortCurrency(option)} transfer to ${programLabel(d)} at ${d.ratio_from} to ${d.ratio_to}, so this spend becomes `}
         <span className="font-semibold text-foreground">{countIn(d.partner_units, d)}</span>
-        <Unverified flag={d.needs_verification} />.
+        .
       </p>
     );
   }
@@ -760,7 +794,6 @@ function Destinations({ option }: { option: CardSpendOption }) {
             <span className="text-foreground">{programLabel(d)}</span>
             <span className="tabular-nums">
               {countIn(d.partner_units, d)}
-              <Unverified flag={d.needs_verification} />
             </span>
           </li>
         ))}
@@ -819,7 +852,6 @@ function DirectAlternatives({
                 {pickIds.has(d.card_id)
                   ? `${programLabel(v)}: still ${d.card_name}, at the base rate — ${countIn(d.partner_units, v)}`
                   : `${programLabel(v)}: ${d.bank} ${d.card_name} — ${countIn(d.partner_units, v)}${closed.has(d.card_id) ? " (not open to new applicants)" : ""}`}
-                <Unverified flag={d.needs_verification} />
               </li>
             );
           })}
@@ -882,7 +914,7 @@ function DependsPanel({
         The best card depends on where you send your points
       </h2>
       <p className="mt-2 text-sm text-muted-foreground">
-        {`For ${spendPhrase(result)}, each card below is the best one for the programs listed under it. Tap a program for the full working.`}
+        {`For ${spendPhrase(result)}, each card below is the best ${result.withheld.length > 0 ? "of the cards we could compare " : "one "}for the programs listed under it. Tap a program for the full working.`}
       </p>
       <ul className="mt-5 space-y-5">
         {ordered.map((group) => {
@@ -894,7 +926,6 @@ function DependsPanel({
                 <span className="text-gold">
                   {group.winners.map((w) => cardName(w)).join(" or ")}
                 </span>
-                <Unverified flag={group.winners.some((w) => w.needs_verification)} />
                 <ClosedLabel show={group.winners.some((w) => closed.has(w.card_id))} />
               </p>
               {portalCards.length > 0 ? (
@@ -939,7 +970,7 @@ function DependsPanel({
       </ul>
       {nobody.length > 0 ? (
         <p className="mt-4 text-sm text-muted-foreground">
-          {`No card here earns anything in ${nobody.map((v) => programLabel(v)).join(" or ")} on this spend.`}
+          {`${result.withheld.length > 0 ? "None of the cards we could compare earns" : "No card here earns"} anything in ${nobody.map((v) => programLabel(v)).join(" or ")} on this spend.`}
         </p>
       ) : null}
     </section>
@@ -956,7 +987,7 @@ function TooSmall({
   return (
     <section className="rounded-2xl border border-hairline p-6">
       <h2 className="text-base font-medium">
-        {`₹${inr.format(result.amount_inr)} is too small to earn a whole point or mile on ${comparingAll ? "any card we cover" : result.ranked.length === 1 ? "your card" : "any of your cards"}.`}
+        {`₹${inr.format(result.amount_inr)} is too small to earn a whole point or mile on ${result.withheld.length > 0 ? "any card we could compare" : comparingAll ? "any card we cover" : result.ranked.length === 1 ? "your card" : "any of your cards"}.`}
       </h2>
       <p className="mt-2 text-sm text-muted-foreground">
         Earning rounds down on each purchase. Try the amount you&apos;ll actually
@@ -967,14 +998,83 @@ function TooSmall({
 }
 
 function NoTransfers({ result }: { result: BestCardResult }) {
+  // A transfer we left out as unverified is not "doesn't transfer".
+  const unverifiedRoutes = result.withheld.some((w) => w.program_id !== null);
   return (
     <section className="rounded-2xl border border-hairline p-6">
       <h2 className="text-base font-medium">
-        None of these cards transfer to an airline or hotel program.
+        {unverifiedRoutes
+          ? "We can't compare these cards in one unit yet."
+          : "None of these cards transfer to an airline or hotel program."}
       </h2>
       <p className="mt-2 text-sm text-muted-foreground">
-        {`Their rewards are cashback or redeemed with the bank, so they can't be compared in one unit. Here's what each earns on ${spendPhrase(result)}.`}
+        {unverifiedRoutes
+          ? `Points from different banks aren't the same unit, and the transfers that would let us compare them aren't verified yet. Here's what each earns on ${spendPhrase(result)}.`
+          : `Their rewards are cashback or redeemed with the bank, so they can't be compared in one unit. Here's what each earns on ${spendPhrase(result)}.`}
       </p>
+    </section>
+  );
+}
+
+/** Every card the user picked was left out: there is nothing verified to
+ * recommend from, and we say so rather than guess. */
+function NothingVerified({
+  result,
+  comparingAll,
+}: {
+  result: BestCardResult;
+  comparingAll: boolean;
+}) {
+  const one = !comparingAll && earnWithheld(result).length === 1;
+  return (
+    <section className="rounded-2xl border border-hairline p-6">
+      <h2 className="text-base font-medium">We can&apos;t answer this one yet.</h2>
+      <p className="mt-2 text-sm text-muted-foreground">
+        {`We haven't verified what ${one ? "your card earns" : "these cards earn"} on ${spendPhrase(result)} yet, so there's nothing to recommend from.`}
+      </p>
+    </section>
+  );
+}
+
+/** What the answer left out as unverified — names only, never a figure.
+ * With a program chosen, only what bears on that program. */
+function NotCompared({
+  result,
+  programId = null,
+}: {
+  result: BestCardResult;
+  programId?: string | null;
+}) {
+  const items = result.withheld.filter(
+    (w) => w.program_id === null || programId === null || w.program_id === programId,
+  );
+  if (items.length === 0) return null;
+
+  const byCard = new Map<string, { card: WithheldFigure; earn: boolean; programs: string[] }>();
+  for (const w of items) {
+    const entry = byCard.get(w.card_id) ?? { card: w, earn: false, programs: [] };
+    if (w.program_id === null) entry.earn = true;
+    else if (w.program_name) entry.programs.push(w.program_name.replace(/^ALL - /, ""));
+    byCard.set(w.card_id, entry);
+  }
+
+  return (
+    <section className="rounded-xl border border-hairline px-4 py-3 text-sm">
+      <h3 className="font-medium text-foreground">Not compared</h3>
+      <p className="mt-1 text-muted-foreground">
+        We only recommend from figures we&apos;ve verified. These aren&apos;t verified
+        yet, so they&apos;re left out of the answer.
+      </p>
+      <ul className="mt-2 space-y-1 text-muted-foreground">
+        {[...byCard.values()].map(({ card, earn, programs }) => (
+          <li key={card.card_id}>
+            <span className="text-foreground">{cardName(card)}</span>
+            {earn
+              ? " — what it earns on this spend"
+              : ` — its transfer to ${listJoin(programs)}`}
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
@@ -1013,7 +1113,6 @@ function CardBlock({
           <p className="text-[15px] font-semibold">
             {position !== null ? <span className="sr-only">{`${position}. `}</span> : null}
             {cardName(option)}
-            <Unverified flag={option.needs_verification} />
             <ClosedLabel show={closed} />
           </p>
           {bestText ? (
@@ -1052,14 +1151,15 @@ function CardBlock({
               <p className="mt-2 text-xs text-muted-foreground">
                 {isCashback(option)
                   ? "Cashback — comes straight off your bill."
-                  : `Can't be transferred — redeemed with ${option.bank}.`}
+                  : hasWithheldRoutes(result, option.card_id)
+                    ? "Transfers not verified yet, so not shown."
+                    : `Can't be transferred — redeemed with ${option.bank}.`}
               </p>
             ) : (
               <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
                 {option.destinations.map((d) => (
                   <li key={d.program_id}>
                     {`→ ${countIn(d.partner_units, d)}`}
-                    <Unverified flag={d.needs_verification} />
                   </li>
                 ))}
               </ul>
@@ -1106,6 +1206,11 @@ function Priced({
     ? result.ranked.find((o) => o.card_id === verdict.winner?.card_id)
     : undefined;
   const runnerUp = verdict?.runner_up ?? null;
+  // A card left out of this program (its earn, or its route here) might earn
+  // more — the winner is the best of what we could compare, and says so.
+  const partial = result.withheld.some(
+    (w) => w.program_id === null || w.program_id === result.target_program_id,
+  );
 
   // The teaching moment: a card that earns MORE points but FEWER miles.
   const pointsUpset =
@@ -1127,18 +1232,25 @@ function Priced({
   );
 
   if (result.ranked.length === 0) {
+    // Withheld cards may well reach this program — we just haven't verified
+    // how well — so "none of these transfer" would be false for them.
     return (
       <div className="space-y-6">
         {back}
         <div className="rounded-2xl border border-hairline p-6">
           <p className="text-base font-medium">
-            None of these cards transfer to {program}.
+            {partial
+              ? `We can't answer for ${program} yet.`
+              : `None of these cards transfer to ${program}.`}
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
-            They still earn rewards — they just can&apos;t reach this program.
+            {partial
+              ? "The figures this would rest on aren't verified yet, and we only recommend from figures we've verified."
+              : "They still earn rewards — they just can't reach this program."}
           </p>
           <UnroutableList options={result.unroutable} category={result.category} />
         </div>
+        <NotCompared result={result} programId={result.target_program_id} />
         {chooser}
       </div>
     );
@@ -1151,7 +1263,8 @@ function Priced({
         <div className="rounded-2xl border border-hairline p-6">
           <p className="text-base font-medium">
             ₹{inr.format(result.amount_inr)} is too small to earn a whole{" "}
-            {program} {unit.replace(/s$/, "")} on any of your cards.
+            {program} {unit.replace(/s$/, "")} on{" "}
+            {partial ? "any card we could compare" : "any of your cards"}.
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
             Earning rounds down per purchase. Try the amount you&apos;ll actually
@@ -1173,9 +1286,6 @@ function Priced({
           </h2>
           <p className="mt-2 text-xl font-semibold sm:text-2xl">
             {verdict.winner.card_name} or {runnerUp.card_name}
-            <Unverified
-              flag={verdict.winner.needs_verification || runnerUp.needs_verification}
-            />
           </p>
           <p className="mt-3 text-base text-muted-foreground">
             Both earn {count(verdict.winner.partner_units, `${program} ${unit}`)} on ₹
@@ -1219,8 +1329,13 @@ function Priced({
           </h2>
           <p className="mt-2 text-2xl font-semibold sm:text-3xl">
             {winnerOption.bank} {winnerOption.card_name}
-            <Unverified flag={winnerOption.needs_verification} />
           </p>
+          {partial ? (
+            <p className="mt-1 text-sm text-muted-foreground">
+              The best of the cards we could compare — see &ldquo;Not compared&rdquo;
+              below.
+            </p>
+          ) : null}
           {winnerOption.requires_portal ? (
             <p className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-gold/40 px-3 py-1 text-sm text-gold">
               Book through {winnerOption.requires_portal}
@@ -1240,7 +1355,7 @@ function Priced({
           {runnerUp && verdict.lead !== null ? (
             <p className="mt-2 text-sm text-muted-foreground">
               {runnerUp.partner_units === 0
-                ? `The only card here that earns on this — ${runnerUp.card_name} earns nothing.`
+                ? `The only card ${partial ? "we could compare" : "here"} that earns on this — ${runnerUp.card_name} earns nothing.`
                 : `That's ${count(verdict.lead, `${program} ${unit}`)} more than ${runnerUp.card_name}, which earns ${inr.format(runnerUp.partner_units)}.`}
             </p>
           ) : null}
@@ -1284,7 +1399,6 @@ function Priced({
                   <span className="text-foreground tabular-nums">
                     {count(option.miles_earned ?? 0, `${program} ${unit}`)}
                   </span>
-                  <Unverified flag={option.needs_verification} />
                 </span>
               </div>
               <ReasonLine option={option} category={result.category} program={program} />
@@ -1295,6 +1409,8 @@ function Priced({
       ) : null}
 
       <UnroutableList options={result.unroutable} category={result.category} />
+
+      <NotCompared result={result} programId={result.target_program_id} />
 
       {/* Switching programs only means something with more than one to
           switch to; "← All programs" above already goes back. */}
@@ -1332,13 +1448,13 @@ function DirectBox({
           <>
             {winnerOption.card_name} still wins, but at its base rate:{" "}
             {count(direct.partner_units, unit)}
-            <Unverified flag={direct.needs_verification} />.
+            .
           </>
         ) : (
           <>
             Use <span className="font-medium text-foreground">{direct.card_name}</span> —{" "}
             {count(direct.partner_units, unit)}
-            <Unverified flag={direct.needs_verification} />.
+            .
             {!verdict.tied && winnerOption.requires_portal
               ? ` ${winnerOption.card_name} would earn only ${count(winnerOption.direct_miles_earned ?? 0, unit)} off its portal.`
               : null}
@@ -1454,34 +1570,9 @@ function NobodyEarns({
   );
 }
 
-function Unverified({ flag }: { flag: boolean | null }) {
-  if (!flag) return null;
-  return (
-    // `relative`: contains the sr-only child so it can't widen the page.
-    <span className="relative ml-0.5" title="Unverified">
-      <span aria-hidden="true" className="text-gold/80">
-        *
-      </span>
-      <span className="sr-only"> unverified</span>
-    </span>
-  );
-}
-
 function Footnotes({ result, priced = false }: { result: BestCardResult; priced?: boolean }) {
-  const anyUnverified =
-    result.ranked.some((o) => o.needs_verification) ||
-    result.program_verdicts.some((v) => v.winner?.needs_verification);
   return (
     <div className="space-y-2 text-xs leading-relaxed text-muted-foreground">
-      {anyUnverified ? (
-        <p>
-          <span aria-hidden="true" className="text-gold/80">
-            *
-          </span>{" "}
-          Unverified — from a published source we haven&apos;t checked line by line
-          yet. Treat that figure as indicative.
-        </p>
-      ) : null}
       {priced || result.ranked.some((o) => o.monthly_cap_inr) ? (
         <p>
           {priced
