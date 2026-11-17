@@ -9,7 +9,7 @@ The current state of the project, not its history. This file is **overwritten in
 
 ---
 
-**Last updated:** 2026-11-17 — Week 47 Session 2: Best Card answers from verified figures only. Unverified rows are removed, not labelled. Seeds are still **ahead of the live DB**. Backend suite **797 passed**.
+**Last updated:** 2026-11-17 — Week 47 Session 2: Best Card answers from verified figures only. Unverified rows are removed, not labelled. **Deployed**; live DB reloaded to `cat-10cfcc27cd0b`. Backend suite **797 passed**.
 
 ## Snapshot
 
@@ -89,12 +89,11 @@ The **broadened scope is not yet in the catalog**. It is still the MVP's 9 cards
   - Axis Burgundy + Atlas verification (5 rows)
   - Render LLM key + model
   - a sign-in with a Google account that isn't a test user
-  - reload the live DB
-- ⚠️ **Seeds are ahead of the live DB** (`cat-10cfcc27cd0b` vs live `cat-51ef71e52796`) and are not committed. Run `seeds/load_to_db.py` **before** pushing the backend. The API reads verification flags from the YAML at runtime, so a backend deployed first would mark rows verified while the DB still serves their old values.
+- **Seed changes: reload the live DB (`seeds/load_to_db.py`) before pushing the backend.** The API reads verification flags from the YAML at runtime, so a backend deployed first would mark rows verified while the DB still serves their old values. Live and seeds match at `cat-10cfcc27cd0b` (2026-11-17).
+- **Issuer PDFs in `docs/TnC-docs/` are not committed.** The repo is public, and these include pages printed from a SmartBuy session. The user decides whether they go in.
 
 ### Next up
 - **Week 47 — enforce the verified tier:** Stages 5–9 (Session 3), then the Listed tier (Session 4). Best Card is done. Details in `weekly-goals.md`.
-- **Deploy order for Best Card: backend before frontend.** The new page fails closed (shows an error) against a backend without `withheld`, rather than showing unlabelled unverified figures. And per Session 1, reload the live DB before pushing the backend.
 - **Platinum Charge is withheld from Best Card wherever its base rate applies.** Its card row is flagged only for `joining_fee_inr`, but row-level provenance withholds the base rate too. Two fixes, either one works: verify the joining fee (or record it as not stated), or give the base rate its own flag.
 - **Portfolio, two open questions for the user:**
   - Should the category leader become the best *verified* card, as in Best Card? Today it shows "No verified leader".
@@ -210,7 +209,7 @@ The **broadened scope is not yet in the catalog**. It is still the MVP's 9 cards
 
 ## Last session notes
 
-2026-11-17, Week 47 Session 2: Best Card answers from verified figures only. Nothing deployed or committed yet; Session 1's seed changes are still uncommitted too.
+2026-11-17, Week 47 Session 2: Best Card answers from verified figures only. **Deployed** (commits `9ce0765`, `0326cbb`, `ab26467`): live DB reloaded first, then the backend, then the frontend once Render served `withheld`. Session 1's seed changes went out in the same push.
 - **User decision:** an unverified figure is **removed** from the answer, not labelled. There is no "may earn more (unverified)" note. The team verifies rows on its own schedule, and a row comes back into Best Card by being verified.
 - **Backend:** `best_card.py` builds a verified view before pricing (`_verified_view`). The response's new `withheld` field names what was left out, without figures. `no_card_earns` is never claimed while a card is withheld, and a withheld route is not reported as unroutable. New tests include a property test over the real seed flags that does not rely on the engine's own helpers; the old "marked unverified" tests were rewritten.
 - **Frontend:** removed the `*` marks and their footnote. Added the "Not compared" note and the "can't answer yet" state. Answers are qualified as the best of the cards we could compare, and copy that would now be false was fixed.

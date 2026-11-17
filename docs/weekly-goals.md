@@ -48,7 +48,7 @@ This file holds the plan for the current week: one goal, split into about four b
 1. Axis Burgundy + Atlas (5 rows): put the Axis T&C PDFs in `TnC-docs/Axis/`.
 2. Render: `LLM_API_KEY` + `LLM_MODEL=openai/gpt-4o-mini`. Then Claude checks that `model_version` is no longer `template-fallback`.
 3. Sign in once with a Google account that is not a test user.
-4. Reload the live DB (`seeds/load_to_db.py`) **before** pushing the backend, then commit.
+4. ~~Reload the live DB (`seeds/load_to_db.py`) **before** pushing the backend, then commit.~~ Done 2026-11-17: reloaded to `cat-10cfcc27cd0b`, committed and deployed with Session 2.
 
 ### Session 2 — Never pick an unverified winner (Best Card and Portfolio) · ✅ DONE (2026-11-17)
 
