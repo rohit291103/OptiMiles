@@ -246,23 +246,9 @@ def test_an_exclusion_is_not_too_small(snapshot: CatalogSnapshot) -> None:
     assert kf.winner is None and kf.too_small is False
 
 
-# ── Provenance: unverified figures are marked, never passed off ──────────
-
-
-def test_unverified_rows_mark_the_option_and_the_pick(snapshot: CatalogSnapshot) -> None:
-    flagged = frozenset({seed_id("category", "hdfc-infinia:travel")})
-    result = rank_cards_for_spend(
-        snapshot,
-        amount_inr=10_000,
-        category=SpendCategory.TRAVEL,
-        card_ids=_ids(snapshot, "Infinia Metal", "TravelOne"),
-        unverified_ids=flagged,
-    )
-    by_name = {o.card_name: o for o in result.ranked}
-    assert by_name["Infinia Metal"].needs_verification is True
-    assert by_name["TravelOne"].needs_verification is False
-    kf = _verdict(result, "KrisFlyer")
-    assert kf.winner is not None and kf.winner.needs_verification is True
+# ── Provenance: not assessed is not verified ──────────────────────────────
+# What an unverified row does to the answer (it is left out, never marked)
+# lives in test_best_card_verified_only.py.
 
 
 def test_no_provenance_supplied_means_not_assessed(snapshot: CatalogSnapshot) -> None:
@@ -367,66 +353,30 @@ def test_options_and_picks_agree_on_the_target(snapshot: CatalogSnapshot) -> Non
     assert by_id[kf.direct_winner.card_id].direct_miles_earned == kf.direct_winner.partner_units
 
 
-# ── Provenance of the DIRECT figure ───────────────────────────────────────
+# ── Which rows a figure rests on: the card row past a cap ────────────────
 
 
-def test_direct_figure_has_its_own_provenance(snapshot: CatalogSnapshot) -> None:
-    """Booked direct, Infinia earns its BASE rate — the card row, not the
-    SmartBuy rule. A flagged rule must not taint the direct figure, and a
-    flagged card row must."""
-    kf_id = _program(snapshot, "KrisFlyer")
-    infinia_id = _ids(snapshot, "Infinia Metal")[0]
-
-    rule_flagged = rank_cards_for_spend(
-        snapshot,
-        amount_inr=10_000,
-        category=SpendCategory.TRAVEL,
-        card_ids=[infinia_id],
-        target_program_id=kf_id,
-        unverified_ids=frozenset({seed_id("category", "hdfc-infinia:travel")}),
-    ).ranked[0]
-    assert rule_flagged.needs_verification is True
-    assert rule_flagged.direct_needs_verification is False
-
-    card_flagged = rank_cards_for_spend(
-        snapshot,
-        amount_inr=10_000,
-        category=SpendCategory.TRAVEL,
-        card_ids=[infinia_id],
-        target_program_id=kf_id,
-        unverified_ids=frozenset({infinia_id}),
-    ).ranked[0]
-    assert card_flagged.needs_verification is False
-    assert card_flagged.direct_needs_verification is True
-
-
-def test_a_capped_overflow_at_base_depends_on_the_card_row(
+def test_the_card_row_counts_only_once_spend_passes_the_cap(
     snapshot: CatalogSnapshot,
 ) -> None:
-    """Past the SmartBuy cap the excess earns the card's base rate, so the
-    blended figure rests on the card row as well as the rule."""
-    infinia_id = _ids(snapshot, "Infinia Metal")[0]
-    option = rank_cards_for_spend(
-        snapshot,
-        amount_inr=200_000,
-        category=SpendCategory.TRAVEL,
-        card_ids=[infinia_id],
-        unverified_ids=frozenset({infinia_id}),
-    ).ranked[0]
-    assert option.cap_exceeded is True
-    assert option.needs_verification is True
+    """Atlas travel is 5.00 up to ₹2,00,000 a month, then the 2.00 base rate.
+    At exactly the cap no base rate takes part, so a flagged card row leaves
+    Atlas in; one rupee over, the excess earns base and Atlas is withheld."""
+    atlas_id = _ids(snapshot, "Atlas")[0]
 
+    def at(amount: int):
+        return rank_cards_for_spend(
+            snapshot,
+            amount_inr=amount,
+            category=SpendCategory.TRAVEL,
+            card_ids=[atlas_id],
+            unverified_ids=frozenset({atlas_id}),
+        )
 
-def test_a_flagged_partner_flags_options_and_picks(snapshot: CatalogSnapshot) -> None:
-    kf_id = _program(snapshot, "KrisFlyer")
-    result = rank_cards_for_spend(
-        snapshot,
-        amount_inr=10_000,
-        category=SpendCategory.DEFAULT,
-        card_ids=_ids(snapshot, "TravelOne"),
-        target_program_id=kf_id,
-        unverified_ids=frozenset({kf_id}),
-    )
-    assert result.ranked[0].needs_verification is True
-    kf = _verdict(result, "KrisFlyer")
-    assert kf.winner is not None and kf.winner.needs_verification is True
+    at_cap = at(200_000)
+    assert at_cap.ranked[0].points_earned == 10_000  # 2,000 × 5.00
+    assert at_cap.withheld == ()
+
+    over = at(200_001)
+    assert over.ranked == ()
+    assert [(w.card_name, w.program_id) for w in over.withheld] == [("Atlas", None)]

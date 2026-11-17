@@ -97,10 +97,33 @@ ranked by raw points across currencies — by:
 `overall_pick` = the card that is the sole top card in EVERY program where
 anyone earns — the one honest single answer. None when winners differ or tie.
 
-PROVENANCE. With `unverified_ids` supplied, every option and pick carries
-`needs_verification` (its rule — or the card's base rate — or its transfer
-link / currency is still flagged in the seeds). None = not assessed, which
-must never be read as verified.
+VERIFIED ONLY (decision log 2026-11-17-best-card-verified-only.md). Best Card
+is a recommendation, and CLAUDE.md forbids building one from unverified
+rows. So with `unverified_ids` supplied, an unverified figure is not shown
+with a label. It is removed before anything is priced:
+
+  - a card whose own earn on this purchase rests on a flagged row (the
+    rule, or the card row wherever the base rate takes part, through the
+    portal OR booked direct) is left out entirely
+  - a transfer link whose link, currency or partner row is flagged is left
+    out, so no card can win, or be listed under, that program through it
+
+A flagged CURRENCY withholds transfers, not points: the points figure comes
+from the card and its rule, while the currency row records where points can
+go (transfer entitlement, expiry). Regalia Gold's currency is the live case.
+
+The answer is the best VERIFIED card, not the wallet's best: a withheld card
+might earn more, and we do not know. Callers must word it that way whenever
+`withheld` is non-empty ("of the cards we could compare").
+
+Everything left out is named in `withheld` — card and program, never a
+figure — so the page can say what it did not compare instead of a card
+silently vanishing. "Nobody earns here" is never claimed while a card's
+earn was withheld: we do not know what it earns.
+
+The surviving options still carry `needs_verification` (always False once
+provenance is supplied); None = not assessed, which must never be read as
+verified, and withholds nothing.
 
 CAP CAVEAT (Phase 1). Caps in the catalog are MONTHLY spend caps, and until
 spend logging lands (Phase 2) we do not know how much of a cap is already
@@ -148,6 +171,7 @@ __all__ = [
     "ProgramVerdict",
     "UnknownCard",
     "VerdictPick",
+    "WithheldFigure",
     "rank_cards_for_spend",
 ]
 
@@ -257,6 +281,19 @@ class ProgramVerdict(_Frozen):
     """The direct alternative is itself a tie — no direct card to name."""
 
 
+class WithheldFigure(_Frozen):
+    """Something left out of the answer because it rests on an unverified
+    row. Names only — the figure itself is never part of the result."""
+
+    card_id: UUID
+    bank: str
+    card_name: str
+    program_id: UUID | None
+    """None: the card's own earn on this purchase is unverified, so it is
+    left out everywhere. Set: only its transfer into this program is."""
+    program_name: str | None
+
+
 class BestCardResult(_Frozen):
     """The wallet priced for one purchase.
 
@@ -285,7 +322,9 @@ class BestCardResult(_Frozen):
     """Every card in the wallet — routable or not — has a ZERO rate here (an
     issuer exclusion). Decided on rates, never on floored points, so a tiny
     spend or a wallet that just can't reach the program is not reported as
-    'nobody earns'."""
+    'nobody earns'. Never True while a card's earn is withheld."""
+    withheld: tuple[WithheldFigure, ...] = ()
+    """What was left out as unverified, by card name then program name."""
 
 
 def rank_cards_for_spend(
@@ -308,7 +347,22 @@ def rank_cards_for_spend(
         raise ValueError(f"amount_inr must be positive, got {amount_inr}")
 
     target_id, target_name = resolve_target(snapshot, target_program_id)
-    wallet = resolve_wallet(snapshot, card_ids)
+    rule_by_card: dict[UUID, RewardCategoryRule] = {
+        rule.card_id: rule for rule in snapshot.category_rules if rule.category_slug == category
+    }
+    # From here on, `wallet` and `snapshot` hold only what is verified: the
+    # rest of the function never sees an unverified figure, so it cannot
+    # rank, crown or list one (see VERIFIED ONLY above).
+    wallet, snapshot, withheld = _verified_view(
+        snapshot,
+        resolve_wallet(snapshot, card_ids),
+        rule_by_card=rule_by_card,
+        amount_inr=amount_inr,
+        unverified_ids=unverified_ids,
+    )
+    route_withheld = {
+        w.card_id for w in withheld if target_id is not None and w.program_id == target_id
+    }
 
     currencies_by_id = {currency.id: currency for currency in snapshot.currencies}
     link_by_currency: dict[UUID, CurrencyTransferLink] = (
@@ -316,12 +370,12 @@ def rank_cards_for_spend(
         if target_id is not None
         else {}
     )
-    rule_by_card: dict[UUID, RewardCategoryRule] = {
-        rule.card_id: rule for rule in snapshot.category_rules if rule.category_slug == category
-    }
 
     ranked: list[CardSpendOption] = []
     unroutable: list[CardSpendOption] = []
+    # Every verified card's rate, listed or not — `no_card_earns` must see a
+    # card whose only withheld figure is its route to the chosen program.
+    verified_rates: list[Decimal] = []
 
     for card in wallet:
         card_id = card.id
@@ -355,11 +409,13 @@ def rank_cards_for_spend(
             ),
             direct_needs_verification=_direct_flagged(unverified_ids, rule, card, link, amount_inr),
         )
+        verified_rates.append(rate)
         # With no program chosen nothing is "unroutable" — there is no route
-        # being asked about, so every card belongs in the one list.
+        # being asked about, so every card belongs in the one list. A route
+        # left out as unverified is not "can't reach": that card is withheld.
         if target_id is None or link:
             ranked.append(option)
-        else:
+        elif card_id not in route_withheld:
             unroutable.append(option)
 
     # Miles decide when there is a chosen unit; otherwise points order the
@@ -439,7 +495,8 @@ def rank_cards_for_spend(
         if earning and len(sole_tops) == 1 and all(not v.tied for v in earning)
         else None
     )
-    no_card_earns = all(o.effective_earn_rate == 0 for o in (*ranked, *unroutable))
+    earn_withheld = any(w.program_id is None for w in withheld)
+    no_card_earns = not earn_withheld and all(rate == 0 for rate in verified_rates)
 
     return BestCardResult(
         catalog_snapshot_version=snapshot.version,
@@ -454,7 +511,67 @@ def rank_cards_for_spend(
         program_verdicts=verdicts,
         overall_pick=overall_pick,
         no_card_earns=no_card_earns,
+        withheld=withheld,
     )
+
+
+def _verified_view(
+    snapshot: CatalogSnapshot,
+    wallet: Sequence[Card],
+    *,
+    rule_by_card: dict[UUID, RewardCategoryRule],
+    amount_inr: int,
+    unverified_ids: Set[UUID] | None,
+) -> tuple[tuple[Card, ...], CatalogSnapshot, tuple[WithheldFigure, ...]]:
+    """(cards whose earn is verified, the snapshot with only verified transfer
+    links, what was left out). With no provenance supplied nothing is left
+    out — "not assessed" is the caller's to label, not ours to guess."""
+    if unverified_ids is None:
+        return tuple(wallet), snapshot, ()
+
+    partners = {partner.id: partner for partner in snapshot.partners}
+    withheld: list[WithheldFigure] = []
+
+    def withhold(card: Card, partner_id: UUID | None) -> None:
+        withheld.append(
+            WithheldFigure(
+                card_id=card.id,
+                bank=card.bank,
+                card_name=card.card_name,
+                program_id=partner_id,
+                program_name=partners[partner_id].program_name if partner_id else None,
+            )
+        )
+
+    kept: list[Card] = []
+    for card in wallet:
+        rule = rule_by_card.get(card.id)
+        through_portal = _flagged(
+            unverified_ids, rule, card, None, base_involved=_base_involved(rule, amount_inr)
+        )
+        booked_direct = _direct_flagged(unverified_ids, rule, card, None, amount_inr)
+        if through_portal or booked_direct:
+            withhold(card, None)
+        else:
+            kept.append(card)
+
+    links = tuple(
+        link
+        for link in snapshot.transfer_links
+        if {link.id, link.currency_id, link.partner_id}.isdisjoint(unverified_ids)
+    )
+    kept_link_ids = {link.id for link in links}
+    for card in kept:
+        for link in snapshot.transfer_links:
+            if link.currency_id == card.reward_currency_id and link.id not in kept_link_ids:
+                withhold(card, link.partner_id)
+
+    # Input order must never show through (determinism is a standing test).
+    withheld.sort(
+        key=lambda w: (w.card_name, str(w.card_id), w.program_name or "", str(w.program_id))
+    )
+    view = snapshot.model_copy(update={"transfer_links": links})
+    return tuple(kept), view, tuple(withheld)
 
 
 def _verdict(

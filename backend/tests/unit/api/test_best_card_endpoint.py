@@ -82,7 +82,12 @@ def test_choosing_a_program_switches_to_miles(client: TestClient) -> None:
 
 def test_ranks_by_miles_not_points(client: TestClient) -> None:
     """The endpoint-level guard on the central invariant: Regalia earns more
-    points than TravelOne and must still rank below it."""
+    points than TravelOne and must still rank below it.
+
+    Regalia's currency is still unverified in the seeds, so with the real
+    flags it is withheld from KrisFlyer (next test). This one is about the
+    ranking unit, so it runs with every row treated as verified."""
+    client.app.dependency_overrides[deps.get_unverified_ids] = lambda: frozenset()
     body = _get(
         client,
         amount_inr=10_000,
@@ -93,6 +98,26 @@ def test_ranks_by_miles_not_points(client: TestClient) -> None:
     winner, runner_up = body["ranked"]
     assert winner["card_name"] == "TravelOne"
     assert runner_up["points_earned"] > winner["points_earned"]
+
+
+def test_real_seed_flags_withhold_an_unverified_route(client: TestClient) -> None:
+    """With the seeds' own flags, every Regalia route rests on an unverified
+    currency row: each is named in `withheld` (KrisFlyer included), Regalia
+    is never ranked, and never reported as unable to reach the program."""
+    body = _get(
+        client,
+        amount_inr=10_000,
+        category="default",
+        card_ids=[REGALIA, TRAVELONE],
+        target_program_id=KRISFLYER,
+    )
+    assert [o["card_name"] for o in body["ranked"]] == ["TravelOne"]
+    assert body["unroutable"] == []
+    assert [(w["card_name"], w["program_name"]) for w in body["withheld"]] == [
+        ("Regalia Gold", "ALL - Accor Live Limitless"),
+        ("Regalia Gold", "KrisFlyer"),
+        ("Regalia Gold", "Marriott Bonvoy"),
+    ]
 
 
 def test_accepts_an_explicit_target_program(client: TestClient) -> None:

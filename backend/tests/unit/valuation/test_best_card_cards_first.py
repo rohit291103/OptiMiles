@@ -147,29 +147,6 @@ def test_a_chosen_program_keeps_the_miles_ranking(snapshot: CatalogSnapshot) -> 
     assert [o.card_name for o in result.unroutable] == ["Atlas"]
 
 
-def test_a_destination_carries_its_own_provenance(snapshot: CatalogSnapshot) -> None:
-    """ "Becomes 400 KrisFlyer miles" rests on the Atlas → KrisFlyer link.
-    The card's own points can be verified while that conversion is not."""
-    from app.knowledge.seed_catalog import seed_id
-
-    link = next(
-        li.id
-        for li in snapshot.transfer_links
-        if li.currency_id == seed_id("currency", "axis-edge-miles")
-        and li.partner_id == _program(snapshot, "KrisFlyer")
-    )
-    result = rank_cards_for_spend(
-        snapshot,
-        amount_inr=10_000,
-        category=SpendCategory.DEFAULT,
-        card_ids=_ids(snapshot, "Atlas"),
-        unverified_ids=frozenset({link}),
-    )
-    (atlas,) = result.ranked
-    assert atlas.needs_verification is False
-    assert atlas.destinations[0].needs_verification is True
-
-
 def test_tied_top_cards_share_first_place_in_the_order(snapshot: CatalogSnapshot) -> None:
     """Everyday ₹10,000: Infinia and Diners share a currency and a rate, so
     they TIE for KrisFlyer (333 each, TravelOne 200) and Maharaja (166 each);
